@@ -21,22 +21,6 @@ const router = createRouter({
       name: 'WeatherAbout',
       component: () => import('../views/WeatherAboutView.vue'),
     },
-    // ── 아래 세 개는 교재 요구사항 6번(본인의 추가 view)으로 만든 화면 ──
-    {
-      path: '/lab',
-      name: 'Lab',
-      component: () => import('../views/LabView.vue'),
-    },
-    {
-      path: '/archive',
-      name: 'Archive',
-      component: () => import('../views/ArchiveView.vue'),
-    },
-    {
-      path: '/dev-log',
-      name: 'DevLog',
-      component: () => import('../views/DevLogView.vue'),
-    },
     {
       // Catch-all Route — 위 어느 규칙에도 걸리지 않은 주소를 모두 받는다
       path: '/:pathMatch(.*)*',

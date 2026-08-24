@@ -79,8 +79,8 @@ const configStore = useConfigStore()
 .lang button.on {
   color: var(--color-ink);
   border-color: var(--color-ink);
-  background: linear-gradient(180deg, #ffffff 0%, var(--color-paper-2) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  background: linear-gradient(180deg, var(--color-paper) 0%, var(--color-paper-2) 100%);
+  box-shadow: inset 0 1px 0 var(--gloss);
 }
 .lang button.on:hover {
   border-color: var(--color-ink);

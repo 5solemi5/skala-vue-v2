@@ -104,6 +104,70 @@ defineExpose({ onMove, onLeave })
   z-index: 0;
 }
 
+/* 낮의 소품 색 */
+.sky {
+  --sun-core: rgba(246, 214, 150, 0.75);
+  --moon-core: rgba(206, 216, 238, 0.85);
+  --cloud: rgba(255, 255, 255, 0.75);
+  --cloud-glow: rgba(255, 255, 255, 0.6);
+  --rain: rgba(122, 152, 176, 0.5);
+  --flake: rgba(255, 255, 255, 0.95);
+  --flake-glow: rgba(160, 180, 200, 0.5);
+  --star: rgba(146, 165, 200, 0.9);
+}
+
+/*
+ * ── 밤 ────────────────────────────────────────────
+ *
+ * 위에 이렇게 적어 뒀다.
+ *   "밤이라고 배경을 어둡게 깔 수는 없었다.
+ *    메뉴 글자가 짙은 잉크색이라 바탕이 어두워지면 읽히지 않는다."
+ *
+ * 어두운 화면에서는 그 제약이 뒤집힌다.
+ * 글자가 밝은 색이니 바탕은 어두워야 읽히고, 오히려 밝으면 안 읽힌다.
+ * 그래서 밤에는 밤을 '차가움' 으로 돌려 말하지 않고 그냥 어둡게 깐다.
+ *
+ * 색을 눌러 둔 것도 풀었다. 낮에는 가장 옅은 글자의 명암비가 떨어져서
+ * 0.5 로 눌렀는데, 어두운 바탕에 밝은 글자는 바탕이 진해질수록 잘 읽힌다.
+ * 같은 이유로 별과 달은 더 밝게 뒀다. 밤에 별이 흐리면 밤이 아니다.
+ */
+:root[data-theme='dark'] .sky,
+:root[data-theme='dark'] .sky.dawn,
+:root[data-theme='dark'] .sky.morning,
+:root[data-theme='dark'] .sky.midday,
+:root[data-theme='dark'] .sky.dusk,
+:root[data-theme='dark'] .sky.night {
+  --sky-strength: 0.9;
+  --sun-core: rgba(226, 180, 103, 0.42);
+  --moon-core: rgba(214, 226, 245, 0.85);
+  --cloud: rgba(190, 208, 228, 0.16);
+  --cloud-glow: rgba(190, 208, 228, 0.1);
+  --rain: rgba(150, 180, 210, 0.55);
+  --flake: rgba(226, 238, 250, 0.9);
+  --flake-glow: rgba(150, 180, 210, 0.45);
+  --star: rgba(214, 226, 245, 0.95);
+}
+:root[data-theme='dark'] .dawn {
+  --sky-a: #2a2033;
+  --sky-b: #241c2b;
+}
+:root[data-theme='dark'] .morning {
+  --sky-a: #16283a;
+  --sky-b: #14212f;
+}
+:root[data-theme='dark'] .midday {
+  --sky-a: #182c3f;
+  --sky-b: #152433;
+}
+:root[data-theme='dark'] .dusk {
+  --sky-a: #2b2130;
+  --sky-b: #1f1b28;
+}
+:root[data-theme='dark'] .night {
+  --sky-a: #101d2c;
+  --sky-b: #0b1622;
+}
+
 /*
  * 시간대별 색.
  * 어느 때든 옅게만 깐다. 헤더는 메뉴를 읽는 자리이지 보는 자리가 아니다.
@@ -117,24 +181,37 @@ defineExpose({ onMove, onLeave })
    * 흰 바탕일 때 3.5 에서 2.8 까지 떨어졌다.
    * 배경 때문에 원래보다 읽기 어려워지면 안 된다.
    */
-  opacity: 0.5;
+  opacity: var(--sky-strength, 0.5);
   transform: translate(calc(var(--px) * -5px), calc(var(--py) * -3px));
   transition: transform 0.5s ease-out;
+  background: linear-gradient(105deg, var(--sky-a) 0%, var(--sky-b) 47%, transparent 80%);
 }
-.dawn .tint {
-  background: linear-gradient(105deg, #fbe8dd 0%, #f6e6ee 45%, transparent 78%);
+
+/*
+ * 시간대별 색을 값이 아니라 이름으로 뒀다.
+ * 시간대가 다섯이고 낮·밤이 둘이라 조합이 열 가지인데,
+ * .tint 규칙을 열 번 쓰면 그라데이션 각도를 고칠 때 열 곳을 고쳐야 한다.
+ * 각도와 위치는 위에 한 번만 쓰고, 여기서는 색 두 개만 갈아 끼운다.
+ */
+.dawn {
+  --sky-a: #fbe8dd;
+  --sky-b: #f6e6ee;
 }
-.morning .tint {
-  background: linear-gradient(105deg, #e2eff7 0%, #eef5f8 48%, transparent 80%);
+.morning {
+  --sky-a: #e2eff7;
+  --sky-b: #eef5f8;
 }
-.midday .tint {
-  background: linear-gradient(105deg, #e4f0f6 0%, #f2f8fa 50%, transparent 82%);
+.midday {
+  --sky-a: #e4f0f6;
+  --sky-b: #f2f8fa;
 }
-.dusk .tint {
-  background: linear-gradient(105deg, #f9e3d5 0%, #f2e2e6 46%, transparent 78%);
+.dusk {
+  --sky-a: #f9e3d5;
+  --sky-b: #f2e2e6;
 }
-.night .tint {
-  background: linear-gradient(105deg, #dfe6f2 0%, #e9edf5 48%, transparent 80%);
+.night {
+  --sky-a: #dfe6f2;
+  --sky-b: #e9edf5;
 }
 
 /* ── 해와 달 ── */
@@ -145,21 +222,21 @@ defineExpose({ onMove, onLeave })
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(246, 214, 150, 0.75) 0%, rgba(246, 214, 150, 0) 70%);
+  background: radial-gradient(circle, var(--sun-core) 0%, transparent 70%);
   transform: translate(calc(var(--px) * 9px), calc(var(--py) * 5px));
   transition: transform 0.5s ease-out;
 }
 .orb.moon {
-  background: radial-gradient(circle, rgba(206, 216, 238, 0.85) 0%, rgba(206, 216, 238, 0) 70%);
+  background: radial-gradient(circle, var(--moon-core) 0%, transparent 70%);
 }
 
 /* ── 구름 ── */
 .puff {
   position: absolute;
   height: 14px;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--cloud);
   border-radius: 999px;
-  box-shadow: 0 0 14px 8px rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 14px 8px var(--cloud-glow);
 }
 .puff.a {
   top: 14px;
@@ -199,7 +276,7 @@ defineExpose({ onMove, onLeave })
   top: -14px;
   width: 1px;
   height: 12px;
-  background: linear-gradient(180deg, rgba(122, 152, 176, 0) 0%, rgba(122, 152, 176, 0.5) 100%);
+  background: linear-gradient(180deg, transparent 0%, var(--rain) 100%);
   animation: pour 1.1s linear infinite;
 }
 .drop.d1 { left: 5%; }
@@ -228,9 +305,9 @@ defineExpose({ onMove, onLeave })
   top: -6px;
   width: 3px;
   height: 3px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--flake);
   border-radius: 50%;
-  box-shadow: 0 0 3px rgba(160, 180, 200, 0.5);
+  box-shadow: 0 0 3px var(--flake-glow);
   animation: settle 9s linear infinite;
 }
 .snow.s1 { left: 7%; }
@@ -256,7 +333,7 @@ defineExpose({ onMove, onLeave })
   position: absolute;
   width: 2px;
   height: 2px;
-  background: rgba(146, 165, 200, 0.9);
+  background: var(--star);
   border-radius: 50%;
   animation: blink 4.5s ease-in-out infinite;
 }

@@ -1,7 +1,5 @@
-// Tailwind 를 가장 먼저 불러온다.
-// preflight(기본 스타일 초기화)가 뒤따르는 실습용 CSS 를 덮어쓰지 않도록 순서가 중요하다.
-import './assets/tailwind.css'
-import './assets/main.css'
+// 이 화면의 스타일시트는 이 하나뿐이다. 토큰과 바탕이 전부 여기 있다.
+import './assets/app.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

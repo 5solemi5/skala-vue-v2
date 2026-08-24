@@ -2,7 +2,6 @@
  * 한국어 문구
  *
  * 화면에 그대로 나가는 글자만 모았다.
- * 수업 산출물 페이지(문법 실습실·과제 아카이브·개발 기록)는 학습 기록이라 대상이 아니다.
  *
  * 값은 문자열이거나 함수다.
  * {name} 처럼 중괄호로 감싼 자리에는 값이 들어간다.
@@ -18,13 +17,21 @@ export default {
   'brand.tagline': '같은 하늘, 다른 하루',
   'nav.home': '오늘의 채비',
   'nav.about': '서비스 소개',
-  'nav.lab': '문법 실습실',
-  'nav.archive': '과제 아카이브',
-  'nav.devlog': '개발 기록',
+  'nav.skip': '본문으로 건너뛰기',
   'nav.mainAria': '주요 메뉴',
-  'nav.courseAria': '만든 과정',
-  'foot.credit': 'SKALA Full-Stack Engineering · Frontend framework: Vue.js',
+  'foot.credit': '오늘의 채비 · 같은 하늘, 다른 하루',
   'lang.aria': '언어 선택',
+  // 낮 / 밤. 'system' 은 기기 설정을 따라간다는 뜻이라 '자동' 으로 적었다.
+  'unit.aria': '온도 단위',
+  'unit.c': '섭씨',
+  'unit.f': '화씨',
+  'theme.system': '자동',
+  'theme.light': '낮',
+  'theme.dark': '밤',
+  'theme.aria': '화면 밝기',
+  'theme.nowSystem': '기기 설정을 따릅니다',
+  'theme.nowLight': '밝은 화면으로 고정',
+  'theme.nowDark': '어두운 화면으로 고정',
 
   // ── 지금 있는 곳 ──
   'here.ask': '내 위치',
@@ -108,6 +115,30 @@ export default {
   'home.partialFail': ({ names }) =>
     `${names} 은(는) 불러오지 못했습니다. 나머지 지역만 표시합니다.`,
   'home.loading': '불러오는 중입니다',
+  // ── 내 지역 관리 ──────────────────────────────
+  // 예전에는 이 문구들이 컴포넌트 안에 한국어로 박혀 있었다.
+  // 영어로 바꿔도 이 칸만 한국어로 남아서 여기로 옮겼다.
+  'city.title': '내 지역',
+  'city.manage': '지역 추가·삭제',
+  'city.close': '닫기',
+  'city.empty': '목록이 비었습니다. 아래에서 지역을 추가해 주세요.',
+  'city.searchLabel': '추가할 지역 검색',
+  'city.searchPlaceholder': '추가할 지역 이름 (예: 광주, 제주, Busan)',
+  'city.search': '검색',
+  'city.searching': '찾는 중',
+  'city.add': '추가',
+  'city.already': '이미 있음',
+  'city.reset': '기본 목록으로 되돌리기',
+  'city.removeAria': ({ name }) => `${name} 삭제`,
+  'city.notFound': ({ query }) => `'${query}' 로 찾은 지역이 없습니다. 다른 이름으로 검색해 보세요.`,
+  'city.searchFail': '지역을 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'city.added': ({ name }) => `${name} 을(를) 추가했습니다.`,
+  'city.exists': ({ name }) => `${name} 은(는) 이미 목록에 있습니다.`,
+  'city.removed': ({ name }) => `${name} 을(를) 목록에서 뺐습니다.`,
+  // ── 목록 걸러 보기 ────────────────────────────
+  'filter.label': '지역 이름으로 걸러 보기',
+  'filter.placeholder': '지역 이름',
+  'filter.clear': '지우기',
   'home.others': '다른 지역',
   'home.asOf': ({ time }) => `${time} 기준`,
   'home.refreshing': '갱신 중',

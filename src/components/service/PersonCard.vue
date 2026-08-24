@@ -96,11 +96,11 @@ const displayTemp = computed(() =>
  */
 .person.on {
   background:
-    radial-gradient(120% 90% at 78% 0%, rgba(255, 255, 255, 0.95) 0%, transparent 62%),
-    linear-gradient(168deg, #ffffff 0%, #f7fafb 100%);
+    radial-gradient(120% 90% at 78% 0%, var(--card-lift) 0%, transparent 62%),
+    linear-gradient(168deg, var(--color-paper) 0%, var(--color-paper-2) 100%);
   box-shadow:
     inset 0 0 0 1.5px var(--color-ink),
-    0 8px 24px -10px rgba(16, 28, 38, 0.32);
+    var(--shadow-3);
   z-index: 1;
 }
 
@@ -111,18 +111,18 @@ const displayTemp = computed(() =>
  */
 .person.on.stop {
   background:
-    radial-gradient(120% 90% at 78% 0%, rgba(255, 255, 255, 0.95) 0%, transparent 62%),
-    linear-gradient(168deg, #ffffff 0%, var(--color-stop-soft) 100%);
+    radial-gradient(120% 90% at 78% 0%, var(--card-lift) 0%, transparent 62%),
+    linear-gradient(168deg, var(--color-paper) 0%, var(--color-stop-soft) 100%);
 }
 .person.on.warn {
   background:
-    radial-gradient(120% 90% at 78% 0%, rgba(255, 255, 255, 0.95) 0%, transparent 62%),
-    linear-gradient(168deg, #ffffff 0%, var(--color-warn-soft) 100%);
+    radial-gradient(120% 90% at 78% 0%, var(--card-lift) 0%, transparent 62%),
+    linear-gradient(168deg, var(--color-paper) 0%, var(--color-warn-soft) 100%);
 }
 .person.on.good {
   background:
-    radial-gradient(120% 90% at 78% 0%, rgba(255, 255, 255, 0.95) 0%, transparent 62%),
-    linear-gradient(168deg, #ffffff 0%, var(--color-good-soft) 100%);
+    radial-gradient(120% 90% at 78% 0%, var(--card-lift) 0%, transparent 62%),
+    linear-gradient(168deg, var(--color-paper) 0%, var(--color-good-soft) 100%);
 }
 
 /* 아래쪽 표시와 반짝임도 판정 색을 따라간다 */
@@ -202,13 +202,13 @@ const displayTemp = computed(() =>
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent);
 }
 .person.on .pip.stop {
-  box-shadow: 0 0 0 3px rgba(158, 43, 37, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-stop) 18%, transparent);
 }
 .person.on .pip.warn {
-  box-shadow: 0 0 0 3px rgba(140, 99, 24, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn) 18%, transparent);
 }
 .person.on .pip.good {
-  box-shadow: 0 0 0 3px rgba(31, 97, 82, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-good) 18%, transparent);
 }
 .place {
   margin-top: 4px;

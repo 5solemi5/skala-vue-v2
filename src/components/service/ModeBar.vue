@@ -34,12 +34,12 @@ defineEmits(['change-mode'])
 .modebar {
   display: flex;
   align-items: flex-end;
-  gap: 20px;
+  gap: var(--sp-5);
   flex-wrap: wrap;
 }
 .eyebrow {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   color: var(--color-ink-3);
   white-space: nowrap;
@@ -62,10 +62,10 @@ defineEmits(['change-mode'])
   background: none;
   border: 0;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--dur-state) var(--ease-out);
 }
 .what {
-  font-size: 15px;
+  font-size: var(--fs-base);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -90,14 +90,48 @@ defineEmits(['change-mode'])
   background: var(--color-ink);
 }
 
-/* 일곱 가지가 한 줄에 안 들어가는 폭에서는 간격을 좁혀 두 줄로 접는다 */
+/*
+ * ── 좁은 화면 ────────────────────────────────────
+ *
+ * 전에는 간격만 좁혀 두 줄로 접었다. 두 가지가 걸렸다.
+ *
+ * 하나는 자리를 너무 먹는 것. 제목 줄과 두 줄짜리 탭이 겹쳐
+ * 여는 순간 화면의 3할이 '무엇을 볼까요' 로 차 있었다.
+ * 정작 봐야 하는 판정은 그만큼 아래로 밀렸다.
+ *
+ * 다른 하나는 접히는 자리가 폭에 따라 달라지는 것.
+ * 어떤 폭에서는 '야구' 가 둘째 줄 맨 앞에 혼자 남아, 일곱 중 여섯과 하나로
+ * 갈라진 것처럼 보였다. 일곱은 다 같은 급이라 그렇게 보이면 안 된다.
+ *
+ * 한 줄로 묶고 넘치면 옆으로 밀게 했다. 어디서 잘리든 급은 하나로 남는다.
+ */
 @media (max-width: 560px) {
+  .modebar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-1);
+  }
+  .eyebrow {
+    margin-bottom: 0;
+  }
+  .seg {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    /* 밀리는 항목이 잘려 보이도록 스크롤바는 감춘다 */
+    scrollbar-width: none;
+  }
+  .seg::-webkit-scrollbar {
+    display: none;
+  }
   .seg-item {
-    margin-right: 16px;
+    flex: none;
+    scroll-snap-align: start;
+    margin-right: 18px;
     padding-bottom: 8px;
   }
   .what {
-    font-size: 14px;
+    font-size: var(--fs-sm);
   }
 }
 </style>

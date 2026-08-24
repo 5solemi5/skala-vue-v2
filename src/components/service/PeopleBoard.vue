@@ -164,19 +164,28 @@ h2 {
     from var(--sheen),
     var(--color-line) 0deg,
     var(--color-line-2) 40deg,
-    #ffffff 68deg,
+    var(--gloss-edge) 68deg,
     var(--color-line-2) 96deg,
     var(--color-line) 150deg,
     var(--color-line) 210deg,
     var(--color-line-2) 244deg,
-    #ffffff 272deg,
+    var(--gloss-edge) 272deg,
     var(--color-line-2) 300deg,
     var(--color-line) 360deg
   );
   box-shadow:
-    0 1px 2px rgba(16, 28, 38, 0.04),
-    0 10px 28px -14px rgba(16, 28, 38, 0.16);
+    var(--shadow-1),
+    var(--shadow-3);
   animation: sheen 9s linear infinite;
+  /*
+   * 테두리를 돌 때 가장 밝아지는 지점.
+   * 낮에는 흰빛이 지나가는 것처럼 보이지만, 어두운 화면에서 흰 선을 그으면
+   * 판이 아니라 유리 액자처럼 튀어서 한 단 눌러 둔다.
+   */
+  --gloss-edge: #ffffff;
+}
+:root[data-theme='dark'] .frame {
+  --gloss-edge: color-mix(in srgb, var(--color-line-2) 70%, #ffffff);
 }
 @keyframes sheen {
   to {
@@ -195,8 +204,8 @@ h2 {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.9) 30%,
-    rgba(255, 255, 255, 0.9) 70%,
+    var(--gloss) 30%,
+    var(--gloss) 70%,
     transparent
   );
   pointer-events: none;
@@ -262,11 +271,11 @@ h2 {
 @keyframes stir {
   0% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(16, 28, 38, 0.22);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ink) 22%, transparent);
   }
   100% {
     opacity: 0;
-    box-shadow: 0 0 0 12px rgba(16, 28, 38, 0);
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--color-ink) 0%, transparent);
   }
 }
 

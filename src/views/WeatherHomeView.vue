@@ -7,8 +7,8 @@ import CityHero from '../components/service/CityHero.vue'
 import CityRow from '../components/service/CityRow.vue'
 import PeopleBoard from '../components/service/PeopleBoard.vue'
 import PeopleManager from '../components/service/PeopleManager.vue'
-import CityManager from '../components/exercise/CityManager.vue'
-import SearchBar from '../components/exercise/SearchBar.vue'
+import CityManager from '../components/service/CityManager.vue'
+import CityFilter from '../components/service/CityFilter.vue'
 
 import { buildAdvice } from '../utils/adviceRules'
 import { fetchAllWeather, fetchHourly, fetchCityWeather } from '../api/weatherApi'
@@ -308,6 +308,7 @@ const handleDetail = (city) => {
             </p>
           </div>
           <div class="meta">
+            <CityFilter v-model="searchQuery" />
             <span v-if="updatedAt" class="tnum">{{ configStore.t('home.asOf', { time: updatedAt }) }}</span>
             <button type="button" class="refresh" :disabled="isLoading" @click="loadWeather">
               {{ configStore.t(isLoading ? 'home.refreshing' : 'home.refresh') }}
@@ -343,9 +344,6 @@ const handleDetail = (city) => {
       <section ref="peopleTools" class="tools">
         <div class="tool">
           <PeopleManager @changed="loadPeople" />
-        </div>
-        <div class="tool">
-          <SearchBar :current-query="searchQuery" @update-query="(val) => (searchQuery = val)" />
         </div>
         <div class="tool">
           <CityManager />

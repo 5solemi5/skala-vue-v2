@@ -1,0 +1,295 @@
+@import 'tailwindcss';
+
+/*
+ * 색은 판정에만 쓴다.
+ *
+ * 브랜드 색을 따로 두면 화면에 색이 두 종류로 섞여서,
+ * 색이 보여도 그게 "우리 서비스 색"인지 "주의하라는 뜻"인지 알 수 없다.
+ * 그래서 기본은 전부 무채색으로 두고 색은 작업 판정에만 쓰기로 했다.
+ * 화면에서 색이 보이는 곳 = 신경 써야 할 곳.
+ *
+ * ── v2 에서 더한 것 ──────────────────────────────
+ * 이름은 그대로 두고 값만 갈아 끼울 수 있게 다시 정리했다.
+ * ink / paper 는 "검정 / 흰색" 이 아니라 "글씨 / 바닥" 이라는 역할 이름이라
+ * 밤에는 두 값을 서로 뒤집으면 규칙을 하나도 고치지 않고 어두운 화면이 된다.
+ * 컴포넌트가 var(--color-ink) 라고만 써 두면 낮인지 밤인지 몰라도 된다.
+ */
+@theme {
+  /*
+   * 기상 관측 기록에서 색을 가져왔다.
+   * 종이는 크림색이 아니라 청사진처럼 차갑게, 잉크는 검정이 아니라 짙은 남색.
+   * 판정 세 가지도 형광색이 아니라 인쇄 잉크에 가까운 채도로 낮췄다.
+   */
+
+  /* 잉크 — 짙은 남색 계열 */
+  --color-ink: #101c26;
+  --color-ink-2: #42535f;
+  --color-ink-3: #7e8c97;
+  --color-ink-4: #aab4bc;
+
+  /* 지면 — 차가운 회청 */
+  --color-paper: #ffffff;
+  --color-paper-2: #f0f3f5;
+  --color-paper-3: #e4e9ed;
+  --color-line: #dce3e8;
+  --color-line-2: #c6d0d7;
+
+  /* 판정 — 인쇄 잉크 채도 */
+  --color-stop: #9e2b25;
+  --color-stop-soft: #f7edec;
+  --color-warn: #8c6318;
+  --color-warn-soft: #f8f2e8;
+  --color-good: #1f6152;
+  --color-good-soft: #ecf2f0;
+
+  --font-sans:
+    'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --radius-lg: 0.375rem;
+  --radius-md: 0.25rem;
+  --radius-sm: 0.125rem;
+}
+
+/*
+ * ─────────────────────────────────────────────────
+ * 밤 — 같은 기록을 어두운 종이에 옮긴 것
+ * ─────────────────────────────────────────────────
+ *
+ * 색을 새로 고르지 않았다. 낮에 쓰던 이름의 값만 바꿨다.
+ *
+ * 낮에는 paper(흰 카드)가 paper-2(회청 바닥)보다 밝다.
+ * 밤에는 그 관계를 그대로 뒤집는다. 바닥이 가장 어둡고 카드가 그보다 밝다.
+ * "카드가 바닥보다 한 겹 위" 라는 규칙이 낮과 밤에서 같은 방향으로 읽힌다.
+ *
+ * 판정 세 가지는 값을 그냥 쓸 수 없었다.
+ * 인쇄 잉크 채도로 낮춰 둔 색(#9e2b25)은 어두운 바닥에서 거의 검게 보인다.
+ * 색이 보이는 곳이 신경 쓸 곳인데 색이 안 보이면 규칙이 깨진다.
+ * 그래서 밤에는 채도를 유지하고 명도만 끌어올렸다. 형광색이 되지 않는 선까지만.
+ */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  /*
+   * 어두운 화면.
+   *
+   * 선택자가 이것 하나다.
+   * '자동' 인지 직접 고른 밤인지는 스토어가 풀어서 data-theme 에 적어 주므로
+   * CSS 는 지금 어두운지만 보면 된다. (configStore.js 의 watch 참고)
+   */
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --color-ink: #e3ebf1;
+    --color-ink-2: #a6b8c6;
+    --color-ink-3: #78899a;
+    --color-ink-4: #586878;
+
+    --color-paper: #131f2a;
+    --color-paper-2: #0c151d;
+    --color-paper-3: #1c2b38;
+    --color-line: #24343f;
+    --color-line-2: #35495a;
+
+    --color-stop: #f3938c;
+    --color-stop-soft: #2b1614;
+    --color-warn: #e2b467;
+    --color-warn-soft: #2a2114;
+    --color-good: #6fc7ac;
+    --color-good-soft: #12261f;
+  }
+}
+
+/*
+ * ─────────────────────────────────────────────────
+ * 글자 크기 — 눈금을 정해 두고 그 안에서만 고른다
+ * ─────────────────────────────────────────────────
+ *
+ * 처음에는 자리마다 필요한 만큼 적었다. 11px, 11.5px, 12px, 12.5px, 13.5px...
+ * 반 픽셀 차이가 열 군데 넘게 생기니 어느 글자가 어느 글자보다 윗급인지
+ * 화면을 봐도 알 수 없고, 고칠 때마다 옆 파일을 열어 맞춰 봐야 했다.
+ *
+ * 그래서 여덟 단으로 잘라 두고 그 안에서만 고르기로 했다.
+ * 단 사이가 벌어져 있어야 급이 다르다는 게 눈에 보인다.
+ *
+ * Tailwind 의 --text-* 자리를 쓰지 않고 따로 이름을 뒀다.
+ * 그 자리를 덮으면 text-sm 같은 유틸리티의 뜻이 프로젝트마다 달라져서,
+ * 나중에 컴포넌트를 옮겨 붙일 때 크기가 조용히 바뀐다.
+ */
+:root {
+  --fs-2xs: 11px; /* 표 안의 단위, 각주 */
+  --fs-xs: 12px; /* 메타 정보, 수업 링크 */
+  --fs-sm: 13px; /* 본문 보조, 메뉴 */
+  --fs-base: 15px; /* 본문 */
+  --fs-lg: 18px; /* 카드 제목 */
+  --fs-md: 16px; /* 절 제목 */
+  --fs-xl: 22px; /* 화면 제목 */
+  --fs-2xl: 28px; /* 판정 표제 */
+  --fs-3xl: 40px; /* 기온 */
+
+  /*
+   * 여백도 같은 이유로 눈금을 뒀다.
+   * 4px 배수로 두면 눈금 위에 놓인 것들이 서로 줄을 맞춘다.
+   */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-14: 56px;
+
+  /*
+   * ── 움직임 ──────────────────────────────────
+   *
+   * 시간과 곡선을 자리마다 따로 적으면 화면 안에서 빠른 것과 느린 것이
+   * 뒤섞여 서비스가 하나로 안 읽힌다. 네 단만 두고 쓰임을 정해 놨다.
+   *
+   * 곡선은 ease-out 계열로 통일했다.
+   * 시작이 빠르고 끝이 느린 움직임은 "이미 일어난 일" 처럼 보여서
+   * 누른 다음 기다리는 느낌이 들지 않는다.
+   */
+  --dur-tap: 90ms; /* 눌렀을 때. 손가락보다 빨라야 한다 */
+  --dur-state: 160ms; /* 색·테두리가 바뀔 때 */
+  --dur-move: 260ms; /* 자리를 옮기거나 펼칠 때 */
+  --dur-enter: 380ms; /* 없던 것이 나타날 때 */
+  --dur-ambient: 900ms; /* 배경처럼 계속 있는 움직임 */
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-back: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /*
+   * ── 그림자 ──────────────────────────────────
+   *
+   * 인쇄물처럼 보이려는 화면이라 그림자를 띄우는 데 쓰지 않는다.
+   * 종이가 한 장 겹쳐 놓인 정도까지만.
+   */
+  --shadow-1: 0 1px 2px rgba(16, 28, 38, 0.06);
+  --shadow-2: 0 2px 8px -2px rgba(16, 28, 38, 0.1);
+  --shadow-3: 0 10px 28px -10px rgba(16, 28, 38, 0.18);
+
+  /*
+   * 카드 위쪽에 얹는 아주 옅은 빛.
+   * 낮에는 흰빛, 밤에는 거의 없다. 어두운 화면에서 흰 선을 또렷하게 그으면
+   * 종이가 아니라 유리처럼 보인다.
+   *
+   * 이름을 --sheen 으로 두었다가 --gloss 로 바꿨다.
+   * PeopleBoard 가 판 테두리를 돌리는 데 --sheen 을 이미 각도(@property <angle>)로
+   * 등록해 두고 있었다. 같은 이름에 색을 넣으면 그 애니메이션이 멈춘다.
+   */
+  --gloss: rgba(255, 255, 255, 0.9);
+  --gloss-soft: rgba(255, 255, 255, 0.6);
+
+  /* 고른 카드 위쪽에 도는 빛. 낮에는 흰빛이 세고 밤에는 아주 옅다 */
+  --card-lift: rgba(255, 255, 255, 0.95);
+}
+
+/*
+ * 밤에는 그림자를 더 짙게 준다.
+ * 어두운 바닥에서 6% 검정은 아무것도 아니어서 겹친 게 보이지 않는다.
+ * 대신 위쪽 빛은 뺀다.
+ */
+:root[data-theme='dark'] {
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 2px 10px -2px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 12px 32px -10px rgba(0, 0, 0, 0.75);
+  --gloss: rgba(255, 255, 255, 0.08);
+  --gloss-soft: rgba(255, 255, 255, 0.04);
+  --card-lift: rgba(255, 255, 255, 0.06);
+}
+
+/*
+ * ─────────────────────────────────────────────────
+ * 바탕
+ * ─────────────────────────────────────────────────
+ *
+ * 전에는 스타일시트가 셋이었다.
+ *   tailwind.css  이 화면의 토큰
+ *   main.css      스캐폴드가 만들어 준 웰컴 화면 레이아웃
+ *   base.css      스캐폴드의 색 변수와 초기화
+ *
+ * 뒤의 둘은 Vue 프로젝트를 만들면 딸려 오는 파일인데, 늦게 실려서
+ * 앞에서 정한 색과 서체를 덮고 있었다. 어두운 화면을 넣으면서
+ * 같은 것을 두 곳에서 정하는 문제가 드러나 한 파일로 합쳤다.
+ */
+html {
+  background: var(--color-paper-2);
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--color-ink);
+  background: var(--color-paper-2);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 화면 전환 애니메이션이 헤더의 하늘과 겹치지 않게 층을 가른다 */
+#app {
+  isolation: isolate;
+}
+
+/*
+ * 링크.
+ * 색으로 구분하지 않으니 밑줄이 유일한 표시다.
+ * 글자에 딱 붙은 밑줄은 한글 받침을 지우므로 한 칸 띄운다.
+ */
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+/*
+ * 낮과 밤을 바꿀 때 색이 툭 끊기지 않게 한다.
+ * 다만 전체에 transition 을 걸면 화면을 처음 열 때도 색이 흐르듯 들어와서
+ * 느려 보인다. 토글을 누른 순간에만 켠다 (App.vue 에서 클래스를 붙인다).
+ */
+.theme-turning,
+.theme-turning *,
+.theme-turning *::before,
+.theme-turning *::after {
+  transition:
+    background-color var(--dur-move) var(--ease-out),
+    border-color var(--dur-move) var(--ease-out),
+    color var(--dur-move) var(--ease-out),
+    box-shadow var(--dur-move) var(--ease-out) !important;
+}
+
+/* 숫자가 세로로 정렬되어야 읽기 쉽다 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 키보드로 이동할 때 어디에 있는지 보여야 한다 */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/*
+ * 마우스로 눌렀을 때는 테두리를 안 그린다.
+ * 누른 자리는 이미 알고 있어서, 그려 주면 지저분하기만 하다.
+ */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

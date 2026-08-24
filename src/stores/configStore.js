@@ -50,6 +50,82 @@ export const useConfigStore = defineStore('config', () => {
     if (isKnownLang(id)) lang.value = id
   }
 
+  // ─────────────────────────────────────────────
+  // 낮 / 밤 / 시스템
+  //
+  // 값이 셋인 이유가 있다.
+  // 낮·밤 두 개짜리 스위치로 두면 시스템 설정을 따라가는 상태로 되돌아갈 수가 없다.
+  // 해 지면 어두워지길 바라는 사람은 'system' 에 두면 되고,
+  // 낮에도 어두운 화면을 쓰는 사람은 'dark' 를 못 박아 두면 된다.
+  //
+  // 기본값은 'system' 이다. 처음 온 사람에게 우리 취향을 밀지 않는다.
+  // ─────────────────────────────────────────────
+  const THEMES = ['system', 'light', 'dark']
+  const isKnownThemeMode = (id) => THEMES.includes(id)
+  const theme = ref(isKnownThemeMode(saved.theme) ? saved.theme : 'system')
+
+  // getter: 지금 실제로 어두운 화면인지. 'system' 이면 브라우저에 물어본다
+  const prefersDark = ref(
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false,
+  )
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    // 사용자가 OS 설정을 바꾸면 새로고침 없이 따라간다
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', (e) => (prefersDark.value = e.matches))
+  }
+  const isDarkNow = computed(() =>
+    theme.value === 'system' ? prefersDark.value : theme.value === 'dark',
+  )
+
+  const themeList = computed(() =>
+    THEMES.map((id) => ({ id, label: t.value(`theme.${id}`) })),
+  )
+
+  // action: 테마 변경
+  function setTheme(id) {
+    if (isKnownThemeMode(id)) theme.value = id
+  }
+
+  /*
+   * action: 다음 값으로 넘긴다.
+   * 헤더에 세 칸을 놓을 자리가 없어서 버튼 하나로 돌려쓴다.
+   * system → light → dark → system 순서다.
+   */
+  function cycleTheme() {
+    const i = THEMES.indexOf(theme.value)
+    theme.value = THEMES[(i + 1) % THEMES.length]
+  }
+
+  /*
+   * 지금 어두운지 아닌지를 <html data-theme> 에 적는다.
+   *
+   * 'system' 일 때 아무것도 안 적고 CSS 의 prefers-color-scheme 에 맡기는 방법도 있다.
+   * 처음에 그렇게 했다가 되돌렸다.
+   *
+   * 그러면 CSS 쪽에서 어두운 상태를 가리키는 선택자가 두 개가 된다.
+   *   :root[data-theme='dark']                                    ← 직접 고른 밤
+   *   @media (prefers-color-scheme: dark) :root:not([data-theme='light'])  ← 자동
+   * 색 한 벌을 두 번씩 적어야 하고, 컴포넌트마다 이 두 줄이 따라다닌다.
+   * 하늘 색을 손보면서 한쪽만 고치는 일이 실제로 생겼다.
+   *
+   * 'system' 을 JS 에서 미리 풀어 확정값만 적으면 선택자가 하나로 줄어든다.
+   * 무엇을 골랐는지(theme)와 지금 어떤 화면인지(data-theme)를 따로 둔 셈이다.
+   *
+   * 대신 JS 가 돌기 전 첫 그림에는 아무 표시가 없어서, 어두운 기기에서
+   * 흰 화면이 한 번 번쩍인다. 그건 index.html 의 짧은 스크립트가 막는다.
+   */
+  watch(
+    isDarkNow,
+    (dark) => {
+      if (typeof document === 'undefined') return
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+    },
+    { immediate: true },
+  )
+
   // state: 판 아래 마당의 배경. 고른 것은 저장해 둔다.
   const YARD_THEMES = ['meadow', 'seaside', 'night', 'snow', 'city']
   const isKnownTheme = (id) => YARD_THEMES.includes(id)
@@ -88,11 +164,11 @@ export const useConfigStore = defineStore('config', () => {
   // (교재에서는 각 컴포넌트의 computed 로 두고 Composable 은 범위 제외로 안내되어 있다)
   // ─────────────────────────────────────────────
   // 단위와 모드, 언어는 다시 들어왔을 때도 그대로여야 한다
-  watch([unit, currentMode, lang, yardTheme], ([u, m, l, y]) => {
+  watch([unit, currentMode, lang, yardTheme, theme], ([u, m, l, y, th]) => {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ unit: u, currentMode: m, lang: l, yardTheme: y }),
+        JSON.stringify({ unit: u, currentMode: m, lang: l, yardTheme: y, theme: th }),
       )
     } catch {
       // 저장이 막힌 환경에서는 넘어간다
@@ -116,6 +192,11 @@ export const useConfigStore = defineStore('config', () => {
     yardTheme,
     yardList,
     setYardTheme,
+    theme,
+    themeList,
+    isDarkNow,
+    setTheme,
+    cycleTheme,
     modeList,
     currentMode,
     currentModeLabel,

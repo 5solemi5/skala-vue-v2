@@ -2,7 +2,35 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      낮·밤을 첫 그림 전에 정한다.
+
+      테마는 스토어가 정하지만 스토어는 JS 묶음이 다 실린 다음에야 돈다.
+      그 사이 한 프레임은 아무 표시가 없는 상태로 그려져서,
+      어두운 화면을 쓰는 사람에게 흰 화면이 한 번 번쩍인다.
+      한 번 번쩍이는 게 생각보다 거슬리고, 특히 밤에 눈이 부시다.
+
+      그래서 저장된 값만 미리 읽어 <html> 에 적어 둔다.
+      스토어가 나중에 같은 값을 다시 적으므로 서로 어긋나지 않는다.
+      막혀서 못 읽는 환경(사생활 보호 창 등)에서는 조용히 기기 설정을 따른다.
+    -->
+    <script>
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem('skala-chaebi-config') || '{}')
+          var mode = saved.theme || 'system'
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+        } catch (e) {
+          /* 못 읽으면 스토어가 잡아 준다 */
+        }
+      })()
+    </script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
