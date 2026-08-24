@@ -68,32 +68,41 @@ const coord = computed(() => {
       배경으로 화면 전체에 깔지 않은 건, 글자 뒤에서 계속 움직이는 것이 있으면
       읽는 내내 시야 구석이 시끄럽기 때문이다. 볼 때 보고 읽을 때는 안 본다.
     -->
-    <SkyCanvas class="window" :sky="skyStore.sky">
-      <!-- 하늘이 밝든 어둡든 글자가 읽히도록 아래쪽을 눌러 둔다 -->
-      <div class="pane">
-        <!-- 펼친 판. 누르면 다른 판으로 넘길 수 있다 -->
-        <div class="ledge">
-          <SkyPicker />
-        </div>
+    <div class="frame">
+      <SkyCanvas class="window" :sky="skyStore.sky">
+        <!-- 하늘이 밝든 어둡든 글자가 읽히도록 아래쪽을 눌러 둔다 -->
+        <div class="pane">
+          <div class="sill">
+            <div class="place">
+              <p class="region">{{ city.region }}</p>
+              <h2>{{ city.name }}</h2>
+              <p v-if="coord" class="coord engrave">{{ coord }}</p>
+            </div>
 
-        <div class="sill">
-          <div class="place">
-            <p class="region">{{ city.region }}</p>
-            <h2>{{ city.name }}</h2>
-            <p v-if="coord" class="coord engrave">{{ coord }}</p>
-          </div>
-
-          <div class="temp">
-            <p class="deg tnum">
-              {{ displayTemp }}<span class="unit">{{ configStore.unitSymbol }}</span>
-            </p>
-            <p class="cond">
-              {{ city.description ?? conditionLabel }}
-            </p>
+            <div class="temp">
+              <p class="deg tnum">
+                {{ displayTemp }}<span class="unit">{{ configStore.unitSymbol }}</span>
+              </p>
+              <p class="cond">
+                {{ city.description ?? conditionLabel }}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </SkyCanvas>
+      </SkyCanvas>
+    </div>
+
+    <!--
+      펼친 판을 넘기는 손잡이.
+
+      창 안에 두었더니 눌러도 목록이 안 보였다.
+      창은 캔버스를 둥근 모서리에 맞춰 자르려고 overflow: hidden 이 걸려 있는데,
+      그 안에서 아래로 펼쳐지는 서랍까지 같이 잘려 나갔다.
+      자르는 칸은 창에만 두고 손잡이는 그 위에 따로 얹는다.
+    -->
+    <div class="ledge">
+      <SkyPicker />
+    </div>
 
     <div class="sheet">
       <p class="reading">
@@ -147,10 +156,19 @@ const coord = computed(() => {
 <style scoped>
 .hero {
   position: relative;
-  overflow: hidden;
   background: var(--color-paper);
   border: 1px solid var(--color-line);
   border-radius: 6px;
+}
+
+/*
+ * 창을 자르는 칸.
+ * 자르기를 카드 전체가 아니라 여기에만 걸어야
+ * 카드 위에 얹히는 것들(판 고르기 서랍)이 살아남는다.
+ */
+.frame {
+  overflow: hidden;
+  border-radius: 5px 5px 0 0;
 }
 /* 판정 등급을 왼쪽 세로선 하나로만 표시한다 */
 .hero::before {
@@ -161,6 +179,7 @@ const coord = computed(() => {
   bottom: 0;
   z-index: 3;
   width: 3px;
+  border-radius: 6px 0 0 6px;
   background: var(--color-line-2);
 }
 .hero.stop::before {
@@ -175,7 +194,8 @@ const coord = computed(() => {
 
 /* ── 창문 ────────────────────────────────────────── */
 .window {
-  height: 232px;
+  /* 원근이 생기고 나니 높이가 있어야 깊이가 읽힌다 */
+  height: 264px;
 }
 /*
  * 가림막.
@@ -189,21 +209,29 @@ const coord = computed(() => {
   padding: 16px 26px 18px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-end;
+  /*
+   * 처음에는 아래쪽을 0.72 까지 눌렀다. 글자는 잘 읽혔지만
+   * 하늘 색이 같이 죽어서 한낮의 파랑도 노을의 주황도 갈색으로 탁해졌다.
+   * 가림막을 걷고 글자 쪽에 그림자를 주는 편이 낫다.
+   * 색을 지우지 않고 글자만 띄운다.
+   */
   background: linear-gradient(
     180deg,
-    rgba(8, 12, 18, 0.34) 0%,
-    rgba(8, 12, 18, 0.08) 32%,
-    rgba(8, 12, 18, 0.52) 76%,
-    rgba(8, 12, 18, 0.72) 100%
+    rgba(6, 10, 16, 0.26) 0%,
+    rgba(6, 10, 16, 0.02) 30%,
+    rgba(6, 10, 16, 0.26) 68%,
+    rgba(6, 10, 16, 0.54) 100%
   );
   color: #fff;
 }
 
-/* 펼친 판을 넘기는 자리. 창 위쪽 끝에 얹는다 */
+/* 창 위에 얹히는 손잡이. 잘리는 칸 밖이라 서랍이 아래로 펼쳐질 수 있다 */
 .ledge {
-  display: flex;
-  justify-content: flex-start;
+  position: absolute;
+  top: 16px;
+  left: 26px;
+  z-index: 5;
 }
 
 .modes {
@@ -231,7 +259,9 @@ h2 {
   font-weight: var(--display-weight);
   letter-spacing: var(--display-spacing);
   line-height: 1.05;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 3px 16px rgba(0, 0, 0, 0.5);
 }
 .coord {
   margin: 7px 0 0;
@@ -249,7 +279,9 @@ h2 {
   font-weight: 600;
   letter-spacing: -0.045em;
   line-height: 0.9;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 3px 18px rgba(0, 0, 0, 0.55);
 }
 .unit {
   margin-left: 2px;
@@ -361,10 +393,14 @@ h2 {
 
 @media (max-width: 640px) {
   .window {
-    height: 190px;
+    height: 210px;
   }
   .pane {
     padding: 13px 18px 15px;
+  }
+  .ledge {
+    top: 12px;
+    left: 18px;
   }
   .sheet {
     padding: 16px 20px 18px;

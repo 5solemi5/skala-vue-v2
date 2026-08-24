@@ -144,7 +144,7 @@ const showKnobs = ref(false)
 .drawer {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   z-index: 20;
   width: min(430px, calc(100vw - 40px));
   padding: 16px;
