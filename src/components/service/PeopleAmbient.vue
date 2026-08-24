@@ -4,6 +4,11 @@ import { useConfigStore } from '@/stores/configStore'
 
 const configStore = useConfigStore()
 
+// 지금 펼쳐 둔 무대 이름. 삽화 제목 줄 오른쪽에 적는다
+const themeLabel = computed(
+  () => configStore.yardList.find((y) => y.id === configStore.yardTheme)?.label ?? '',
+)
+
 const props = defineProps({
   people: { type: Array, required: true },
 })
@@ -107,6 +112,22 @@ const walkers = computed(() => {
     걸어 나가 버리면 챙기는 사람이 몇인지 세어 볼 수 없다.
   -->
   <div class="ambient">
+    <!--
+      제목 줄.
+
+      마당은 이 화면에서 유일하게 손으로 그린 그림이다.
+      위쪽 창은 실제 하늘을 계산해서 그리는 판이라 결이 아주 다른데,
+      아무 표시 없이 나란히 두면 둘 중 하나가 덜 만든 것처럼 보인다.
+      '삽화' 라고 이름을 달아 두면 결이 다른 게 실수가 아니라 종류가 다른 것이 된다.
+      다이어리에도 사진 면과 그림 면이 따로 있다.
+    -->
+    <p class="plate-cap">
+      <span class="plate-no">PL.</span>
+      <span class="plate-name">{{ configStore.t('yard.plate') }}</span>
+      <span class="plate-rule" aria-hidden="true"></span>
+      <span class="plate-theme">{{ themeLabel }}</span>
+    </p>
+
     <div class="yard" :class="configStore.yardTheme" aria-hidden="true">
     <!--
       무대는 다섯 가지. 고른 것은 저장돼서 다음에 들어와도 그대로다.
@@ -339,12 +360,48 @@ const walkers = computed(() => {
  * 바닥선 하나만 그었을 때는 캐릭터가 허공에 떠 보였다.
  * 언덕과 나무를 몇 개 놓으니 비로소 '어딘가' 가 되었다.
  */
+/*
+ * 삽화 제목 줄.
+ * 도판 번호와 이름, 그 사이를 금색 실선이 잇는다.
+ * 도감이나 화보의 도판 캡션에서 가져온 형식이다.
+ */
+.plate-cap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.1em;
+  color: var(--color-ink-3);
+}
+.plate-no {
+  color: var(--color-gold);
+}
+.plate-name {
+  letter-spacing: 0.04em;
+  color: var(--color-ink-2);
+}
+/* 이름과 무대 사이를 잇는 실선. 남는 자리를 전부 차지한다 */
+.plate-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-gold) 55%, transparent),
+    color-mix(in srgb, var(--color-gold) 18%, transparent)
+  );
+}
+.plate-theme {
+  color: var(--color-ink-3);
+}
+
 .yard {
   position: relative;
   height: 120px;
-  margin-top: 10px;
-  border: 1px solid var(--color-line);
-  border-radius: 12px;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 30%, var(--color-line));
+  border-radius: 4px;
   overflow: hidden;
   pointer-events: none;
 }

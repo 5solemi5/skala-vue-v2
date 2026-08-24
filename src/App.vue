@@ -6,7 +6,6 @@ import UnitToggler from './components/service/UnitToggler.vue'
 import LangToggler from './components/service/LangToggler.vue'
 import ThemeToggler from './components/service/ThemeToggler.vue'
 import HereWeather from './components/service/HereWeather.vue'
-import HeaderSky from './components/service/HeaderSky.vue'
 import BrandMark from './components/service/BrandMark.vue'
 
 const configStore = useConfigStore()
@@ -49,10 +48,17 @@ watch(
     -->
     <a href="#main" class="skip">{{ configStore.t('nav.skip') }}</a>
 
-    <header class="site-header">
-      <!-- 지금 시각과 내 위치 날씨가 비치는 바탕. 글자 뒤에 깔린다 -->
-      <HeaderSky />
+    <!--
+      머리.
 
+      전에는 여기에 CSS 로 그린 하늘이 깔려 있었다. 시간대에 따라 물들고
+      구름과 빗줄기가 지나가는 판이었는데, 판정 카드 위에 진짜 하늘이 생기고 나니
+      같은 것을 두 군데서 하고 있었고 그중 하나는 눈에 띄게 못했다.
+
+      머리는 하늘을 흉내 내는 대신 표지의 가장자리가 되기로 했다.
+      금색 실선 한 줄과 이름과 손잡이. 하늘은 창에만 둔다.
+    -->
+    <header class="site-header">
       <div class="inner">
         <RouterLink to="/" class="brand">
           <BrandMark :size="30" />
@@ -146,9 +152,33 @@ watch(
   top: 0;
   z-index: 10;
   isolation: isolate;
-  background: color-mix(in srgb, var(--color-paper) 92%, transparent);
-  backdrop-filter: blur(10px) saturate(120%);
+  background: color-mix(in srgb, var(--color-paper) 88%, transparent);
+  backdrop-filter: blur(12px) saturate(118%);
   border-bottom: 1px solid var(--color-line);
+}
+/*
+ * 표지의 금박 실선.
+ * 머리와 본문 사이를 가르는 선인데, 회색 한 줄로 두면 그냥 경계선이고
+ * 금색이 아주 옅게 섞이면 표지의 각인처럼 읽힌다.
+ * 가운데만 진하고 양끝으로 사라지게 해서 선이 끊긴 자리가 안 보이게 했다.
+ */
+.site-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-gold) 55%, transparent) 18%,
+    color-mix(in srgb, var(--color-gold) 80%, transparent) 50%,
+    color-mix(in srgb, var(--color-gold) 55%, transparent) 82%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 /*
  * 로고 / 주요 메뉴 / 스위치 / 수업 산출물 네 덩이를 격자에 앉힌다.
@@ -190,12 +220,15 @@ watch(
   gap: 1px;
 }
 .brand-name {
-  font-size: var(--fs-base);
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-spacing);
+  line-height: 1.15;
 }
 .brand-sub {
   font-size: var(--fs-2xs);
+  letter-spacing: 0.02em;
   color: var(--color-ink-3);
 }
 
@@ -231,7 +264,8 @@ watch(
 }
 .nav-item.router-link-exact-active {
   color: var(--color-ink);
-  border-bottom-color: var(--color-ink);
+  /* 펼친 판의 색이 여기까지 온다 */
+  border-bottom-color: var(--color-accent);
 }
 
 

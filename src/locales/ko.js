@@ -48,6 +48,7 @@ export default {
   'yard.aria': '마당 배경 고르기',
   'yard.prev': '앞 배경',
   'yard.next': '다음 배경',
+  'yard.plate': '마당',
   'yard.meadow': '들판',
   'yard.seaside': '바닷가',
   'yard.night': '밤하늘',

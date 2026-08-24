@@ -44,6 +44,7 @@ export default {
   'yard.aria': 'Choose the scenery',
   'yard.prev': 'Previous scenery',
   'yard.next': 'Next scenery',
+  'yard.plate': 'The Yard',
   'yard.meadow': 'Meadow',
   'yard.seaside': 'Seaside',
   'yard.night': 'Night',

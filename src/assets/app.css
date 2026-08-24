@@ -275,7 +275,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 화면 전환 애니메이션이 헤더의 하늘과 겹치지 않게 층을 가른다 */
+/* 화면 전환 애니메이션이 층을 넘나들지 않게 가른다 */
 #app {
   isolation: isolate;
 }
@@ -331,6 +331,51 @@ a {
   font-size: var(--fs-2xs);
   letter-spacing: 0.08em;
   color: var(--color-gold);
+}
+
+
+/*
+ * ─────────────────────────────────────────────────
+ * 종이 결
+ * ─────────────────────────────────────────────────
+ *
+ * 지면을 단색으로 두면 화면이 화면처럼 보인다.
+ * 아주 고운 섬유 무늬를 한 겹 덮으면 같은 색이라도 종이처럼 읽힌다.
+ *
+ * 그림 파일을 받지 않고 SVG 잡음을 데이터로 박아 뒀다.
+ * 180px 짜리 조각 하나가 반복되므로 내려받을 것이 없고, 색도 안 탄다.
+ *
+ * 세기는 아주 약하게. 진하게 깔면 글자의 획에 무늬가 걸려
+ * 작은 글자부터 흐릿해진다. 낮에는 곱하기로 눌러 종이의 얼룩처럼,
+ * 밤에는 부드러운 빛으로 얹어 거친 판지처럼 보이게 했다.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22f%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.82%22%20numOctaves%3D%224%22%20stitchTiles%3D%22stitch%22%2F%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22180%22%20height%3D%22180%22%20filter%3D%22url%28%23f%29%22%20opacity%3D%221%22%2F%3E%3C%2Fsvg%3E');
+  background-size: 180px 180px;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+}
+:root[data-theme='dark'] body::before {
+  opacity: 0.075;
+  mix-blend-mode: soft-light;
+}
+
+/* 결이 글자 위로 올라오지 않게 본문을 한 겹 위에 둔다 */
+#app {
+  position: relative;
+  z-index: 1;
+}
+
+/* 결까지 멈춰야 하는 사람에게는 아예 걷어 낸다 */
+@media (prefers-reduced-transparency: reduce) {
+  body::before {
+    display: none;
+  }
 }
 
 /* 숫자가 세로로 정렬되어야 읽기 쉽다 */

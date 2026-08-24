@@ -69,8 +69,9 @@ watch(
     <div class="frame" :class="{ stirred }">
       <TransitionGroup tag="div" class="grid" name="card">
         <PersonCard
-          v-for="person in people"
+          v-for="(person, i) in people"
           :key="person.id"
+          :index="i"
           :person="person"
           :weather="weatherById[person.id]"
           :advice-list="adviceById[person.id] ?? []"
