@@ -2,7 +2,6 @@
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
-import ModeBar from '../components/service/ModeBar.vue'
 import CityHero from '../components/service/CityHero.vue'
 import CityRow from '../components/service/CityRow.vue'
 import PeopleBoard from '../components/service/PeopleBoard.vue'
@@ -263,24 +262,6 @@ const handleDetail = (city) => {
 
 <template>
   <div class="page">
-    <PeopleBoard
-      :is-sample="peopleStore.isSample"
-      :people="peopleStore.people"
-      :weather-by-id="peopleWeather"
-      :advice-by-id="peopleAdvice"
-      :label-by-id="modeLabelById"
-      :selected-id="selectedPersonId"
-      @select="handlePersonSelect"
-      @setup="goSetup"
-    />
-
-    <ModeBar
-      class="modebar"
-      :mode-list="modeList"
-      :current-mode="currentMode"
-      @change-mode="(id) => configStore.setMode(id)"
-    />
-
     <p v-if="errorMessage" class="alert stop">{{ errorMessage }}</p>
     <p v-else-if="failedCities.length" class="alert warn">
       {{ configStore.t('home.partialFail', { names: failedCities.join(', ') }) }}
@@ -291,12 +272,33 @@ const handleDetail = (city) => {
     </div>
 
     <template v-else>
+      <!--
+        창문이 맨 위로 왔다.
+
+        전에는 사람 카드와 마당, 모드 칸을 지나야 이 판이 나왔다.
+        아침에 열었을 때 처음 보이는 게 등록 목록이면 '관리 화면' 이고,
+        지금 하늘이면 '오늘' 이다. 매일 열고 싶어지는 건 뒤쪽이다.
+
+        고를 대상(사람 카드)은 바로 아래에 둔다.
+        먼저 지금을 보여 주고, 다른 곳이 궁금하면 그때 고르게 한다.
+      -->
       <CityHero
         :city="selectedCity"
         :advice-list="selectedCity ? adviceMap[selectedCity.id] : []"
         :hourly-rows="hourlyRows"
         :status-text="selectedCityInfo"
         @open-detail="handleDetail"
+      />
+
+      <PeopleBoard
+        :is-sample="peopleStore.isSample"
+        :people="peopleStore.people"
+        :weather-by-id="peopleWeather"
+        :advice-by-id="peopleAdvice"
+        :label-by-id="modeLabelById"
+        :selected-id="selectedPersonId"
+        @select="handlePersonSelect"
+        @setup="goSetup"
       />
 
       <section class="list">
@@ -358,10 +360,6 @@ const handleDetail = (city) => {
   display: flex;
   flex-direction: column;
   gap: 22px;
-}
-.modebar {
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--color-line);
 }
 
 .alert {

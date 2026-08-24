@@ -29,6 +29,19 @@ export const DEFAULT_CITIES = [
   { id: 'city_06', name: '강릉', lat: 37.7519, lon: 128.8761, region: '강원권' },
 ]
 
+/*
+ * 유닉스 시각을 그 지역의 '몇 시' 로 바꾼다.
+ *
+ * OpenWeatherMap 은 일출·일몰을 UTC 초로 주고 그 지역이 UTC 에서
+ * 몇 초 떨어져 있는지를 timezone 으로 함께 준다.
+ * 브라우저의 getHours() 를 쓰면 보는 사람의 시간대로 읽혀서,
+ * 다른 나라 지역을 보면 해가 엉뚱한 때에 뜬다.
+ */
+const hourOf = (unixSec, tzOffsetSec = 0) => {
+  const d = new Date((unixSec + tzOffsetSec) * 1000)
+  return d.getUTCHours() + d.getUTCMinutes() / 60
+}
+
 /** 화면 언어를 OpenWeatherMap 이 알아듣는 값으로 바꾼다 (한국어는 'kr') */
 const owmLang = (lang) => (lang === 'en' ? 'en' : 'kr')
 
@@ -48,6 +61,15 @@ const fetchCurrent = async (city, lang) => {
     feelsLike: Math.round(data.main.feels_like),
     humidity: data.main.humidity,
     wind: Number(data.wind.speed.toFixed(1)),
+    /*
+     * 아래 셋은 판정에는 안 쓰이고 배경 하늘을 그리는 데 쓰인다.
+     * 구름이 덮은 정도만큼 배경이 덮이고, 해는 그 지역의 실제
+     * 일출·일몰 시각을 따라 뜨고 진다. 같은 시각이라도 여름과 겨울에
+     * 해가 다른 자리에 있어야 창밖처럼 보인다.
+     */
+    clouds: data.clouds?.all ?? 0,
+    sunrise: data.sys?.sunrise ? hourOf(data.sys.sunrise, data.timezone) : 6,
+    sunset: data.sys?.sunset ? hourOf(data.sys.sunset, data.timezone) : 18,
     // 판정에 쓰는 값. 언어와 상관없이 늘 같은 영문 코드다.
     condition: data.weather[0].main,
     // 화면에 그대로 뿌리는 설명. 위 lang 에 따라 언어가 바뀌어 온다.
@@ -77,7 +99,16 @@ const fetchDaily = async (city) => {
 export const fetchCityWeather = async (city, lang = 'ko') => {
   // 서로 의존하지 않는 요청이라 순차 대기하지 않고 동시에 보낸다
   const [current, daily] = await Promise.all([fetchCurrent(city, lang), fetchDaily(city)])
-  return { id: city.id, name: city.name, region: city.region, ...current, ...daily }
+  return {
+    id: city.id,
+    name: city.name,
+    region: city.region,
+    // 카드에 새길 좌표. 어느 하늘을 보고 있는지 밝히는 값이다
+    lat: city.lat,
+    lon: city.lon,
+    ...current,
+    ...daily,
+  }
 }
 
 /**

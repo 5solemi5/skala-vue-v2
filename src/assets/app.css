@@ -42,9 +42,46 @@
   --color-good: #1f6152;
   --color-good-soft: #ecf2f0;
 
+  /*
+   * 비.
+   *
+   * 판정 세 가지 말고 색을 하나 더 뒀다.
+   * 시간축에 강수확률을 같이 그리는데, 그걸 판정 색으로 칠하면
+   * '비가 온다' 와 '하지 마세요' 가 같은 색이 되어 뜻이 섞인다.
+   * 비는 사실이고 판정은 해석이라 색을 갈랐다.
+   * 빨강·주황·초록과 안 겹치는 차가운 파랑을 골랐다.
+   */
+  --color-rain: #3f7799;
+  --color-rain-soft: #dfeaf2;
+
+  /*
+   * 금박.
+   *
+   * 이 화면의 뿌리가 된 다이어리는 표지에 금박으로 위도·경도를 찍는다.
+   * 면으로 쓰면 촌스러워지고 선으로 쓰면 격이 생기는 색이라
+   * 여기서도 얇은 선과 각인에만 쓴다. 채워 칠하지 않는다.
+   */
+  --color-gold: #b08d4f;
+  --color-gold-lit: #e2c27f;
+  --color-gold-dim: #6d5730;
+
+  /*
+   * 액센트.
+   * 펼친 에디션마다 달라진다 (skyStore 가 <html> 에 얹는다).
+   * 여기 적힌 건 아직 아무 판도 안 펼쳤을 때의 값이다.
+   */
+  --color-accent: #b08d4f;
+
   --font-sans:
     'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /*
+   * 표제용 세리프.
+   * 에디션마다 표제의 성격이 달라지는데, 서체 파일을 에디션 수만큼 받으면
+   * 첫 화면이 그만큼 늦어진다. 세리프 한 벌만 더 받고
+   * 나머지 차이는 대소문자와 자간, 굵기로 낸다.
+   */
+  --font-serif: 'Cormorant Garamond', 'IBM Plex Sans KR', Georgia, serif;
 
   --radius-lg: 0.375rem;
   --radius-md: 0.25rem;
@@ -99,6 +136,11 @@
     --color-warn-soft: #2a2114;
     --color-good: #6fc7ac;
     --color-good-soft: #12261f;
+    --color-rain: #79b0d4;
+    --color-rain-soft: #16283a;
+    --color-gold: #d9b76e;
+    --color-gold-lit: #f2dda6;
+    --color-gold-dim: #8a6f3d;
   }
 }
 
@@ -263,6 +305,32 @@ a {
     border-color var(--dur-move) var(--ease-out),
     color var(--dur-move) var(--ease-out),
     box-shadow var(--dur-move) var(--ease-out) !important;
+}
+
+/*
+ * 표제 서체.
+ * 펼친 에디션이 <html data-display> 에 적힌다.
+ * 오디세이아·악의 꽃처럼 문학적인 판은 세리프,
+ * 자오선·먹처럼 건조한 판은 산세리프로 표제를 세운다.
+ */
+:root {
+  --font-display: var(--font-sans);
+  --display-spacing: -0.01em;
+  --display-weight: 700;
+}
+:root[data-display='serif'] {
+  --font-display: var(--font-serif);
+  /* 세리프는 자간을 조금 벌려야 한글과 나란히 섰을 때 성기지 않다 */
+  --display-spacing: 0.01em;
+  --display-weight: 600;
+}
+
+/* 위도·경도처럼 새겨 넣는 글자 */
+.engrave {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.08em;
+  color: var(--color-gold);
 }
 
 /* 숫자가 세로로 정렬되어야 읽기 쉽다 */

@@ -21,8 +21,11 @@ export const scoreHour = (row, mode) => {
 
 /**
  * 연속된 'good' 구간 중 가장 긴 것을 찾아 추천 시간대로 쓴다.
- * 자정을 넘어가면 시각(hour)이 23 -> 0 으로 줄어들기 때문에
- * 길이는 시각 차이가 아니라 몇 칸인지(개수)로 센다.
+ *
+ * 시각(hour)뿐 아니라 몇 번째 칸인지(index)도 함께 돌려준다.
+ * 시간축 위에 이 구간을 띠로 그리려면 자리를 알아야 하는데,
+ * 시각으로는 자리를 알 수 없다. 자정을 넘으면 23 다음이 0 이라
+ * 시각의 차이가 칸의 거리와 어긋난다.
  */
 export const findBestWindow = (rows, mode) => {
   let best = null
@@ -33,10 +36,11 @@ export const findBestWindow = (rows, mode) => {
     cur = null
   }
 
-  rows.forEach((row) => {
+  rows.forEach((row, i) => {
     if (scoreHour(row, mode) === 'good') {
-      cur = cur ?? { from: row.hour, to: row.hour, length: 0 }
+      cur = cur ?? { from: row.hour, to: row.hour, fromIndex: i, toIndex: i, length: 0 }
       cur.to = row.hour
+      cur.toIndex = i
       cur.length += 1
     } else {
       close()

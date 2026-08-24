@@ -3,11 +3,11 @@ import { useConfigStore } from '@/stores/configStore'
 
 const configStore = useConfigStore()
 
-defineProps({
-  modeList: { type: Array, required: true },
-  currentMode: { type: String, required: true },
-})
-defineEmits(['change-mode'])
+/*
+ * 값을 위에서 내려받지 않고 스토어에서 바로 읽는다.
+ * 이 칸은 화면 어디에 놓이든 하는 일이 같아서, 놓는 자리마다
+ * 값을 넘겨 주는 배선을 따라다니게 할 이유가 없었다.
+ */
 </script>
 
 <template>
@@ -15,14 +15,14 @@ defineEmits(['change-mode'])
     <p class="eyebrow">{{ configStore.t('mode.eyebrow') }}</p>
     <div class="seg" role="tablist" :aria-label="configStore.t('mode.aria')">
       <button
-        v-for="mode in modeList"
+        v-for="mode in configStore.modeList"
         :key="mode.id"
         type="button"
         role="tab"
-        :aria-selected="currentMode === mode.id"
+        :aria-selected="configStore.currentMode === mode.id"
         class="seg-item"
-        :class="{ on: currentMode === mode.id }"
-        @click="$emit('change-mode', mode.id)"
+        :class="{ on: configStore.currentMode === mode.id }"
+        @click="configStore.setMode(mode.id)"
       >
         <span class="what">{{ mode.label }}</span>
       </button>
