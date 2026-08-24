@@ -50,13 +50,15 @@ export const useSkyStore = defineStore('sky', () => {
   const liveWeather = ref(null)
   const setLiveWeather = (w) => (liveWeather.value = w)
 
-  const hour = ref(new Date().getHours() + new Date().getMinutes() / 60)
-  setInterval(() => {
-    const d = new Date()
-    hour.value = d.getHours() + d.getMinutes() / 60
-  }, 60 * 1000)
+  /*
+   * 지금 시각.
+   * 해와 달의 자리를 날짜까지 보고 계산하므로 시각만 넘기면 안 된다.
+   * 같은 14시라도 여름과 겨울에 해가 다른 높이에 있다.
+   */
+  const now = ref(new Date())
+  setInterval(() => (now.value = new Date()), 60 * 1000)
 
-  const live = computed(() => buildLiveSky(liveWeather.value, hour.value))
+  const live = computed(() => buildLiveSky(liveWeather.value, now.value))
 
   // 셰이더에 그대로 넘길 값 한 벌
   const sky = computed(() =>

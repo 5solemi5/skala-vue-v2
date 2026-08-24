@@ -54,6 +54,10 @@ uniform float uAurora;     // 대기광 0..1
 uniform float uStars;      // 별 0..1
 uniform float uHaze;       // 지평선 안개 0..1
 uniform float uGrain;      // 필름 결 0..1
+uniform float uOrb;        // 해·달 알맹이가 보이는 정도 0..1
+uniform float uGlow;       // 노을빛이 남은 정도 0..1
+uniform float uIllum;      // 달의 밝은 면 비율 0 삭 .. 1 보름
+uniform float uWaxing;     // -1 차는달 / +1 기우는달
 uniform float uScroll;     // 페이지를 내린 정도 0..1
 
 // ── 잡음 ───────────────────────────────────────────
@@ -158,14 +162,32 @@ void main() {
   float core = exp(-d * 9.0);
   float halo = exp(-d * 2.4) * 0.5 + exp(-d * 0.9) * 0.22;
   float dayGlow = (1.0 - uNight * 0.5);
-  sky += uSunCol * (halo * 0.55 + core * 0.5) * dayGlow * uIntensity;
+  /*
+   * 노을빛과 알맹이는 따로 사라진다.
+   * 해가 지평선 아래로 내려가도 하늘은 한참 더 붉게 남는다.
+   * 둘을 같이 껐더니 해가 지는 순간 하늘이 툭 하고 꺼졌다.
+   */
+  sky += uSunCol * (halo * 0.55 + core * 0.5) * dayGlow * uIntensity * uGlow;
 
   // 알맹이. 달은 해보다 작고 야무지다
   float discR = mix(0.048, 0.026, uMoon);
   // 가장자리를 아주 얇게만 흐린다. 넓게 흐리면 얼룩처럼 보인다
   float disc = smoothstep(discR, discR * 0.86, d);
-  float bite = smoothstep(discR * 1.02, discR * 0.88, length(pFlat - sunP - vec2(0.015, 0.011)));
-  disc = mix(disc, max(disc - bite, 0.0), uMoon);
+  disc *= uOrb;
+
+  /*
+   * 달의 위상.
+   *
+   * 같은 크기의 그림자 원을 옆으로 밀어서 만든다.
+   * 하나도 안 밀면 달을 온통 덮어 삭이 되고, 지름의 두 배쯤 밀면
+   * 겹치는 데가 없어 보름이 된다. 반쯤 밀면 반달이다.
+   * 밝은 면 비율을 그대로 밀어낸 거리로 쓰면 그 사이가 저절로 맞는다.
+   *
+   * 차는 달은 오른쪽이 밝으므로 그림자를 왼쪽으로 민다 (uWaxing = -1).
+   */
+  float off = discR * 2.05 * uIllum * uWaxing;
+  float shadow = smoothstep(discR, discR * 0.86, length(pFlat - sunP - vec2(off, 0.0)));
+  disc *= mix(1.0, 1.0 - shadow, uMoon);
   vec3 discCol = mix(uSunCol, vec3(1.0), 0.55);
   sky = mix(sky, discCol, disc * 0.96);
 
@@ -231,8 +253,8 @@ void main() {
   vec3 cNear = mix(uCloudDark, uCloudLit, clamp((near - litNear) * 2.2 + 0.55, 0.0, 1.0));
 
   // 해 둘레의 구름은 빛을 머금는다
-  cFar += uSunCol * halo * 0.5 * dayGlow;
-  cNear += uSunCol * halo * 0.65 * dayGlow;
+  cFar += uSunCol * halo * 0.5 * dayGlow * uGlow;
+  cNear += uSunCol * halo * 0.65 * dayGlow * uGlow;
 
   // 멀리 있는 구름은 대기에 씻겨 옅어진다. 이게 있어야 거리가 느껴진다
   float wash = dist * 0.75;
@@ -248,13 +270,13 @@ void main() {
    * 구름을 덮고 나면 해가 무조건 가려져서, 구름 사이로 해가 비치는
    * 날에도 그냥 얼룩이 됐다. 덮은 다음에 심을 한 번 더 얹는다.
    */
-  col += uSunCol * core * 0.5 * dayGlow * uIntensity;
+  col += uSunCol * core * 0.5 * dayGlow * uIntensity * uGlow;
   col = mix(col, discCol, disc * 0.9 * (1.0 - near * 0.75));
 
   // ── 지평선 안개 ─────────────────────────────────
   // 띠로 긋지 않고 아래로 갈수록 스미게 한다
   float haze = pow(smoothstep(0.75, -0.05, uv.y), 1.6) * uHaze;
-  col = mix(col, mix(uSkyBot, uSunCol, 0.18 * dayGlow), haze * 0.6);
+  col = mix(col, mix(uSkyBot, uSunCol, 0.18 * dayGlow * uGlow), haze * 0.6);
 
   // ── 비 ──────────────────────────────────────────
   if (uRain > 0.001) {

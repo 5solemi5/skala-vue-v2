@@ -1,4 +1,11 @@
 /*
+ * 확장자를 붙여 뒀다. 이 파일은 화면 없이도 값을 확인할 수 있어야 해서
+ * (해가 하루 동안 어디를 지나는지 표로 찍어 보는 식으로)
+ * Vite 를 거치지 않고 node 로 바로 불러올 일이 있다.
+ */
+import { celestial, toScreen } from '../../utils/celestial.js'
+
+/*
  * 하늘 고르기.
  *
  * 프리셋은 셰이더에 넣을 숫자 묶음이다. 셰이더는 하나뿐이고 여기 값만 바뀐다.
@@ -26,37 +33,8 @@ export const hexToRgb = (hex) => {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
-/*
- * 해가 하늘 어디에 있는지.
- *
- * 천문 계산을 하지는 않았다. 그 정확도가 필요한 화면이 아니고,
- * 필요한 건 "아침에는 왼쪽 낮게, 한낮에는 가운데 높게" 정도다.
- * 대신 그 지역의 실제 일출·일몰 시각을 받아 쓴다.
- * 같은 시각이라도 여름과 겨울에 해가 다른 자리에 있어야 계절이 느껴진다.
- */
-export const sunPosition = (hour, sunrise = 6, sunset = 18) => {
-  const day = sunset - sunrise
-  if (day <= 0) return { pos: [0.5, 0.8], night: 1 }
-
-  // 낮 동안 0..1 로 흐르는 값
-  const t = (hour - sunrise) / day
-
-  if (t >= 0 && t <= 1) {
-    return {
-      pos: [0.12 + t * 0.76, 0.16 + Math.sin(t * Math.PI) * 0.66],
-      // 뜨고 지는 언저리에서는 반쯤 밤으로 친다. 색이 확 바뀌지 않게
-      night: Math.max(0, 1 - Math.sin(t * Math.PI) * 3.2),
-    }
-  }
-
-  // 밤. 달이 해가 지나간 길을 반대로 지난다
-  const nightLen = 24 - day
-  const nt = (((hour - sunset + 24) % 24) + 0) / nightLen
-  return {
-    pos: [0.88 - nt * 0.76, 0.14 + Math.sin(nt * Math.PI) * 0.6],
-    night: 1,
-  }
-}
+const clamp01 = (v) => Math.min(1, Math.max(0, v))
+const between = (v, lo, hi) => clamp01((v - lo) / (hi - lo))
 
 /*
  * 기본값. 프리셋은 여기서 바꾸고 싶은 것만 적는다.
@@ -79,6 +57,13 @@ const BASE = {
   aurora: 0,
   stars: 0,
   haze: 0.4,
+  // 해·달이 지평선 위에 있는 정도. 0 이면 알맹이가 안 보인다
+  orb: 1,
+  // 지평선 아래로 내려간 뒤에도 한동안 남는 노을빛
+  glow: 1,
+  // 달의 밝은 면 비율(0 삭 .. 1 보름)과 차는 쪽 (-1 차는달 / +1 기우는달)
+  illum: 1,
+  waxing: -1,
 }
 
 /*
@@ -380,7 +365,7 @@ export const presetById = (id) => SKY_PRESETS.find((s) => s.id === id) ?? SKY_PR
  * 구름이 88% 면 하늘이 그만큼 덮이고, 풍속 8m/s 면 그 속도로 흐른다.
  * 창문을 열지 않고도 바깥이 어떤지 알 수 있게 하는 게 목적이다.
  */
-export const buildLiveSky = (weather, hour) => {
+export const buildLiveSky = (weather, date = new Date()) => {
   const w = weather ?? {}
   const cloudPct = (w.clouds ?? 30) / 100
   const rainProb = (w.rainProb ?? 0) / 100
@@ -391,9 +376,29 @@ export const buildLiveSky = (weather, hour) => {
   const isRain = cond.includes('rain') || cond.includes('drizzle') || cond.includes('thunder')
   const isFog = cond.includes('mist') || cond.includes('fog') || cond.includes('haze')
 
-  const { pos, night } = sunPosition(hour, w.sunrise ?? 6, w.sunset ?? 18)
+  /*
+   * 해와 달의 자리를 실제로 계산한다.
+   *
+   * 전에는 일출과 일몰 사이를 사인 곡선으로 이어서 해를 왼쪽에서 오른쪽으로
+   * 흘려 보냈다. 아침에도 저녁에도 같은 길을 지나고 계절도 없었다.
+   * 창에 좌표를 새겨 놓고 그 하늘이 지어낸 것이면 좌표가 거짓말이 된다.
+   */
+  const lat = w.lat ?? 36.5
+  const lon = w.lon ?? 127.5
+  const { sun, moon } = celestial(lat, lon, date)
 
-  // 낮에는 파랗고 밤에는 검다. 사이는 섞는다
+  /*
+   * 무엇을 띄울까.
+   * 해가 지평선 아래로 충분히 내려갔고 달이 떠 있을 때만 달을 띄운다.
+   * 둘 다 없는 시간이 있는데(달이 아직 안 뜬 밤) 그때는 아무것도 안 띄운다.
+   * 늘 뭔가 떠 있게 하면 달이 없는 밤이 사라진다.
+   */
+  const showMoon = sun.alt < -4 && moon.alt > -3
+  const body = showMoon ? moon : sun
+
+  // 밤의 정도. 시민박명(-6도)을 지나 -12도쯤에서 완전한 밤이 된다
+  const night = 1 - between(sun.alt, -12, 4)
+
   const lerpHex = (a, b, t) => {
     const A = hexToRgb(a)
     const B = hexToRgb(b)
@@ -404,17 +409,47 @@ export const buildLiveSky = (weather, hour) => {
   // 흐린 날은 채도를 뺀다. 맑은 날의 파랑을 그대로 두면 흐린 게 안 느껴진다
   const dull = Math.min(0.75, cloudPct * 0.8)
 
+  /*
+   * 해가 낮으면 빛이 붉어진다.
+   *
+   * 전에는 '밤인 정도' 로 노을을 흉내 냈다. 그런데 밤은 해가 지고 한참 뒤에야
+   * 짙어지는 값이라, 정작 해가 지평선에 걸린 그 시각에는 아직 낮으로 쳐서
+   * 하늘이 푸르스름한 채로 해가 넘어갔다.
+   *
+   * 붉어지는 건 시각이 아니라 해의 높이가 정한다.
+   * 해가 낮으면 빛이 대기를 길게 통과하면서 파란 쪽이 흩어져 없어지고
+   * 붉은 쪽만 남는다. 그래서 높이를 그대로 쓴다.
+   */
+  const low = 1 - between(sun.alt, -6, 20)
+  // 노을은 해가 있는 쪽 지평선부터 물든다. 밤이 깊으면 그마저 사라진다
+  const sunset = low * between(sun.alt, -10, 0) * 0.85
+
+  const base = {
+    top: lerpHex('#1c67b4', '#4a5a6b', dull),
+    mid: lerpHex('#5aa3dc', '#77848f', dull),
+    bot: lerpHex('#c2dff2', '#b3bcc4', dull),
+  }
+
   return {
     id: 'live',
-    skyTop: lerpHex(lerpHex('#1c67b4', '#4a5a6b', dull), '#050810', night),
-    skyMid: lerpHex(lerpHex('#5aa3dc', '#77848f', dull), '#0d1728', night),
-    skyBot: lerpHex(lerpHex('#c2dff2', '#b3bcc4', dull), '#20304a', night),
-    sunCol: night > 0.6 ? '#cfe0ff' : '#ffe6b8',
+    skyTop: lerpHex(lerpHex(base.top, '#3d4a72', sunset * 0.5), '#050810', night),
+    skyMid: lerpHex(lerpHex(base.mid, '#b5628a', sunset * 0.6), '#0d1728', night),
+    skyBot: lerpHex(lerpHex(base.bot, '#f0a06a', sunset), '#20304a', night * 0.85),
+    // 한낮에는 흰빛에 가깝고 낮아질수록 짙은 주황으로 간다
+    sunCol: showMoon ? '#cfe0ff' : lerpHex('#fff3d4', '#ff7a38', low),
     cloudLit: lerpHex('#ffffff', '#46505c', night * 0.85),
     cloudDark: lerpHex(isRain ? '#5d6a78' : '#8698ac', '#111823', night * 0.9),
-    sun: pos,
+
+    sun: toScreen(body, lat),
+    // 알맹이는 지평선 언저리에서 사라지고, 노을빛은 한참 더 남는다
+    orb: between(body.alt, -2, 2),
+    glow: between(sun.alt, -14, 2),
+    moon: showMoon ? 1 : 0,
+    illum: showMoon ? moon.illum : 1,
+    // 차는 달은 오른쪽이 밝다. 그림자를 왼쪽으로 밀어야 한다
+    waxing: moon.phase < 0.5 ? -1 : 1,
+
     night,
-    moon: night > 0.6 ? 1 : 0,
     cloud: Math.max(0.08, isFog ? 0.9 : cloudPct),
     rain: isRain ? Math.max(0.35, rainProb) : 0,
     snow: isSnow ? 0.9 : 0,
@@ -432,5 +467,5 @@ export const buildLiveSky = (weather, hour) => {
  */
 export const resolveSky = ({ preset, live, knobs }) => {
   const base = preset?.follow ? live : preset
-  return { ...BASE, ...(base ?? {}), ...knobs }
+  return { ...BASE, ...base, ...knobs }
 }

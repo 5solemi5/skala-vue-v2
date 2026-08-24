@@ -43,6 +43,7 @@ const cur = {}
 const NUM_KEYS = [
   'night', 'moon', 'cloud', 'rain', 'snow', 'wind',
   'aurora', 'stars', 'haze', 'intensity', 'speed', 'grain', 'scroll',
+  'orb', 'glow', 'illum', 'waxing',
 ]
 const COL_KEYS = ['skyTop', 'skyMid', 'skyBot', 'sunCol', 'cloudLit', 'cloudDark']
 
@@ -105,6 +106,7 @@ const setup = () => {
     'uSkyTop', 'uSkyMid', 'uSkyBot', 'uSunCol', 'uCloudLit', 'uCloudDark',
     'uSun', 'uNight', 'uMoon', 'uCloud', 'uRain', 'uSnow',
     'uWind', 'uAurora', 'uStars', 'uHaze', 'uGrain', 'uScroll',
+    'uOrb', 'uGlow', 'uIllum', 'uWaxing',
   ]
   const u = {}
   names.forEach((n) => (u[n] = ctx.getUniformLocation(prog, n)))
@@ -186,6 +188,10 @@ const draw = (now) => {
   ctx.uniform1f(u.uHaze, cur.haze)
   ctx.uniform1f(u.uGrain, cur.grain)
   ctx.uniform1f(u.uScroll, cur.scroll)
+  ctx.uniform1f(u.uOrb, cur.orb)
+  ctx.uniform1f(u.uGlow, cur.glow)
+  ctx.uniform1f(u.uIllum, cur.illum)
+  ctx.uniform1f(u.uWaxing, cur.waxing)
 
   ctx.drawArrays(ctx.TRIANGLES, 0, 3)
 }
