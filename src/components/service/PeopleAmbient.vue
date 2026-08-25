@@ -225,7 +225,19 @@ const look = () => {
        * 여기서만 누가 어느 쪽인지 알 수 있다.
        */
       const [lft, rgt] = one.x <= two.x ? [one, two] : [two, one]
-      greeting.value = { ...greeting.value, [lft.id]: 'greet', [rgt.id]: 'greetL' }
+      /*
+       * 악수냐 하이파이브냐.
+       *
+       * 겉모습은 사람마다 늘 같아야 해서 씨앗으로 정하지만,
+       * 이건 겉모습이 아니라 그때그때 일어나는 일이라 그냥 뽑는다.
+       * 같은 둘이 만나도 이번엔 악수, 다음엔 하이파이브면 된다.
+       */
+      const hi = Math.random() < 0.42
+      greeting.value = {
+        ...greeting.value,
+        [lft.id]: hi ? 'five' : 'greet',
+        [rgt.id]: hi ? 'fiveL' : 'greetL',
+      }
       cooled.set(pair, now + GREET_MS + COOL_MS)
       setTimeout(() => {
         const next = { ...greeting.value }

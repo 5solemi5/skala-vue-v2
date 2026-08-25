@@ -118,6 +118,9 @@ const rim = computed(() => ({
    */
   '--ember-delay': `${-((hash(props.person.id + 'e') % 260) / 100).toFixed(2)}s`,
   '--ember-dur': `${(2.1 + (hash(props.person.id + 'd') % 140) / 100).toFixed(2)}s`,
+  // 눈 깜빡임도 사람마다 다른 때에
+  '--blink-delay': `${-((hash(props.person.id + 'b') % 700) / 100).toFixed(2)}s`,
+  '--blink-dur': `${(4.2 + (hash(props.person.id + 'k') % 280) / 100).toFixed(2)}s`,
 }))
 
 const layers = computed(() => {
@@ -187,6 +190,18 @@ const layers = computed(() => {
         모자를 따로 두었더니 고개를 돌릴 때 얼굴만 돌고 모자는 그 자리에 남았다.
       -->
         <g class="noggin">
+          <!--
+            옆으로 내린 머리. 머리보다 먼저 그린다.
+
+            머리 위에 얹었더니 얼굴 양옆을 덮어서 머리카락이 아니라
+            귀마개를 쓴 것처럼 보였다. 뒤로 보내면 얼굴 바깥으로 삐져나온
+            부분만 남아, 얼굴을 감싸며 흘러내리는 것으로 읽힌다.
+          -->
+          <g v-if="look.hat === 0 && look.hair >= 2" class="gear hair back">
+            <path d="M8 3.8 C3.2 7 2.8 12.6 4.6 15.6 C7 13.4 8.6 8.8 8 3.8 Z" />
+            <path d="M16 3.8 C20.8 7 21.2 12.6 19.4 15.6 C17 13.4 15.4 8.8 16 3.8 Z" />
+          </g>
+
           <!-- 머리를 몸보다 크게 잡으면 귀엽게 읽힌다 -->
           <circle class="head" cx="12" cy="7" r="6.6" />
 
@@ -207,46 +222,29 @@ const layers = computed(() => {
           <!--
             아무것도 안 쓴 사람의 머리카락.
 
-            세 번 갈아엎었다.
+            네 번 갈아엎었다.
               두꺼운 띠로 두피를 덮으니   검은 헬멧이었다
               둥근 앞머리로 바꾸니       여전히 덩어리였다
               굵은 두 가닥만 남기니      개미 더듬이가 됐다
+              가는 여덟 가닥은          작게 두면 긁힌 자국처럼 지저분했다
 
-            가늘게, 대신 여러 가닥. 선 하나는 0.7 밖에 안 되지만
-            여덟 가닥이 정수리를 덮으면 숱이 있어 보인다.
-            굵기로 채우면 덩어리가 되고, 개수로 채우면 머리카락이 된다.
+            결론은 둥글게. 이 캐릭터는 원으로만 되어 있어서
+            머리카락도 원이어야 한 몸으로 읽힌다.
+            선으로 그리면 아무리 다듬어도 얼굴에 붙은 이물질로 보였다.
 
-            가닥은 모두 두피(반지름 6.6 인 원 위)에서 시작해 한쪽으로 쓸린다.
-            사방으로 뻗치면 심어 놓은 것처럼 보인다.
-
-            홀수 번은 좌우를 뒤집어 가르마가 반대로 간 것처럼 보이게 한다.
-            hair 가 2 이상이면 귀 옆으로 흘러내리는 가닥을 더해
-            머리가 긴 사람이 된다. 사람 정보에 성별은 없으니 씨앗에서 뽑는다.
+            곱슬 하나짜리는 얼굴을 하나도 가리지 않는다. 제일 단순하고
+            제일 귀엽다. 원 세 개짜리는 숱이 많은 쪽이다.
+            옆으로 내린 덩이가 있고 없고로 머리가 긴 사람이 갈린다.
           -->
-          <g
-            v-if="look.hat === 0"
-            class="gear hair"
-            :transform="look.hair % 2 ? 'translate(24,0) scale(-1,1)' : undefined"
-          >
-            <!-- 정수리 여덟 가닥 -->
-            <path class="thin" d="M6.6 3.2 C6.4 1.2 7.6 0.2 8.8 0.4" />
-            <path class="thin" d="M7.8 1.9 C7.8 0.2 9 -0.7 10.1 -0.4" />
-            <path class="thin" d="M9.2 1 C9.4 -0.7 10.6 -1.5 11.7 -1.1" />
-            <path class="thin" d="M10.9 0.5 C11.2 -1.2 12.5 -1.9 13.5 -1.4" />
-            <path class="thin" d="M12.6 0.4 C13.1 -1.2 14.4 -1.7 15.2 -1.1" />
-            <path class="thin" d="M14.3 0.8 C15 -0.6 16.2 -0.9 16.8 -0.2" />
-            <path class="thin" d="M15.8 1.6 C16.6 0.5 17.6 0.4 18 1.1" />
-            <path class="thin" d="M17.1 2.8 C17.9 2 18.7 2.1 18.9 2.7" />
-
-            <!-- 귀 옆으로 흘러내리는 여섯 가닥 -->
-            <template v-if="look.hair >= 2">
-              <path class="thin" d="M7 3.2 C5.2 6.4 5.4 10.2 6.7 12.9" />
-              <path class="thin" d="M6.3 4 C4.5 7.2 4.8 10.8 6.1 13.4" />
-              <path class="thin" d="M5.9 5.2 C4.3 8.2 4.5 11.4 5.6 13.9" />
-              <path class="thin" d="M17 3.2 C18.8 6.4 18.6 10.2 17.3 12.9" />
-              <path class="thin" d="M17.7 4 C19.5 7.2 19.2 10.8 17.9 13.4" />
-              <path class="thin" d="M18.1 5.2 C19.7 8.2 19.5 11.4 18.4 13.9" />
+          <g v-if="look.hat === 0" class="gear hair">
+            <!-- 숱 많은 쪽 -->
+            <template v-if="look.hair % 2 === 1">
+              <circle cx="7.7" cy="4.3" r="2.6" />
+              <circle cx="12" cy="2.5" r="3" />
+              <circle cx="16.3" cy="4.3" r="2.6" />
             </template>
+            <!-- 곱슬 한 가닥 -->
+            <path v-else class="curl" d="M11.4 0.8 C10 -2.6 15.4 -3.4 15.2 -0.2" />
           </g>
           <g v-else-if="look.hat === 1" class="gear">
             <!-- 비니. 헐렁하게 머리를 덮고 방울이 하나 -->
@@ -272,10 +270,31 @@ const layers = computed(() => {
             <circle class="pip" cx="17.5" cy="4.9" r="1.1" />
           </g>
 
-          <!-- 실루엣에는 눈을 그리지 않는다. 역광에서는 얼굴이 안 보인다 -->
+          <!--
+            실루엣에는 얼굴을 그리지 않는다. 역광에서는 안 보인다.
+
+            눈은 점 두 개였다. 조금 키우고 왼쪽 위에 반짝임을 하나 찍으면
+            같은 점인데 눈이 된다. 빛이 어디서 오는지가 생기기 때문이다.
+            볼은 눈보다 아래 바깥에 둔다 — 눈에 붙으면 부은 것처럼 보인다.
+          -->
           <template v-if="variant !== 'silhouette'">
-            <circle class="eye" cx="9.6" cy="7.6" r="1.1" />
-            <circle class="eye" cx="14.4" cy="7.6" r="1.1" />
+            <circle class="blush" cx="6.9" cy="9.9" r="1.7" />
+            <circle class="blush" cx="17.1" cy="9.9" r="1.7" />
+            <!--
+              뜬 눈과 웃는 눈을 둘 다 그려 두고 하나만 보인다.
+              모양이 바뀌는 것이라 CSS 로 바꿔 그릴 수가 없어서,
+              둘 다 두고 지금 무엇을 하는지에 따라 보일 것을 고른다.
+            -->
+            <g class="eyes">
+              <circle class="eye" cx="9.55" cy="7.7" r="1.3" />
+              <circle class="eye" cx="14.45" cy="7.7" r="1.3" />
+              <circle class="spark" cx="9.16" cy="7.28" r="0.46" />
+              <circle class="spark" cx="14.06" cy="7.28" r="0.46" />
+            </g>
+            <g class="smile">
+              <path d="M8.3 8.15 A1.4 1.4 0 0 1 10.8 8.15" />
+              <path d="M13.2 8.15 A1.4 1.4 0 0 1 15.7 8.15" />
+            </g>
           </template>
         </g>
 
@@ -787,9 +806,91 @@ const layers = computed(() => {
   animation: pfShakeL 2.4s ease-out both;
 }
 .figure.greet .noggin,
-.figure.greetL .noggin {
+.figure.greetL .noggin,
+.figure.five .noggin,
+.figure.fiveL .noggin {
   animation: pfNod 0.9s ease-in-out infinite;
 }
+/*
+ * 하이파이브.
+ *
+ * 악수가 가슴 높이에서 손을 잡는 것이라면 이건 머리 위에서 부딪는 것이다.
+ * 팔을 한 번 크게 올려 치고, 부딪는 순간 몸이 살짝 뜬다.
+ * 치고 나서 조금 되튀어야 부딪힌 것으로 읽힌다 — 그대로 멈추면
+ * 둘이 손을 든 채 서 있는 그림이 된다.
+ */
+.figure.five .arm.two {
+  animation: pfFiveR 2.4s ease-out both;
+}
+.figure.five .gear.held {
+  animation: pfFiveR 2.4s ease-out both;
+}
+.figure.fiveL .arm.one {
+  animation: pfFiveL 2.4s ease-out both;
+}
+.figure.five,
+.figure.fiveL {
+  animation: pfFiveHop 2.4s ease-out both;
+  transform-origin: center bottom;
+  transform-box: fill-box;
+}
+@keyframes pfFiveR {
+  0% {
+    transform: rotate(-16deg);
+  }
+  26% {
+    transform: rotate(-152deg);
+  }
+  38% {
+    transform: rotate(-126deg);
+  }
+  52% {
+    transform: rotate(-143deg);
+  }
+  68% {
+    transform: rotate(-133deg);
+  }
+  100% {
+    transform: rotate(-138deg);
+  }
+}
+@keyframes pfFiveL {
+  0% {
+    transform: rotate(16deg);
+  }
+  26% {
+    transform: rotate(152deg);
+  }
+  38% {
+    transform: rotate(126deg);
+  }
+  52% {
+    transform: rotate(143deg);
+  }
+  68% {
+    transform: rotate(133deg);
+  }
+  100% {
+    transform: rotate(138deg);
+  }
+}
+/* 손이 부딪는 38% 에 맞춰 뜬다 */
+@keyframes pfFiveHop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  20% {
+    transform: translateY(1px) scale(1.05, 0.94);
+  }
+  38% {
+    transform: translateY(-5px) scale(0.97, 1.04);
+  }
+  56% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+}
+
 /*
  * 뻗어서 잡고, 잡은 채로 흔든다.
  *
@@ -913,9 +1014,125 @@ const layers = computed(() => {
 .gear.hair {
   stroke-width: 0.7;
 }
-.ink .gear.hair {
+/* 곱슬 한 가닥만 선이다. 나머지는 덩이라 채운다 */
+.gear.hair .curl {
   fill: none;
+  stroke-width: 1.5;
+}
+.ink .gear.hair {
+  fill: #3a2a22;
   stroke: #3a2a22;
+}
+
+/*
+ * 반짝임과 볼.
+ *
+ * 스티커에서만 쓴다. 각인형 무대는 금박 선 몇 개로만 그리는 결이라
+ * 거기에 분홍 볼을 찍으면 두 언어가 한 얼굴에서 부딪는다.
+ */
+.spark {
+  fill: #fff;
+}
+
+/*
+ * 웃는 눈.
+ *
+ * 평소에는 뜬 눈만 보인다. 기쁜 일이 있을 때만 반달이 된다 —
+ * 인사할 때, 손을 흔들 때, 리듬을 탈 때, 뛰어오를 때.
+ * 걷다가도 웃고 있으면 웃는 게 아니라 그냥 그런 얼굴이 된다.
+ */
+.smile {
+  display: none;
+  fill: none;
+  stroke: #2b2b2f;
+  stroke-width: 0.92;
+  stroke-linecap: round;
+}
+.line .smile {
+  stroke: var(--accent);
+}
+.figure:is(.greet, .greetL, .five, .fiveL, .wave, .dance, .jump) .smile {
+  display: block;
+}
+.figure:is(.greet, .greetL, .five, .fiveL, .wave, .dance, .jump) .eyes {
+  display: none;
+}
+
+/*
+ * 눈 깜빡임.
+ *
+ * 늘 뜨고 있으면 인형이다. 4~7초에 한 번, 아주 잠깐 감는다.
+ * 감는 데 쓰는 시간은 전체의 3% 뿐이라 눈치채기 전에 다시 뜬다 —
+ * 그게 깜빡임이다. 오래 감으면 조는 것이 된다.
+ *
+ * 반짝임까지 같이 감겨야 해서 눈 두 개와 반짝임 두 개를 한 덩이로 묶었다.
+ * 사람마다 다른 때에 감는다. 열둘이 동시에 감으면 기계다.
+ */
+.eyes {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: pfBlink var(--blink-dur, 5.4s) steps(1, end) var(--blink-delay, 0s) infinite;
+}
+@keyframes pfBlink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.14);
+  }
+}
+
+/*
+ * 머리카락은 몸보다 한 박자 늦게 따라온다.
+ *
+ * 머리에 붙여만 두었더니 걷든 뛰든 정수리에 못 박힌 것 같았다.
+ * 정수리를 축으로 조금씩 흔들리게 둔다. 각도는 아주 작아야 한다 —
+ * 크게 흔들면 머리카락이 아니라 깃발이 된다.
+ */
+.gear.hair,
+.gear.hair.back {
+  transform-origin: 12px 6px;
+  transform-box: view-box;
+}
+.figure.walk :is(.gear.hair, .gear.hair.back) {
+  animation: pfHairSoft var(--step) ease-in-out infinite;
+}
+.figure:is(.jump, .dash) :is(.gear.hair, .gear.hair.back) {
+  animation: pfHairSwing 0.66s ease-in-out infinite;
+}
+.figure.dance :is(.gear.hair, .gear.hair.back) {
+  animation: pfHairSwing 0.86s ease-in-out infinite;
+}
+.figure:is(.idle, .look, .sit, .crouch) :is(.gear.hair, .gear.hair.back) {
+  animation: pfHairSoft 3.6s ease-in-out infinite;
+}
+@keyframes pfHairSoft {
+  0%,
+  100% {
+    transform: rotate(-1.6deg);
+  }
+  50% {
+    transform: rotate(1.6deg);
+  }
+}
+@keyframes pfHairSwing {
+  0%,
+  100% {
+    transform: rotate(-5deg) translateY(0.3px);
+  }
+  50% {
+    transform: rotate(5deg) translateY(-0.5px);
+  }
+}
+.blush {
+  fill: #efa6a0;
+  opacity: 0.6;
+}
+.line :is(.spark, .blush),
+.cut :is(.spark, .blush) {
+  display: none;
 }
 
 /* 꽃술·리본 매듭은 옷 색보다 밝아야 겹친 게 구분된다 */
