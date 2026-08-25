@@ -92,6 +92,7 @@ export default {
 
   // ── 오늘의 채비 (큰 카드) ───────────────────────
   'hero.humidity': '습도',
+  'hero.cloud': '구름',
   'hero.rainProb': '강수확률',
   'hero.hot': '더움 (25도 이상)',
   'hero.mild': '선선함 (25도 미만)',
@@ -107,15 +108,6 @@ export default {
   'view.night': '오늘 밤',
   'view.aria': '언제의 하늘을 볼지 고르기',
   'view.there': '그곳은 지금',
-  'lens.plain': '그냥 하늘',
-  'lens.cloud': '구름',
-  'lens.rain': '비',
-  'lens.wind': '바람',
-  'lens.aria': '무엇을 도드라지게 볼지 고르기',
-  'lens.noteCloud': ({ n }) => `하늘의 ${n}%가 구름입니다`,
-  'lens.noteRain': ({ n }) => `비 올 확률 ${n}%`,
-  'lens.noteWind': ({ n }) => `바람 ${n}m/s`,
-  'sky.aria': '하늘 에디션 고르기',
   'sky.knobs': '손보기',
   'sky.intensity': '세기',
   'sky.speed': '빠르기',

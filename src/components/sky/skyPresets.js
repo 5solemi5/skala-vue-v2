@@ -16,11 +16,11 @@
  *         그곳의 실제 일출·일몰 시각으로 계산하고,
  *         그 시각의 실제 예보(구름·비·바람)를 쓴다.
  *
- *   렌즈  그냥 하늘 · 구름 · 비 · 바람
- *         하늘을 바꾸지 않고 무엇을 도드라지게 볼지만 바꾼다.
- *         분위기 필터가 아니라 정보 필터다.
- *
- * 둘 다 실제 값이라, 고를수록 그 사람에게 가까워진다.
+ * 구름·비·바람을 고르게 하지 않는다.
+ * 한때 '렌즈' 라는 이름으로 무엇을 도드라지게 볼지 고르게 해 봤는데,
+ * 바람이 세면 하늘이 이미 바람 부는 것처럼 보여야지
+ * 그걸 보려고 손잡이를 돌릴 이유가 없었다.
+ * 값이 그대로 그림이 되게 두고, 숫자는 창 아래에 적는다.
  */
 import { celestial, toScreen } from '../../utils/celestial.js'
 
@@ -50,15 +50,6 @@ export const TIME_VIEWS = [
   { id: 'night', en: 'NIGHT' },
 ]
 export const isKnownView = (id) => TIME_VIEWS.some((v) => v.id === id)
-
-/** 무엇을 도드라지게 볼까 */
-export const LENSES = [
-  { id: 'plain' },
-  { id: 'cloud' },
-  { id: 'rain' },
-  { id: 'wind' },
-]
-export const isKnownLens = (id) => LENSES.some((l) => l.id === id)
 
 /*
  * 그곳의 '오늘 몇 시' 를 절대 시각으로 바꾼다.
@@ -126,53 +117,13 @@ const weatherAt = (instant, rows, current) => {
     wind: best.wind,
     clouds: best.clouds ?? current?.clouds ?? 30,
     humidity: best.humidity,
+    /*
+     * 맑은지 비인지도 그 시각 값으로 바꾼다.
+     * 이걸 안 바꾸면 지금 비가 온다는 이유로 새벽 하늘에도 비가 내렸다.
+     * 값이 없는 칸이면 지금 상태로 둔다.
+     */
+    condition: best.condition ?? current?.condition,
   }
-}
-
-/*
- * 렌즈.
- * 하늘의 값은 건드리지 않는다. 무엇을 눈에 띄게 할지만 바꾼다.
- * 비 렌즈에서 비가 더 오게 만들면 그건 거짓말이 된다.
- */
-const applyLens = (sky, lens, w) => {
-  if (lens === 'cloud') {
-    return {
-      ...sky,
-      // 구름의 밝은 면과 그늘을 벌려 결이 도드라지게 한다
-      cloudLit: mixHex(sky.cloudLit, '#ffffff', 0.35),
-      cloudDark: mixHex(sky.cloudDark, '#1b2230', 0.4),
-      // 하늘은 한 걸음 물러나게 채도를 뺀다
-      skyTop: mixHex(sky.skyTop, '#6b7480', 0.4),
-      skyMid: mixHex(sky.skyMid, '#7d8792', 0.4),
-      skyBot: mixHex(sky.skyBot, '#98a1ab', 0.35),
-      haze: sky.haze * 0.5,
-    }
-  }
-  if (lens === 'rain') {
-    const p = (w.rainProb ?? 0) / 100
-    return {
-      ...sky,
-      /*
-       * 비가 아직 안 와도 확률만큼 보여 준다.
-       * 이 렌즈는 '지금 오는가' 가 아니라 '올 것 같은가' 를 보는 자리다.
-       */
-      rain: Math.max(sky.rain, p * 0.9),
-      skyTop: mixHex(sky.skyTop, '#2a3d52', 0.3),
-      skyMid: mixHex(sky.skyMid, '#3f5a74', 0.3),
-      skyBot: mixHex(sky.skyBot, '#5d7c96', 0.3),
-      cloudDark: mixHex(sky.cloudDark, '#2f3d4c', 0.35),
-    }
-  }
-  if (lens === 'wind') {
-    return {
-      ...sky,
-      // 흐르는 속도를 실제 풍속만큼 부풀려 눈에 보이게 한다
-      speed: sky.speed * (1.6 + (w.wind ?? 0) / 6),
-      wind: Math.min(1, sky.wind * 1.5 + 0.15),
-      cloudLit: mixHex(sky.cloudLit, '#ffffff', 0.2),
-    }
-  }
-  return sky
 }
 
 /*
@@ -182,7 +133,7 @@ const applyLens = (sky, lens, w) => {
  * 같은 시각이라도 흐린 날과 맑은 날의 하늘이 다르고,
  * 같은 맑은 날이라도 여름과 겨울의 해 높이가 다르다.
  */
-export const buildSky = ({ weather, hourly, view = 'now', lens = 'plain', now = new Date() }) => {
+export const buildSky = ({ weather, hourly, view = 'now', now = new Date() }) => {
   const current = weather ?? {}
   const instant = momentOf(view, current, now)
   const w = weatherAt(instant, hourly, current)
@@ -255,7 +206,7 @@ export const buildSky = ({ weather, hourly, view = 'now', lens = 'plain', now = 
   }
 
   return {
-    sky: applyLens(sky, lens, w),
+    sky,
     // 창 아래에 적을 값들
     at: instant,
     reading: {

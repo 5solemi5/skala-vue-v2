@@ -80,6 +80,28 @@ const fetchCurrent = async (city, lang) => {
   }
 }
 
+/*
+ * 세계기상기구(WMO) 날씨 코드를 이 화면이 쓰는 말로 바꾼다.
+ *
+ * OpenWeatherMap 은 지금 날씨만 주고 시간별로는 안 준다.
+ * Open-Meteo 는 시간별로 이 코드를 주는데 숫자라, 판정 규칙이 알아듣는
+ * 영문 이름으로 옮겨 둔다. 이름을 맞춰 두면 지금 날씨든 몇 시간 뒤든
+ * 같은 규칙이 그대로 돈다.
+ */
+const wmoCondition = (code) => {
+  if (code === undefined || code === null) return undefined
+  if (code === 0) return 'Clear'
+  if (code <= 3) return 'Clouds'
+  if (code === 45 || code === 48) return 'Fog'
+  if (code >= 51 && code <= 57) return 'Drizzle'
+  if (code >= 61 && code <= 67) return 'Rain'
+  if (code >= 71 && code <= 77) return 'Snow'
+  if (code >= 80 && code <= 82) return 'Rain'
+  if (code === 85 || code === 86) return 'Snow'
+  if (code >= 95) return 'Thunderstorm'
+  return 'Clouds'
+}
+
 /** 한 도시의 오늘 최저기온·강수확률 (Open-Meteo, API 키 불필요) */
 const fetchDaily = async (city) => {
   const { data } = await axios.get(METEO_URL, {
@@ -213,7 +235,7 @@ export const fetchHourly = async (city) => {
       latitude: city.lat,
       longitude: city.lon,
       hourly:
-        'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,cloud_cover',
+        'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,cloud_cover,weather_code',
       timezone: 'Asia/Seoul',
       forecast_days: 2,
       /*
@@ -237,6 +259,9 @@ export const fetchHourly = async (city) => {
     rainProb: h.precipitation_probability[i] ?? 0,
     wind: Number((h.wind_speed_10m[i] ?? 0).toFixed(1)),
     clouds: h.cloud_cover?.[i] ?? null,
+    // 그 시각이 맑은지 비인지 눈인지. 시각을 옮겨 볼 때 이게 없으면
+    // 지금 비가 온다는 이유로 새벽 하늘에도 비가 내린다
+    condition: wmoCondition(h.weather_code?.[i]),
   }))
 
   /*

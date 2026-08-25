@@ -1,14 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useConfigStore } from './configStore'
-import {
-  TIME_VIEWS,
-  LENSES,
-  isKnownView,
-  isKnownLens,
-  buildSky,
-  withKnobs,
-} from '@/components/sky/skyPresets'
+import { TIME_VIEWS, isKnownView, buildSky, withKnobs } from '@/components/sky/skyPresets'
 
 const STORAGE_KEY = 'skala-chaebi-sky'
 
@@ -31,7 +24,6 @@ export const useSkyStore = defineStore('sky', () => {
   const saved = loadSaved()
 
   const view = ref(isKnownView(saved.view) ? saved.view : 'now')
-  const lens = ref(isKnownLens(saved.lens) ? saved.lens : 'plain')
 
   /*
    * 손잡이.
@@ -58,7 +50,6 @@ export const useSkyStore = defineStore('sky', () => {
       weather: liveWeather.value,
       hourly: hourly.value,
       view: view.value,
-      lens: lens.value,
       now: now.value,
     }),
   )
@@ -78,27 +69,8 @@ export const useSkyStore = defineStore('sky', () => {
   const views = computed(() =>
     TIME_VIEWS.map((v) => ({ ...v, ko: configStore.t(`view.${v.id}`) })),
   )
-  const lenses = computed(() =>
-    LENSES.map((l) => ({ ...l, ko: configStore.t(`lens.${l.id}`) })),
-  )
-
-  /*
-   * 렌즈가 지금 무엇을 보여 주고 있는지 한 줄로.
-   * 렌즈를 '분위기' 가 아니라 '정보' 로 두려면 숫자가 같이 나와야 한다.
-   */
-  const lensNote = computed(() => {
-    const r = reading.value
-    if (lens.value === 'cloud') return configStore.t('lens.noteCloud', { n: r.clouds })
-    if (lens.value === 'rain') return configStore.t('lens.noteRain', { n: r.rainProb })
-    if (lens.value === 'wind') return configStore.t('lens.noteWind', { n: r.wind })
-    return ''
-  })
-
   function setView(id) {
     if (isKnownView(id)) view.value = id
-  }
-  function setLens(id) {
-    if (isKnownLens(id)) lens.value = id
   }
   function setKnob(key, value) {
     knobs.value = { ...knobs.value, [key]: value }
@@ -108,12 +80,12 @@ export const useSkyStore = defineStore('sky', () => {
   }
 
   watch(
-    [view, lens, knobs],
+    [view, knobs],
     () => {
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ view: view.value, lens: lens.value, ...knobs.value }),
+          JSON.stringify({ view: view.value, ...knobs.value }),
         )
       } catch {
         // 저장이 막힌 환경에서는 넘어간다
@@ -124,16 +96,12 @@ export const useSkyStore = defineStore('sky', () => {
 
   return {
     view,
-    lens,
     views,
-    lenses,
     knobs,
     sky,
     reading,
     atLabel,
-    lensNote,
     setView,
-    setLens,
     setKnob,
     resetKnobs,
     setLiveWeather,

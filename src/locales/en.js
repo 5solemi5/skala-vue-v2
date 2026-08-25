@@ -88,6 +88,7 @@ export default {
 
   // ── hero card ───────────────────────────────
   'hero.humidity': 'Humidity',
+  'hero.cloud': 'Cloud',
   'hero.rainProb': 'Rain',
   'hero.hot': 'Hot (25°C and above)',
   'hero.mild': 'Mild (below 25°C)',
@@ -103,15 +104,6 @@ export default {
   'view.night': 'Tonight',
   'view.aria': 'Choose which hour of sky to see',
   'view.there': 'There it is',
-  'lens.plain': 'Plain sky',
-  'lens.cloud': 'Cloud',
-  'lens.rain': 'Rain',
-  'lens.wind': 'Wind',
-  'lens.aria': 'Choose what to bring forward',
-  'lens.noteCloud': ({ n }) => `${n}% of the sky is cloud`,
-  'lens.noteRain': ({ n }) => `${n}% chance of rain`,
-  'lens.noteWind': ({ n }) => `Wind ${n}m/s`,
-  'sky.aria': 'Choose a sky edition',
   'sky.knobs': 'Adjust',
   'sky.intensity': 'Intensity',
   'sky.speed': 'Speed',

@@ -98,6 +98,25 @@ const coord = computed(() => {
                   </span>
                 </template>
               </p>
+              <!--
+                창에 떠 있는 하늘이 어떤 값으로 그려졌는지.
+                구름을 고르게 하지 않는 대신 숫자를 밝혀 둔다.
+                그림이 데이터라는 걸 확인할 수 있어야 창밖이 창밖으로 읽힌다.
+              -->
+              <p class="figures tnum">
+                <!--
+                  그 시각의 기온.
+                  오른쪽 큰 숫자는 '지금' 기온이라, 밤 하늘을 보면서
+                  한낮 기온이 옆에 떠 있으면 둘이 어긋난다.
+                -->
+                {{ configStore.convertTemp(skyStore.reading.temp) }}{{ configStore.unitSymbol }}
+                <span class="dot" aria-hidden="true">·</span>
+                {{ configStore.t('hero.cloud') }} {{ skyStore.reading.clouds }}%
+                <span class="dot" aria-hidden="true">·</span>
+                {{ configStore.t('hero.rainProb') }} {{ skyStore.reading.rainProb }}%
+                <span class="dot" aria-hidden="true">·</span>
+                {{ skyStore.reading.wind }}m/s
+              </p>
             </div>
 
             <div class="temp">
@@ -132,8 +151,6 @@ const coord = computed(() => {
         {{ configStore.t('hero.rainProb') }} <span class="tnum">{{ city.rainProb }}%</span>
         <span class="sep">·</span>
         <span class="tnum">{{ city.wind }}m/s</span>
-        <!-- 렌즈를 씌웠으면 그 렌즈가 무엇을 보여 주는지 숫자로 밝힌다 -->
-        <span v-if="skyStore.lensNote" class="lens-note">{{ skyStore.lensNote }}</span>
       </p>
 
       <!--
@@ -286,6 +303,18 @@ h2 {
     0 1px 2px rgba(0, 0, 0, 0.55),
     0 3px 16px rgba(0, 0, 0, 0.5);
 }
+.figures {
+  margin: 6px 0 0;
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.74);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+.figures .dot {
+  margin: 0 5px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
 .when {
   margin: 4px 0 0;
   color: rgba(242, 234, 217, 0.72);
@@ -337,14 +366,7 @@ h2 {
   font-size: var(--fs-sm);
   color: var(--color-ink-2);
 }
-/* 렌즈가 보여 주는 값. 판정 색과 겹치지 않게 금색 계열로 둔다 */
-.lens-note {
-  margin-left: var(--sp-3);
-  padding-left: var(--sp-3);
-  font-size: var(--fs-xs);
-  color: var(--color-gold);
-  border-left: 1px solid var(--color-line);
-}
+
 .sep {
   margin: 0 6px;
   color: var(--color-ink-4);
