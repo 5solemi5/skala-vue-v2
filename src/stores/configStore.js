@@ -1,6 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { translate, isKnownLang } from '@/locales'
+import { isKnownStage, migrateStage } from '@/components/service/stages'
 
 const STORAGE_KEY = 'skala-chaebi-config'
 
@@ -126,13 +127,16 @@ export const useConfigStore = defineStore('config', () => {
     { immediate: true },
   )
 
-  // state: 판 아래 마당의 배경. 고른 것은 저장해 둔다.
-  const YARD_THEMES = ['meadow', 'seaside', 'night', 'snow', 'city']
-  const isKnownTheme = (id) => YARD_THEMES.includes(id)
-  const yardTheme = ref(isKnownTheme(saved.yardTheme) ? saved.yardTheme : 'meadow')
-  const yardList = computed(() => YARD_THEMES.map((id) => ({ id, label: t.value(`yard.${id}`) })))
+  /*
+   * state: 판 아래 마당의 무대. 고른 것은 저장해 둔다.
+   *
+   * 무대 목록은 stages.js 에 있다. 색과 모티프가 함께 있어야 해서
+   * 여기에 id 만 늘어놓지 않고 표로 뺐다.
+   */
+  const yardTheme = ref(isKnownStage(migrateStage(saved.yardTheme)) ? migrateStage(saved.yardTheme) : 'meadow')
   function setYardTheme(id) {
-    if (isKnownTheme(id)) yardTheme.value = id
+    const next = migrateStage(id)
+    if (isKnownStage(next)) yardTheme.value = next
   }
 
   /*
@@ -222,7 +226,6 @@ export const useConfigStore = defineStore('config', () => {
     t,
     setLang,
     yardTheme,
-    yardList,
     setYardTheme,
     theme,
     themeList,
