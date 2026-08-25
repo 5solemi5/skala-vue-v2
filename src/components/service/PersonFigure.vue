@@ -49,6 +49,8 @@ const props = defineProps({
    * 비 온다고 열둘이 다 같은 우산을 들면 마당이 아니라 우산 가게가 된다.
    */
   weather: { type: Object, default: null },
+  // 물속인가. 물속에서는 우산도 목도리도 말이 되지 않는다
+  under: { type: Boolean, default: false },
   act: { type: String, default: 'walk' },
   // 걸음 빠르기(초). 사람마다 조금씩 달라야 한 무리로 안 보인다
   step: { type: Number, default: 0.86 },
@@ -88,10 +90,25 @@ const COATS = ['#849CCB', '#EB7187', '#C69FC0', '#CF89C3', '#464F64', '#5FA98C']
 const look = computed(() => {
   const seed = hash(props.person.id)
   return {
-    hat: pick(seed, 9, 4),
+    /*
+     * 쓴 것 — 없음(머리카락) · 야구모자 · 밀짚모자.
+     *
+     * 털모자도 있었는데 뺐다. 목도리와 같은 겨울 물건이라
+     * 34도 날에도 니트를 쓰고 있으면 그 사람만 다른 계절에 산다.
+     * 이제 추울 때만 나온다.
+     */
+    hat: pick(seed, 9, 3),
     // 볼은 있는 사람만 있다. 전원이 볼그레하면 한 벌로 찍어낸 인형이 된다
     blush: pick(seed, 29, 3) === 0,
-    hold: pick(seed, 13, 4),
+    /*
+     * 손에 드는 것 — 없음 · 가방 · 꽃.
+     *
+     * 접은 우산도 있었는데 뺐다. 비가 오면 우산을 펴게 해 놓고
+     * 맑은 날에도 우산 든 사람을 두니, 화면에 우산이 보여도 그게
+     * 비가 온다는 뜻인지 저 사람이 원래 갖고 다닌다는 뜻인지
+     * 알 수가 없었다. 우산은 이제 비만 뜻한다.
+     */
+    hold: pick(seed, 13, 3),
     coat: COATS[pick(seed, 19, COATS.length)],
   }
 })
@@ -143,13 +160,21 @@ const rim = computed(() => ({
 const wear = computed(() => {
   const w = props.weather
   if (!w) return {}
+  /*
+   * 물속에서는 아무것도 덧입지 않는다.
+   * 심해에 비가 오든 바람이 불든 그건 수면 위의 일이라,
+   * 헤엄치는 사람이 우산을 펴거나 목도리를 두르면 그 순간
+   * 물속이 물속이 아니게 된다.
+   */
+  if (props.under) return {}
   const g = groupOf(w.condition)
   const temp = w.temp ?? 15
   return {
     // 비가 오는 중이거나 곧 올 참이면 우산을 편다
     umbrella: g === 'rain' || (w.rainProb ?? 0) >= 60,
-    // 눈이 오거나 얼어붙는 날은 목을 감싼다
+    // 눈이 오거나 얼어붙는 날은 목을 감싸고 털모자를 쓴다
     scarf: g === 'snow' || temp <= 4,
+    beanie: g === 'snow' || temp <= 4,
     // 더운 날은 땀이 난다
     sweat: temp >= 30,
     // 바람이 세면 몸이 밀린다
@@ -222,17 +247,11 @@ const layers = computed(() => {
           <path class="thin" d="M19.2 18.4 q-0.3 1.5 -1.9 1.2" />
         </g>
         <g v-else-if="look.hold === 1" class="gear held">
-          <!-- 갓. 아래 가장자리를 물결로 닫아야 버섯이 아니라 우산으로 읽힌다 -->
-          <path d="M16.8 6.2 Q18.9 7.7 21 6.2 Q23.1 7.7 25.2 6.2 A4.2 4.1 0 0 0 16.8 6.2 Z" />
-          <path class="thin" d="M21 6.2 L19.2 18.4" />
-          <path class="thin" d="M19.1 18.4 q-0.3 1.5 -1.9 1.2" />
-        </g>
-        <g v-else-if="look.hold === 2" class="gear held">
           <!-- 손가방. 손 아래로 늘어뜨린다 -->
           <rect x="17.2" y="20.2" width="5.2" height="4.8" rx="1" />
           <path class="thin" d="M18.4 20.2 a1.4 1.5 0 0 1 2.8 0" />
         </g>
-        <g v-else-if="look.hold === 3" class="gear held">
+        <g v-else-if="look.hold === 2" class="gear held">
           <!-- 꽃 한 송이. 들판이니 꺾어 든 것이 있어도 이상하지 않다 -->
           <path class="thin" d="M18.5 19.6 L20 15.4" />
           <circle cx="20" cy="10" r="1.15" />
@@ -309,10 +328,15 @@ const layers = computed(() => {
             남은 건 곱슬 한 가닥. 얼굴을 하나도 가리지 않는다.
             제일 단순하고 제일 귀엽다. 더 그릴수록 나빠지는 자리였다.
           -->
-          <g v-if="look.hat === 0" class="gear hair">
-            <path class="curl" d="M11.4 0.8 C10 -2.6 15.4 -3.4 15.2 -0.2" />
-          </g>
-          <g v-else-if="look.hat === 1" class="gear">
+          <!--
+            추운 날의 털모자.
+
+            무엇을 쓰고 있었든 이걸로 바꾼다. 겨울 물건이라 목도리와 함께
+            나오고, 둘이 같이 있어야 '추운 데 있구나' 가 한눈에 읽힌다.
+            모자 위에 덧씌우지 않는 건, 야구모자 위에 니트를 겹쳐 쓰는
+            사람은 없기 때문이다.
+          -->
+          <g v-if="wear.beanie" class="gear">
             <!--
               비니.
 
@@ -326,12 +350,15 @@ const layers = computed(() => {
 
             <circle cx="12" cy="-4" r="1.85" />
           </g>
-          <g v-else-if="look.hat === 2" class="gear">
+          <g v-else-if="look.hat === 0" class="gear hair">
+            <path class="curl" d="M11.4 0.8 C10 -2.6 15.4 -3.4 15.2 -0.2" />
+          </g>
+          <g v-else-if="look.hat === 1" class="gear">
             <!-- 야구모자. 챙은 한쪽으로만 나가되 머리에 붙어 있어야 한다 -->
             <path d="M5 4.9 A7 6.1 0 0 1 19 4.9 Z" />
             <path d="M18.5 4.1 C22.3 4 24.8 5.1 24.8 6.3 C24.8 7 21.3 6.5 18.1 5.8 Z" />
           </g>
-          <g v-else-if="look.hat === 3" class="gear">
+          <g v-else-if="look.hat === 2" class="gear">
             <!-- 밀짚모자. 챙이 넓고 좌우 대칭이다 -->
             <ellipse cx="12" cy="3.9" rx="10.6" ry="1.9" />
             <path d="M6.5 3.6 A5.6 5.2 0 0 1 17.5 3.6 Z" />

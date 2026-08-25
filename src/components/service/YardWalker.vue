@@ -77,6 +77,7 @@ const style = computed(() => ({
       :act="shown"
       :step="step"
       :weather="weather"
+      :under="under"
     />
   </div>
 </template>
