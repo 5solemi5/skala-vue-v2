@@ -165,7 +165,19 @@ export const usePersonAct = (seed = 1, world = 'land') => {
     (w) => {
       clearTimeout(timer)
       set = SETS[w] ?? SETS.land
-      act.value = set.first
+      /*
+       * 다 같이 같은 동작으로 시작하지 않는다.
+       *
+       * 처음에는 새 세계의 기본 동작(걷기·헤엄)으로 전원을 돌려놓았다.
+       * 그랬더니 배경을 바꾸는 순간 열두 명이 한 몸처럼 같은 자세를
+       * 취해서, 그 자리에 살고 있던 사람들이 아니라 방금 배치된
+       * 인형들로 보였다.
+       *
+       * 각자 다른 동작으로 시작한다. 누구는 헤엄치고 누구는 떠 있고
+       * 누구는 흐르고 있으면, 원래 거기서 그러고 있던 것으로 보인다.
+       */
+      const pool = set.next[set.first] ?? [set.first]
+      act.value = pool[Math.floor(rand() * pool.length)]
       step()
     },
   )

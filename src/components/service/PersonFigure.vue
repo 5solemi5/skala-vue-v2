@@ -487,6 +487,17 @@ const layers = computed(() => {
 }
 
 /*
+ * 사람마다 다른 박자.
+ *
+ * 같은 동작이라도 다들 0 초부터 시작하면 열둘이 한 몸처럼 젓는다.
+ * 음수 지연은 '이미 그만큼 지나간 상태' 로 시작한다는 뜻이라,
+ * 배경을 켠 순간부터 제각각인 것처럼 보인다.
+ *
+ * 지연은 부모(--phase)가 사람마다 정해서 내려보낸다.
+ * 후광과 눈 깜빡임은 각자 자기 지연을 이미 갖고 있어서 건드리지 않는다.
+ */
+
+/*
  * ── 자세 ──────────────────────────────────────────
  *
  * 그림이 도형 몇 개로 되어 있어서 부위를 하나씩 돌려 자세를 만든다.
@@ -522,11 +533,11 @@ const layers = computed(() => {
 /* 걷기 — 팔다리가 번갈아 나간다 */
 .figure.walk .leg.one,
 .figure.walk .arm.two {
-  animation: pfStepA var(--step) ease-in-out infinite;
+  animation: pfStepA var(--step) ease-in-out var(--phase, 0s) infinite;
 }
 /* 오른팔이 pfStepA 를 타므로 물건도 같은 것을 탄다 */
 .figure.walk .gear.held {
-  animation: pfStepA var(--step) ease-in-out infinite;
+  animation: pfStepA var(--step) ease-in-out var(--phase, 0s) infinite;
 }
 .figure.dash .gear.held {
   animation: pfDashArm 0.66s ease-in-out infinite;
@@ -549,10 +560,10 @@ const layers = computed(() => {
  * 가방이 찌그러진다.
  */
 .figure.swim .gear.held {
-  animation: pfPaddleB 1.5s ease-in-out infinite;
+  animation: pfPaddleB 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.tuck .gear.held {
-  animation: pfTuckArmB 1.5s ease-in-out infinite;
+  animation: pfTuckArmB 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.hover .gear.held {
   transform: rotate(30deg);
@@ -576,7 +587,7 @@ const layers = computed(() => {
 
 .figure.walk .leg.two,
 .figure.walk .arm.one {
-  animation: pfStepB var(--step) ease-in-out infinite;
+  animation: pfStepB var(--step) ease-in-out var(--phase, 0s) infinite;
 }
 @keyframes pfStepA {
   50% {
@@ -594,7 +605,7 @@ const layers = computed(() => {
  * 완전히 멈춰 세우면 그림이 붙어 버린 것처럼 보인다.
  */
 .figure.idle {
-  animation: pfBreathe 3.4s ease-in-out infinite;
+  animation: pfBreathe 3.4s ease-in-out var(--phase, 0s) infinite;
 }
 @keyframes pfBreathe {
   50% {
@@ -610,7 +621,7 @@ const layers = computed(() => {
   animation: pfStretchR 2.8s ease-in-out infinite;
 }
 .figure.stretch .noggin {
-  animation: pfLean 2.8s ease-in-out infinite;
+  animation: pfLean 2.8s ease-in-out var(--phase, 0s) infinite;
 }
 @keyframes pfStretchL {
   40%,
@@ -693,7 +704,7 @@ const layers = computed(() => {
 
 /* 두리번 — 고개만 좌우로 */
 .figure.look .noggin {
-  animation: pfLook 3.6s ease-in-out infinite;
+  animation: pfLook 3.6s ease-in-out var(--phase, 0s) infinite;
 }
 @keyframes pfLook {
   25% {
@@ -1140,19 +1151,19 @@ const layers = computed(() => {
 
 /* 헤엄 — 팔로 물을 젓고 다리로 찬다 */
 .figure.swim {
-  animation: pfSwimBody 2.6s ease-in-out infinite;
+  animation: pfSwimBody 2.6s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.swim .arm.one {
-  animation: pfPaddleA 1.5s ease-in-out infinite;
+  animation: pfPaddleA 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.swim .arm.two {
-  animation: pfPaddleB 1.5s ease-in-out infinite;
+  animation: pfPaddleB 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.swim .leg.one {
-  animation: pfKickA 1.1s ease-in-out infinite;
+  animation: pfKickA 1.1s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.swim .leg.two {
-  animation: pfKickB 1.1s ease-in-out infinite;
+  animation: pfKickB 1.1s ease-in-out var(--phase, 0s) infinite;
 }
 /*
  * 물속에서는 몸이 눕는다.
@@ -1212,7 +1223,7 @@ const layers = computed(() => {
 
 /* 떠 있기 — 팔다리를 늘어뜨리고 물결에 맡긴다 */
 .figure.hover {
-  animation: pfHover 3.8s ease-in-out infinite;
+  animation: pfHover 3.8s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.hover .arm.one {
   transform: rotate(-30deg);
@@ -1238,7 +1249,7 @@ const layers = computed(() => {
 
 /* 흐르기 — 물살에 옆으로 누워 실려 간다 */
 .figure.drift {
-  animation: pfDrift 5.2s ease-in-out infinite;
+  animation: pfDrift 5.2s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.drift .arm.one {
   transform: rotate(-58deg);
@@ -1258,7 +1269,7 @@ const layers = computed(() => {
 
 /* 차고 오르기 / 가라앉기 — 팔의 방향이 몸이 가는 쪽을 말한다 */
 .figure.ascend {
-  animation: pfAscend 1.6s ease-in-out infinite;
+  animation: pfAscend 1.6s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.ascend .arm.one {
   transform: rotate(158deg);
@@ -1267,7 +1278,7 @@ const layers = computed(() => {
   transform: rotate(-158deg);
 }
 .figure.ascend :is(.leg.one, .leg.two) {
-  animation: pfKickA 0.62s ease-in-out infinite;
+  animation: pfKickA 0.62s ease-in-out var(--phase, 0s) infinite;
 }
 @keyframes pfAscend {
   0%,
@@ -1279,7 +1290,7 @@ const layers = computed(() => {
   }
 }
 .figure.sink {
-  animation: pfSink 3.4s ease-in-out infinite;
+  animation: pfSink 3.4s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.sink .arm.one {
   transform: rotate(-46deg);
@@ -1299,7 +1310,7 @@ const layers = computed(() => {
 
 /* 앞구르기 — 물속에서는 넘어질 걱정이 없다 */
 .figure.roll {
-  animation: pfRoll 1.9s ease-in-out infinite;
+  animation: pfRoll 1.9s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.roll :is(.arm.one, .arm.two) {
   transform: rotate(0deg) scaleY(0.8);
@@ -1318,16 +1329,16 @@ const layers = computed(() => {
 
 /* 웅크렸다 펴며 나아가기. 해파리가 하는 방식이다 */
 .figure.tuck {
-  animation: pfTuck 1.5s ease-in-out infinite;
+  animation: pfTuck 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.tuck .arm.one {
-  animation: pfTuckArmA 1.5s ease-in-out infinite;
+  animation: pfTuckArmA 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.tuck .arm.two {
-  animation: pfTuckArmB 1.5s ease-in-out infinite;
+  animation: pfTuckArmB 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 .figure.tuck :is(.leg.one, .leg.two) {
-  animation: pfTuckLeg 1.5s ease-in-out infinite;
+  animation: pfTuckLeg 1.5s ease-in-out var(--phase, 0s) infinite;
 }
 @keyframes pfTuck {
   0%,

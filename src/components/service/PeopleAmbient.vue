@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 import { STAGE_GROUPS, stageById } from './stages'
 import StageScene from './StageScene.vue'
@@ -169,6 +169,8 @@ const walkers = computed(() => {
        * 바닥(24px)에서 재던 것을 판 아래에서 %로 재서, 물기둥 전체에 흩어진다.
        */
       depth: Number((10 + ((i * 37 + pick(seed, 17, 40)) % 62)).toFixed(0)),
+      // 사람마다 다른 박자. 같은 동작이라도 시작점이 달라야 한 무리로 안 논다
+      phase: -Number(((pick(seed, 23, 600) / 100) % 6).toFixed(2)),
       scale: Number((1.0 - (back / 32) * 0.32).toFixed(2)),
       // 느리게 걸으니 발도 느리게 놀려야 한다
       step: 0.62 + pick(seed, 15, 26) / 100,
@@ -261,6 +263,21 @@ const look = () => {
     }
   }
 }
+
+/*
+ * 무대가 바뀌면 하던 인사는 없던 일이 된다.
+ *
+ * 악수는 밖에서 시키는 동작이라 무대가 바뀌어도 그대로 남는다.
+ * 들판에서 손을 잡던 둘이 심해로 넘어가서도 물속에 선 채로 손을
+ * 흔들고 있었다 — 헤엄치는 사람들 사이에서 그 둘만 뭍에 있었다.
+ */
+watch(
+  () => stage.value.id,
+  () => {
+    greeting.value = {}
+    cooled.clear()
+  },
+)
 
 onMounted(() => {
   beat = setInterval(look, 520)
@@ -366,6 +383,7 @@ onUnmounted(() => clearInterval(beat))
           :weather="weatherById[w.person.id] ?? null"
           :under="!!stage.under"
           :depth="w.depth"
+          :phase="w.phase"
           :from="w.from"
           :to="w.to"
           :back="w.back"

@@ -44,6 +44,8 @@ const props = defineProps({
   under: { type: Boolean, default: false },
   // 물속에서 이 사람이 떠 있는 높이(판 아래에서 %)
   depth: { type: Number, default: 30 },
+  // 애니메이션을 얼마나 앞당겨 시작할지(음수 초)
+  phase: { type: Number, default: 0 },
 })
 
 const { act } = usePersonAct(props.seed, () => (props.under ? 'sea' : 'land'))
@@ -98,9 +100,32 @@ const settling = ref(false)
 const root = ref(null)
 let timer = null
 
+/*
+ * 세계가 바뀔 때는 이어 붙이지 않는다.
+ *
+ * 자세를 흘려보내는 건 같은 화면 안에서 동작이 바뀔 때 쓰는 것이다.
+ * 배경이 통째로 바뀌는 순간에 그걸 하면, 서 있던 0도에서 헤엄치는
+ * -58도까지 몸이 돌아가는 과정이 그대로 보인다. 열두 명이 한꺼번에
+ * 같은 방향으로 눕는 게 보이니 '들판 사람들을 물에 담갔다' 가 된다.
+ *
+ * 배경이 바뀌면 눈은 어차피 장면 전체를 다시 읽는다. 그때는 끊어야
+ * 원래 거기 있던 사람들로 보인다.
+ */
+let cutting = false
+watch(
+  () => props.under,
+  () => {
+    cutting = true
+    setTimeout(() => {
+      cutting = false
+    }, 120)
+  },
+  { flush: 'sync' },
+)
+
 watch(target, async (v) => {
   const el = root.value
-  if (!el) {
+  if (!el || cutting) {
     shown.value = v
     return
   }
@@ -134,6 +159,14 @@ watch(target, async (v) => {
 onUnmounted(() => clearTimeout(timer))
 
 const style = computed(() => ({
+  /*
+   * 이 사람의 박자.
+   *
+   * 같은 동작이라도 다들 0 초부터 시작하면 열둘이 한 몸처럼 젓는다.
+   * 음수 지연을 주면 이미 그만큼 지나간 상태로 시작하므로,
+   * 배경을 켠 순간부터 제각각인 것처럼 보인다.
+   */
+  '--phase': `${props.phase}s`,
   '--depth': `${props.depth}%`,
   '--dur': `${props.dur}s`,
   '--delay': `${props.delay}s`,
