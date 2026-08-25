@@ -534,6 +534,42 @@ const layers = computed(() => {
 .figure.dance .gear.held {
   animation: pfDanceArmB 0.86s ease-in-out infinite;
 }
+/*
+ * 물속에서도 든 것은 손을 따라간다.
+ *
+ * 뭍의 동작에만 걸어 두었더니, 헤엄치는 동안 팔은 물을 젓는데
+ * 가방은 어깨에 매달린 채 가만히 있었다. 잡고 있는 게 아니라
+ * 몸에 붙어 떠 있는 것으로 보였다.
+ *
+ * 오른팔과 든 것은 축이 같다(어깨 18.2, 13.4). 팔에 준 것을 그대로
+ * 주면 둘이 한 몸으로 돈다.
+ *
+ * 앞구르기만 팔에 준 scaleY(0.8)을 빼고 각도만 준다.
+ * 팔은 몸에 붙으면서 짧아 보이는 게 맞지만, 가방까지 눌리면
+ * 가방이 찌그러진다.
+ */
+.figure.swim .gear.held {
+  animation: pfPaddleB 1.5s ease-in-out infinite;
+}
+.figure.tuck .gear.held {
+  animation: pfTuckArmB 1.5s ease-in-out infinite;
+}
+.figure.hover .gear.held {
+  transform: rotate(30deg);
+}
+.figure.drift .gear.held {
+  transform: rotate(18deg);
+}
+.figure.ascend .gear.held {
+  transform: rotate(-158deg);
+}
+.figure.sink .gear.held {
+  transform: rotate(46deg);
+}
+.figure.roll .gear.held {
+  transform: rotate(0deg);
+}
+
 .figure.crouch .gear.held {
   transform: rotate(16deg);
 }
