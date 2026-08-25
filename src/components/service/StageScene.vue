@@ -967,6 +967,24 @@ const ridges = computed(() => {
       </g>
     </g>
 
+    <!--
+      ⑫' 파도.
+
+      밀려왔다 빠진다. 다가올수록 굵어지고 진해지다가 물가에 닿는 순간
+      스러진다 — 부서지는 게 아니라 얇아지며 사라진다.
+      저마다 다른 박자라야 바다가 숨 쉬는 것으로 보인다.
+      다 같이 밀려오면 그건 파도가 아니라 줄무늬다.
+    -->
+    <g v-if="stage.beach" class="surf" stroke="#ffffff" fill="none" stroke-linecap="round">
+      <path
+        v-for="w in scene.waves"
+        :key="`sf${w.i}`"
+        :d="`M-20 ${w.y} q100 -4 200 0 t200 0 t200 0 t240 0`"
+        :stroke-width="w.w"
+        :style="{ '--dur': `${w.dur}s`, '--delay': `${w.delay}s`, '--o': w.o }"
+      />
+    </g>
+
     <!-- ⑬ 지면 -->
     <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
 
