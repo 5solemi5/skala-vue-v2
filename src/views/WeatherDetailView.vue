@@ -35,7 +35,8 @@ const loadCity = async (id) => {
       fetchHourly(city),
     ])
     cityData.value = current
-    hourlyRows.value = hourly
+    // 시간축은 앞날치만 쓴다
+    hourlyRows.value = hourly.ahead
   } catch (error) {
     console.error('상세 정보를 불러오지 못했습니다:', error)  // 개발용 로그
     cityData.value = null

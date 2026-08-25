@@ -1,17 +1,116 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, useId } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 
+/*
+ * 마당 — 벌룬(Balloon) 라인.
+ *
+ * ── 이 판만 결이 다른 이유 ──────────────────────────
+ * 참고한 다이어리 브랜드는 시각 언어를 둘로 나눠 쓴다.
+ *
+ *   각인형  저채도 딥톤 · 얇은 선 · 금박 · 질감      → 시즌제 주류
+ *   일러스트형  고채도 파스텔 · 두꺼운 흰 테두리 스티커 → 벌룬 만년형
+ *
+ * 그리고 이 둘을 한 면에 섞지 않는다.
+ * 이 화면에서 창문·좌표·에디션 번호는 앞의 것이고, 여기 캐릭터는 뒤의 것이다.
+ * 그래서 섞지 않고 '도판' 으로 액자에 넣어 따로 세운다.
+ * 결이 다른 게 실수가 아니라 다른 라인이라는 뜻이 되게.
+ *
+ * ── 표지 문법을 그대로 옮겼다 ───────────────────────
+ *  1. 한 무대에 모티프는 하나. 전에는 바닷가에 배·파라솔·가로등·구름·해가
+ *     흩어져 있어서 무엇을 보라는 건지 알 수 없었다.
+ *  2. 질감이 본체고 그림은 구두점. 면적의 대부분은 결이 도는 빈 면이다.
+ *  3. 색은 한 색의 명도 단계로만 흔든다. 무대마다 실측된 표지 색 하나를 받아
+ *     하늘부터 지면까지 그 색의 밝기만 바꿔 내려온다.
+ *  4. 금박은 선에만. 모티프의 윤곽선과 라벨에만 쓰고 면을 칠하지 않는다.
+ *  5. 좌하단에 라벨, 우하단에 서명. 모든 표지에 고정으로 있던 두 가지다.
+ *
+ * ── 눌러서 넓게 보기 ────────────────────────────────
+ * 평소에는 지면 쪽 띠만 보인다. 아침에 판정을 읽으러 온 사람에게
+ * 그림이 화면을 다 차지하면 방해가 되기 때문이다.
+ * 누르면 하늘까지 열리면서 그제야 모티프가 드러난다.
+ * 그림을 늘려서 채우지 않고 큰 화폭의 일부를 잘라 보여주는 방식이라
+ * 접혀 있을 때도 비율이 찌그러지지 않는다.
+ */
 const configStore = useConfigStore()
-
-// 지금 펼쳐 둔 무대 이름. 삽화 제목 줄 오른쪽에 적는다
-const themeLabel = computed(
-  () => configStore.yardList.find((y) => y.id === configStore.yardTheme)?.label ?? '',
-)
+const uid = useId()
 
 const props = defineProps({
   people: { type: Array, required: true },
 })
+
+/*
+ * 무대마다 색은 하나뿐이다.
+ * 실측된 표지 색을 본색으로 두고 하늘에서 지면까지 명도만 내려온다.
+ * 여러 색을 섞지 않는 게 이 브랜드가 표지를 만드는 방식이다.
+ */
+const STAGES = {
+  // 칵테일 · 딥 포레스트
+  meadow: {
+    sky: '#6F8A73',
+    mid: '#4E6855',
+    far: '#42594A',
+    near: '#374E3C',
+    ground: '#2C3F31',
+    foil: '#EAC379',
+  },
+  // 아베베 · 페리윙클
+  seaside: {
+    sky: '#B7C7E4',
+    mid: '#9CB0D6',
+    far: '#849CCB',
+    near: '#7188B7',
+    ground: '#5E749E'.slice(0, 7),
+    foil: '#F0DCAE',
+  },
+  // 골든 레코드 · 차콜 텍스타일
+  night: {
+    sky: '#4D4B45',
+    mid: '#3B3A36',
+    far: '#323230',
+    near: '#232320',
+    ground: '#141416',
+    foil: '#EAC379',
+  },
+  // 보이저 · 쿨 오프화이트
+  snow: {
+    sky: '#EDF0F5',
+    mid: '#E2E6ED',
+    far: '#D7DBE3',
+    near: '#C4C8D1',
+    ground: '#B1B0B4',
+    foil: '#918167',
+  },
+  // 빅뱅 · 콘크리트
+  city: {
+    sky: '#D2D1CE',
+    mid: '#C6C5C2',
+    far: '#BBBAB7',
+    near: '#A6A5A2',
+    ground: '#8E8D8A',
+    foil: '#918167',
+  },
+}
+
+const stage = computed(() => STAGES[configStore.yardTheme] ?? STAGES.meadow)
+const themeLabel = computed(
+  () => configStore.yardList.find((y) => y.id === configStore.yardTheme)?.label ?? '',
+)
+
+/** 앞뒤로 한 칸씩. 끝에 닿으면 반대쪽으로 돌아간다 */
+const stepTheme = (delta) => {
+  const list = configStore.yardList
+  const at = list.findIndex((y) => y.id === configStore.yardTheme)
+  const next = (at + delta + list.length) % list.length
+  configStore.setYardTheme(list[next].id)
+}
+
+/*
+ * 넓게 볼까 접어 둘까.
+ * 저장하지 않는다. 설정이 아니라 잠깐 들여다보는 일이라
+ * 다음에 들어왔을 때는 다시 얇은 띠로 시작하는 게 맞다.
+ */
+const open = ref(false)
 
 /**
  * 챙기는 사람 수만큼, 판 아래 마당을 걸어다니는 사람들.
@@ -43,16 +142,13 @@ const hash = (text) => {
 // 걸음 시간이 음수가 되고 사람이 화면 밖에 서 버린다.
 const pick = (seed, shift, range) => (seed >>> shift) % range
 
-// 옷 색. 판정 색(빨강·주황·초록)과 겹치지 않는 쪽으로 골랐다.
-const COATS = ['#3f6f63', '#8a5a7a', '#3d5f8a', '#a8763a', '#6b7f3f', '#4f6d8f']
-
-/** 앞뒤로 한 칸씩. 끝에 닿으면 반대쪽으로 돌아간다 */
-const stepTheme = (delta) => {
-  const list = configStore.yardList
-  const at = list.findIndex((y) => y.id === configStore.yardTheme)
-  const next = (at + delta + list.length) % list.length
-  configStore.setYardTheme(list[next].id)
-}
+/*
+ * 옷 색.
+ * 벌룬 라인에서 실측된 색들이다 — 페리윙클, 로즈 코럴, 모브,
+ * 네버랜드 핑크, 고래 잉크블루, 그리고 잎사귀 초록.
+ * 판정에 쓰는 빨강·주황·초록과는 겹치지 않는 쪽으로만 골랐다.
+ */
+const COATS = ['#849CCB', '#EB7187', '#C69FC0', '#CF89C3', '#464F64', '#5FA98C']
 
 const walkers = computed(() => {
   const total = props.people.length || 1
@@ -81,7 +177,8 @@ const walkers = computed(() => {
 
     return {
       id: person.id,
-      hat: pick(seed, 9, 4), // 머리에 쓴 것 네 가지
+      hat: pick(seed, 9, 5), // 머리에 쓴 것 다섯 가지
+      hold: pick(seed, 13, 4), // 손에 든 것 네 가지
       style: {
         '--dur': `${duration}s`,
         '--delay': `${delay}s`,
@@ -99,27 +196,12 @@ const walkers = computed(() => {
 </script>
 
 <template>
-  <!--
-    챙기는 사람 수만큼, 판 아래 작은 마당을 천천히 걸어다닌다.
-
-    자리를 여러 군데 놓아 봤다.
-    화면 전체 배경은 글을 읽는 내내 시야 구석에서 뭔가 움직여 판정을 읽기 어려웠고,
-    제목 옆은 버튼과의 사이가 좁아 열두 명이 비좁았다.
-    판 위에 두니 제목과 표 사이가 벌어져 제목 바로 밑에 정보가 아니라 장식이 먼저 왔다.
-    판 아래면 제목이 자기 표에 붙어 있고, 읽는 순서도 그대로다.
-
-    끝까지 가면 사라지지 않고 돌아서서 되돌아온다.
-    걸어 나가 버리면 챙기는 사람이 몇인지 세어 볼 수 없다.
-  -->
   <div class="ambient">
     <!--
-      제목 줄.
-
-      마당은 이 화면에서 유일하게 손으로 그린 그림이다.
-      위쪽 창은 실제 하늘을 계산해서 그리는 판이라 결이 아주 다른데,
+      도판 제목 줄.
+      여기는 손으로 그린 그림이고 위쪽 창은 계산해서 그리는 판이라 결이 아주 다른데,
       아무 표시 없이 나란히 두면 둘 중 하나가 덜 만든 것처럼 보인다.
-      '삽화' 라고 이름을 달아 두면 결이 다른 게 실수가 아니라 종류가 다른 것이 된다.
-      다이어리에도 사진 면과 그림 면이 따로 있다.
+      '도판' 이라고 이름을 달면 결이 다른 게 실수가 아니라 종류가 다른 것이 된다.
     -->
     <p class="plate-cap">
       <span class="plate-no">PL.</span>
@@ -128,195 +210,188 @@ const walkers = computed(() => {
       <span class="plate-theme">{{ themeLabel }}</span>
     </p>
 
-    <div class="yard" :class="configStore.yardTheme" aria-hidden="true">
     <!--
-      무대는 다섯 가지. 고른 것은 저장돼서 다음에 들어와도 그대로다.
-      언덕과 나무는 움직이지 않는다. 다 움직이면 어지럽다.
+      눌러서 넓게 보는 판.
+      button 이 아니라 div 에 역할을 준 건, 안에 무대를 넘기는 버튼이 또 있어서
+      버튼 안에 버튼이 들어가는 짜임이 되기 때문이다.
     -->
-    <svg class="scene" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-      <rect class="sky" x="0" y="0" width="400" height="120" />
+    <div
+      class="stage"
+      :class="[configStore.yardTheme, { open }]"
+      role="button"
+      tabindex="0"
+      :aria-expanded="open"
+      :aria-label="configStore.t(open ? 'yard.collapse' : 'yard.expand')"
+      @click="open = !open"
+      @keydown.enter.prevent="open = !open"
+      @keydown.space.prevent="open = !open"
+    >
+      <!--
+        큰 화폭에 그려 두고 접혀 있을 때는 아래쪽만 잘라 보여준다.
+        늘려서 채우면(preserveAspectRatio="none") 해가 타원이 되고 구름이 납작해진다.
+        전에 그랬다.
+      -->
+      <svg
+        class="scene"
+        viewBox="0 0 800 260"
+        :preserveAspectRatio="open ? 'xMidYMid meet' : 'xMidYMax slice'"
+        aria-hidden="true"
+      >
+        <defs>
+          <!--
+            결.
+            이 브랜드의 표지는 색을 여러 개 쓰는 게 아니라 한 색을 질감으로 흔든다.
+            그래서 그라디언트가 아니라 아주 고운 잡음을 얹는다.
+          -->
+          <filter :id="`grain-${uid}`" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+          <linearGradient :id="`sky-${uid}`" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" :stop-color="stage.sky" />
+            <stop offset="100%" :stop-color="stage.mid" />
+          </linearGradient>
+        </defs>
 
-      <!-- 들판 -->
-      <g v-if="configStore.yardTheme === 'meadow'">
-        <path class="hill far" d="M0 78c46-16 78-14 118 2s70 12 108-4 106-12 174 6v38H0z" />
-        <path class="hill near" d="M0 90c62-12 96-6 150 6s112 8 250-10v34H0z" />
-        <rect class="soil" x="0" y="98" width="400" height="22" />
-        <g class="tree">
-          <rect x="46" y="76" width="3" height="24" rx="1.5" />
-          <circle cx="47.5" cy="70" r="11" />
-          <circle cx="40" cy="76" r="7.5" />
-          <circle cx="55" cy="76" r="7.5" />
-        </g>
-        <g class="tree small">
-          <rect x="322" y="82" width="2.4" height="18" rx="1.2" />
-          <circle cx="323" cy="78" r="8" />
-          <circle cx="317" cy="83" r="5.5" />
-          <circle cx="329" cy="83" r="5.5" />
-        </g>
-        <g class="bench">
-          <rect x="196" y="88" width="26" height="2.6" rx="1.3" />
-          <rect x="196" y="83" width="26" height="2.2" rx="1.1" />
-          <rect x="198" y="90" width="2" height="9" rx="1" />
-          <rect x="218" y="90" width="2" height="9" rx="1" />
-        </g>
-      </g>
+        <!-- 하늘 -->
+        <rect x="0" y="0" width="800" height="260" :fill="`url(#sky-${uid})`" />
 
-      <!-- 바닷가 -->
-      <g v-else-if="configStore.yardTheme === 'seaside'">
-        <!-- 오른쪽 위는 배경 고르는 버튼 자리라 해는 왼쪽에 띄운다 -->
-        <circle class="sun" cx="132" cy="24" r="9" />
-        <rect class="sea" x="0" y="70" width="400" height="30" />
-        <path class="wave" d="M0 78q10-4 20 0t20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0" />
-        <path class="wave two" d="M0 88q12-4 24 0t24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0 24 0" />
-        <rect class="sand" x="0" y="98" width="400" height="22" />
-        <g class="boat">
-          <path d="M58 84h26l-4 6H62z" />
-          <rect x="70" y="70" width="1.6" height="14" rx="0.8" />
-          <path d="M72 71l11 11H72z" />
+        <!-- 모티프. 무대마다 하나뿐이고 금박 선으로만 그린다 -->
+        <g class="motif" :stroke="stage.foil">
+          <!-- 들판 — 나무 한 그루 -->
+          <g v-if="configStore.yardTheme === 'meadow'">
+            <path d="M596 196V96" />
+            <path d="M596 128l-26-20M596 146l28-22M596 112l-18-16" />
+            <path d="M552 96a44 34 0 0 1 88 0a44 30 0 0 1-88 0z" />
+          </g>
+          <!-- 바닷가 — 고래 -->
+          <g v-else-if="configStore.yardTheme === 'seaside'">
+            <path d="M528 104c34-26 92-24 118 2c14 14 8 30-10 34c-38 8-88 2-112-14c-8-6-6-16 4-22z" />
+            <path d="M646 106l24-18-6 26z" />
+            <path d="M566 84c6-14 14-22 22-24" />
+            <circle cx="552" cy="112" r="2.6" :fill="stage.foil" stroke="none" />
+          </g>
+          <!-- 밤하늘 — 보이저 탐사선 -->
+          <g v-else-if="configStore.yardTheme === 'night'">
+            <ellipse cx="600" cy="96" rx="34" ry="30" />
+            <ellipse cx="600" cy="96" rx="17" ry="15" />
+            <path d="M600 126v26M566 78L520 44M634 78l48-30M600 66V34M572 122l-34 30M628 122l36 28" />
+            <circle cx="600" cy="96" r="4" :fill="stage.foil" stroke="none" />
+          </g>
+          <!-- 눈밭 — 앙상한 나무 -->
+          <g v-else-if="configStore.yardTheme === 'snow'">
+            <path d="M600 198V78" />
+            <path d="M600 118l-30-26M600 140l32-28M600 96l-22-22M600 158l-26-20M600 108l26-24" />
+          </g>
+          <!-- 골목 — 가로등 -->
+          <g v-else>
+            <path d="M612 200V78" />
+            <path d="M612 78h-34" />
+            <path d="M566 78a12 9 0 0 0 24 0z" />
+            <path d="M578 96l-8 16M578 96l8 16M578 96v20" opacity="0.55" />
+          </g>
         </g>
-        <g class="parasol">
-          <rect x="300" y="82" width="1.8" height="18" rx="0.9" />
-          <path d="M288 83a13 13 0 0 1 26 0z" />
-        </g>
-      </g>
 
-      <!-- 밤하늘 -->
-      <g v-else-if="configStore.yardTheme === 'night'">
-        <!-- 오른쪽 위는 배경 고르는 버튼 자리라 달도 왼쪽에 띄운다 -->
-        <circle class="moon" cx="140" cy="24" r="10" />
-        <circle class="moon-cut" cx="134" cy="20" r="9" />
-        <path class="hill far" d="M0 78c46-16 78-14 118 2s70 12 108-4 106-12 174 6v38H0z" />
-        <path class="hill near" d="M0 90c62-12 96-6 150 6s112 8 250-10v34H0z" />
-        <rect class="soil" x="0" y="98" width="400" height="22" />
-        <g class="tree">
-          <rect x="46" y="76" width="3" height="24" rx="1.5" />
-          <circle cx="47.5" cy="70" r="11" />
-          <circle cx="40" cy="76" r="7.5" />
-          <circle cx="55" cy="76" r="7.5" />
-        </g>
-      </g>
+        <!-- 지면. 한 색의 명도 단계로만 내려온다 -->
+        <path :fill="stage.far" d="M0 168c118-26 196-22 296 4s176 20 270-10 158-18 234 12v86H0z" />
+        <path :fill="stage.near" d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z" />
+        <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
 
-      <!-- 눈밭 -->
-      <g v-else-if="configStore.yardTheme === 'snow'">
-        <path class="hill far" d="M0 80c50-14 84-12 124 4s72 10 110-6 104-10 166 8v34H0z" />
-        <path class="hill near" d="M0 92c66-10 100-4 154 8s110 6 246-12v32H0z" />
-        <rect class="soil" x="0" y="99" width="400" height="21" />
-        <g class="bare">
-          <rect x="60" y="74" width="2.4" height="26" rx="1.2" />
-          <path d="M61 82l-9-7M61 86l9-6M61 78l-6-6" />
-        </g>
-        <g class="bare small">
-          <rect x="330" y="82" width="2" height="18" rx="1" />
-          <path d="M331 88l-7-5M331 91l7-4" />
-        </g>
-        <g class="snowman">
-          <circle cx="208" cy="94" r="7" />
-          <circle cx="208" cy="84" r="5" />
-          <circle class="dot" cx="206" cy="83" r="0.8" />
-          <circle class="dot" cx="210" cy="83" r="0.8" />
-        </g>
-      </g>
+        <!-- 결을 맨 위에 아주 옅게 -->
+        <rect
+          class="grain"
+          x="0"
+          y="0"
+          width="800"
+          height="260"
+          :filter="`url(#grain-${uid})`"
+        />
+      </svg>
 
-      <!-- 골목 -->
-      <g v-else>
-        <g class="block">
-          <rect x="10" y="46" width="34" height="54" rx="2" />
-          <rect x="52" y="60" width="26" height="40" rx="2" />
-          <rect x="86" y="38" width="30" height="62" rx="2" />
-          <rect x="250" y="54" width="30" height="46" rx="2" />
-          <rect x="288" y="42" width="36" height="58" rx="2" />
-          <rect x="332" y="62" width="26" height="38" rx="2" />
-        </g>
-        <g class="window">
-          <rect x="17" y="54" width="5" height="6" />
-          <rect x="27" y="54" width="5" height="6" />
-          <rect x="17" y="68" width="5" height="6" />
-          <rect x="32" y="68" width="5" height="6" />
-          <rect x="93" y="48" width="5" height="6" />
-          <rect x="104" y="48" width="5" height="6" />
-          <rect x="93" y="62" width="5" height="6" />
-          <rect x="295" y="52" width="5" height="6" />
-          <rect x="308" y="52" width="5" height="6" />
-          <rect x="295" y="66" width="5" height="6" />
-        </g>
-        <rect class="road" x="0" y="100" width="400" height="20" />
-        <path class="lane" d="M0 110h18M34 110h18M68 110h18M102 110h18M136 110h18M170 110h18M204 110h18M238 110h18M272 110h18M306 110h18M340 110h18M374 110h18" />
-      </g>
+      <!-- 걸어다니는 사람들 -->
+      <TransitionGroup name="walker" type="transition" tag="div" class="walkers">
+        <div v-for="w in walkers" :key="w.id" class="walker" :style="w.style">
+          <svg class="figure" viewBox="0 0 24 28">
+            <!--
+              스티커 컷아웃.
+              같은 그림을 두 번 그린다. 아래 것은 흰색으로 두껍게 둘러 오려낸 자국을 만들고
+              위에 진짜 그림을 얹는다. 벌룬 라인의 핵심 장치가 이 흰 테두리다.
+            -->
+            <g v-for="layer in ['cut', 'ink']" :key="layer" :class="layer">
+              <!-- 팔은 몸 뒤에 둔다. 앞에 두면 몸을 가로질러 지저분해진다 -->
+              <rect class="arm one" x="4.4" y="13.4" width="2.8" height="6.4" rx="1.4" />
+              <rect class="arm two" x="16.8" y="13.4" width="2.8" height="6.4" rx="1.4" />
 
-      <line class="edge" x1="0" y1="98" x2="400" y2="98" />
+              <!-- 손에 든 것 -->
+              <g v-if="w.hold === 1" class="gear">
+                <path d="M18.2 13.6v-6" />
+                <path d="M14.2 8.4a4 3.4 0 0 1 8 0z" />
+              </g>
+              <g v-else-if="w.hold === 2" class="gear">
+                <circle cx="18.2" cy="18.6" r="2.4" />
+              </g>
+              <g v-else-if="w.hold === 3" class="gear">
+                <path d="M18.2 14.2v5.6" />
+                <path d="M16.2 19.8h4" />
+              </g>
 
-      <!-- 가로등은 어느 무대에나 하나씩 세워 둔다 -->
-      <g class="lamp">
-        <rect x="278" y="66" width="2" height="34" rx="1" />
-        <circle cx="279" cy="64" r="3.4" />
-      </g>
-    </svg>
+              <rect class="body" x="6.6" y="12.6" width="10.8" height="9" rx="4.2" />
 
-    <!-- 하늘에 떠 있는 것. 낮에는 구름, 밤에는 별, 눈밭에는 눈 -->
-    <div class="sky-lane" aria-hidden="true">
-      <template v-if="configStore.yardTheme === 'night'">
-        <span v-for="n in 9" :key="n" class="star" :class="`s${n}`"></span>
-      </template>
-      <template v-else-if="configStore.yardTheme === 'snow'">
-        <span v-for="n in 10" :key="n" class="flake" :class="`f${n}`"></span>
-      </template>
-      <template v-else>
-        <span class="cloud one"></span>
-        <span class="cloud two"></span>
-        <span class="cloud three"></span>
-      </template>
+              <!-- 머리를 몸보다 크게 잡으면 귀엽게 읽힌다 -->
+              <circle class="head" cx="12" cy="7" r="6.6" />
+
+              <!-- 쓴 것 다섯 가지. 같은 사람은 늘 같은 걸 쓴다 -->
+              <g v-if="w.hat === 1" class="gear">
+                <path d="M5.6 5.4a6.6 6.6 0 0 1 12.8 0z" />
+                <circle cx="12" cy="0.6" r="1.35" />
+              </g>
+              <g v-else-if="w.hat === 2" class="gear">
+                <path d="M5.8 6.1a6.4 6.4 0 0 1 12.4 0z" />
+                <rect x="2.6" y="5.8" width="10.6" height="2" rx="1" />
+              </g>
+              <g v-else-if="w.hat === 3" class="gear">
+                <circle cx="7.6" cy="3" r="2.2" />
+                <circle cx="12" cy="1.7" r="2.5" />
+                <circle cx="16.4" cy="3" r="2.2" />
+              </g>
+              <g v-else-if="w.hat === 4" class="gear">
+                <path d="M5.4 4.8h13.2" />
+                <path d="M8 4.8c0-3 8-3 8 0" />
+              </g>
+
+              <circle class="eye" cx="9.6" cy="7.6" r="1.1" />
+              <circle class="eye" cx="14.4" cy="7.6" r="1.1" />
+
+              <rect class="leg one" x="7.8" y="21" width="3.2" height="5.6" rx="1.6" />
+              <rect class="leg two" x="13" y="21" width="3.2" height="5.6" rx="1.6" />
+            </g>
+          </svg>
+        </div>
+      </TransitionGroup>
+
+      <!--
+        고정 프레임.
+        참고한 표지 열세 장 모두 좌하단에 초소형 대문자 라벨,
+        우하단에 손글씨 서명이 예외 없이 들어가 있었다.
+      -->
+      <p class="frame-label">
+        BALLOON · {{ configStore.t('yard.plate') }} · {{ themeLabel }}
+      </p>
+      <p class="frame-sign">{{ configStore.t('yard.sign') }}</p>
+
+      <!-- 넓게 볼 수 있다는 표시 -->
+      <span class="hint" aria-hidden="true">
+        {{ configStore.t(open ? 'yard.collapse' : 'yard.expand') }}
+        <svg viewBox="0 0 10 6"><path d="M1 1.5 5 4.8 9 1.5" /></svg>
+      </span>
     </div>
 
-    <TransitionGroup name="walker" type="transition">
-      <div v-for="w in walkers" :key="w.id" class="walker" :style="w.style">
-        <svg class="figure" viewBox="0 0 20 24">
-          <!-- 팔은 몸 뒤에 둔다. 앞에 두면 몸을 가로질러 지저분해진다 -->
-          <rect class="arm one" x="3.4" y="11.4" width="2.5" height="5.9" rx="1.25" />
-          <rect class="arm two" x="14.1" y="11.4" width="2.5" height="5.9" rx="1.25" />
-
-          <rect class="body" x="5.5" y="10.7" width="9" height="7.8" rx="3.5" />
-
-          <!-- 머리를 몸보다 크게 잡으면 귀엽게 읽힌다 -->
-          <circle class="head" cx="10" cy="5.9" r="5.6" />
-
-          <!-- 쓴 것 네 가지. 같은 사람은 늘 같은 걸 쓴다 -->
-          <g v-if="w.hat === 1" class="gear">
-            <path d="M4.6 4.6a5.6 5.6 0 0 1 10.8 0z" />
-            <circle cx="10" cy="0.7" r="1.15" />
-          </g>
-          <g v-else-if="w.hat === 2" class="gear">
-            <path d="M4.8 5.2a5.4 5.4 0 0 1 10.4 0z" />
-            <rect x="2.2" y="4.9" width="9" height="1.7" rx="0.85" />
-          </g>
-          <g v-else-if="w.hat === 3" class="gear">
-            <circle cx="6.4" cy="2.6" r="1.9" />
-            <circle cx="10" cy="1.5" r="2.1" />
-            <circle cx="13.6" cy="2.6" r="1.9" />
-          </g>
-
-          <circle class="eye" cx="8" cy="6.4" r="0.95" />
-          <circle class="eye" cx="12" cy="6.4" r="0.95" />
-
-          <rect class="leg one" x="6.5" y="17.9" width="2.8" height="4.7" rx="1.4" />
-          <rect class="leg two" x="10.7" y="17.9" width="2.8" height="4.7" rx="1.4" />
-        </svg>
-      </div>
-    </TransitionGroup>
-    </div>
-
-    <!--
-      배경 고르기.
-      마당 안에 버튼을 넣었더니 휴대폰에서 그 줄이 마당 폭의 절반을 넘게 차지했다.
-      무대를 가리지 않게 밖으로 빼고, 다섯 개를 다 늘어놓는 대신
-      앞뒤로 한 칸씩 넘기게 했다.
-      이름도 뺐다. 무대를 보면 어디인지 알 수 있어서 굳이 적을 필요가 없었다.
-    -->
-    <div class="switcher" role="group" :aria-label="configStore.t('yard.aria')">
+    <!-- 무대 고르기 -->
+    <div class="picker" role="group" :aria-label="configStore.t('yard.aria')">
       <button
         type="button"
         class="arrow"
         :aria-label="configStore.t('yard.prev')"
-        :title="configStore.t('yard.prev')"
         @click="stepTheme(-1)"
       >
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5" /></svg>
@@ -345,7 +420,6 @@ const walkers = computed(() => {
         type="button"
         class="arrow"
         :aria-label="configStore.t('yard.next')"
-        :title="configStore.t('yard.next')"
         @click="stepTheme(1)"
       >
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5" /></svg>
@@ -356,12 +430,7 @@ const walkers = computed(() => {
 
 <style scoped>
 /*
- * 판 아래 이어지는 작은 마당.
- * 바닥선 하나만 그었을 때는 캐릭터가 허공에 떠 보였다.
- * 언덕과 나무를 몇 개 놓으니 비로소 '어딘가' 가 되었다.
- */
-/*
- * 삽화 제목 줄.
+ * 도판 제목 줄.
  * 도판 번호와 이름, 그 사이를 금색 실선이 잇는다.
  * 도감이나 화보의 도판 캡션에서 가져온 형식이다.
  */
@@ -382,7 +451,6 @@ const walkers = computed(() => {
   letter-spacing: 0.04em;
   color: var(--color-ink-2);
 }
-/* 이름과 무대 사이를 잇는 실선. 남는 자리를 전부 차지한다 */
 .plate-rule {
   flex: 1;
   height: 1px;
@@ -396,14 +464,28 @@ const walkers = computed(() => {
   color: var(--color-ink-3);
 }
 
-.yard {
+/* ── 판 ── */
+.stage {
   position: relative;
-  height: 120px;
   margin-top: 8px;
+  height: 132px;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-gold) 30%, var(--color-line));
   border-radius: 4px;
-  overflow: hidden;
-  pointer-events: none;
+  cursor: pointer;
+  /*
+   * 접혔다 펼쳐질 때 높이가 흐르게 한다.
+   * 툭 열리면 아래 있던 것들이 순간이동한 것처럼 보인다.
+   */
+  transition: height var(--dur-move) var(--ease-out);
+}
+.stage.open {
+  /* 화폭이 800x260 이라 이 비로 열어야 그림이 비율 그대로 다 들어온다 */
+  height: clamp(200px, 32.5vw, 279px);
+}
+.stage:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
 }
 
 .scene {
@@ -411,327 +493,251 @@ const walkers = computed(() => {
   inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  display: block;
 }
 
-/*
- * 무대 색.
- * 무대마다 색이 다르지만 판정 색(빨강·주황·초록)과는 겹치지 않게 골랐다.
- * 색을 변수로 두고 무대 클래스에서만 값을 바꾼다.
- */
-.yard {
-  --sky: #eef3f5;
-  --far: #dbe6dd;
-  --near: #cddcd0;
-  --floor: #c3d4c6;
-  --edge: #b2c6b6;
-  --trunk: #8a7050;
-  --leaf: #7e9c72;
-  --leaf-2: #8dab80;
-  --wood: #9b7f5c;
-  --post: #8a949b;
-  --bulb: #e8d9a8;
-}
-.yard.seaside {
-  --sky: #e7f1f6;
-  --floor: #ecdfc4;
-  --edge: #dbc9a6;
-  --post: #9aa6ad;
-}
-.yard.night {
-  --sky: #2c3651;
-  --far: #35415e;
-  --near: #3d4a6b;
-  --floor: #46536f;
-  --edge: #566385;
-  --trunk: #4a4436;
-  --leaf: #40584a;
-  --post: #6b7690;
-  --bulb: #f2e2a6;
-}
-.yard.snow {
-  --sky: #e9f0f6;
-  --far: #f2f6fa;
-  --near: #e6edf3;
-  --floor: #f4f8fb;
-  --edge: #d6e0e8;
-  --trunk: #7d7266;
-}
-.yard.city {
-  --sky: #e9eef2;
-  --floor: #b9c2ca;
-  --edge: #a7b2bb;
-}
-
-/*
- * ── 어두운 화면에서의 마당 ─────────────────────────
- *
- * 마당은 이 화면에서 유일하게 색을 마음껏 쓴 곳이고 그건 그대로 뒀다.
- * 다만 어두운 화면에서 낮 마당(들판·바닷가·눈밭·골목)을 그대로 깔면
- * 가로로 긴 흰 판이 되어, 어두운 지면에 구멍이 뚫린 것처럼 보였다.
- * 판정을 읽으려고 내려가는 길에 이 판이 눈을 한 번 때린다.
- *
- * 색을 다시 고르지는 않았다. 여기 색은 무대의 성격이라 밤이라고 다른 곳이 되면 안 된다.
- * 대신 무대의 불을 조금 줄였다. 같은 마당을 저녁에 보는 정도다.
- *
- * 밤 마당은 건드리지 않는다. 이미 밤이라 더 줄이면 아무것도 안 보인다.
- */
-:root[data-theme='dark'] .yard:not(.night) {
-  filter: brightness(0.74) saturate(0.88);
-}
-
-/* 어두운 화면에서는 테두리도 한 단 진하게. 옅으면 판의 끝이 어디인지 안 보인다 */
-:root[data-theme='dark'] .yard {
-  border-color: var(--color-line-2);
-}
-
-.sky {
-  fill: var(--sky);
-}
-.hill.far {
-  fill: var(--far);
-}
-.hill.near {
-  fill: var(--near);
-}
-.soil,
-.sand,
-.road {
-  fill: var(--floor);
-}
-.edge {
-  stroke: var(--edge);
-  stroke-width: 1;
-}
-
-.tree rect,
-.bare rect {
-  fill: var(--trunk);
-}
-.tree circle {
-  fill: var(--leaf);
-}
-.tree.small circle {
-  fill: var(--leaf-2);
-}
-.bare path {
-  stroke: var(--trunk);
+/* 모티프는 금박 선으로만. 면을 칠하지 않는다 */
+.motif {
+  fill: none;
   stroke-width: 1.6;
   stroke-linecap: round;
-  fill: none;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity var(--dur-enter) var(--ease-out);
 }
-.bench rect,
-.boat path,
-.boat rect {
-  fill: var(--wood);
-}
-.lamp rect,
-.parasol rect {
-  fill: var(--post);
-}
-.lamp circle {
-  fill: var(--bulb);
-}
-
-/* ── 바닷가 ── */
-.sun {
-  fill: #f0d9a4;
-}
-.sea {
-  fill: #a9cfdf;
-}
-.wave {
-  stroke: #c3dfea;
-  stroke-width: 1.6;
-  fill: none;
-}
-.wave.two {
-  stroke: #bcd9e6;
-}
-.parasol path {
-  fill: #c98b7a;
+/*
+ * 접혀 있을 때는 모티프가 화면 밖(하늘 쪽)이라 어차피 안 보이지만,
+ * 열릴 때 그림이 잘려 올라오는 대신 배어 나오게 해서
+ * '접혀 있던 게 드러난다' 는 느낌을 준다.
+ */
+.stage.open .motif {
+  opacity: 0.85;
+  transition-delay: 90ms;
 }
 
-/* ── 밤하늘 ── */
-.moon {
-  fill: #f2e2a6;
-}
-/* 하늘색으로 한 겹 덮어 초승달을 만든다 */
-.moon-cut {
-  fill: var(--sky);
-}
-
-/* ── 눈밭 ── */
-.snowman circle {
-  fill: #ffffff;
-  stroke: #dbe4ea;
-  stroke-width: 1;
-}
-.snowman .dot {
-  fill: #55606a;
-  stroke: none;
-}
-
-/* ── 골목 ── */
-.block rect {
-  fill: #ccd5dc;
-}
-.window rect {
-  fill: #eef3f6;
-}
-.lane {
-  stroke: #d9e0e6;
-  stroke-width: 1.6;
-  fill: none;
-}
-
-/* ── 하늘에 떠 있는 것 ── */
-.sky-lane {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
+/* 결. 아주 옅게만 얹는다. 진하면 그림이 지저분해진다 */
+.grain {
+  opacity: 0.055;
+  mix-blend-mode: multiply;
   pointer-events: none;
 }
-.cloud {
+
+/* ── 걸어다니는 사람들 ── */
+.walkers {
   position: absolute;
-  width: 34px;
-  height: 11px;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 999px;
-  box-shadow:
-    9px -5px 0 -1px rgba(255, 255, 255, 0.85),
-    -9px -3px 0 -3px rgba(255, 255, 255, 0.85);
+  inset: 0;
+  pointer-events: none;
 }
-.cloud.one {
-  top: 14px;
-  animation: drift 210s linear infinite;
+.walker {
+  position: absolute;
+  /*
+   * 지면은 접혀 있든 펼쳐져 있든 늘 판의 아래쪽이다.
+   * 다만 맨 아래 22px 은 좌하단 라벨과 우하단 서명이 쓰는 자리라 비켜 선다.
+   * 처음엔 그 위를 걷게 했더니 사람이 '들판' 글자를 밟고 지나갔다.
+   */
+  bottom: calc(24px + var(--back) * 0.42);
+  left: 0;
+  transform: scale(var(--scale));
+  transform-origin: bottom center;
+  animation: stroll var(--dur) linear var(--delay) infinite alternate;
 }
-.cloud.two {
-  top: 30px;
-  scale: 0.8;
-  animation: drift 280s linear -90s infinite;
-}
-.cloud.three {
-  top: 8px;
-  scale: 1.15;
-  animation: drift 340s linear -200s infinite;
-}
-@keyframes drift {
+@keyframes stroll {
   from {
-    transform: translateX(-60px);
+    left: 2%;
   }
   to {
-    transform: translateX(calc(100vw + 60px));
+    left: 94%;
   }
 }
 
-/* 별은 자리마다 다른 박자로 아주 천천히 깜빡인다 */
-.star {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: #f4f0dc;
-  border-radius: 50%;
-  animation: twinkle 5s ease-in-out infinite;
-}
-.star.s1 { top: 12px; left: 8%; }
-.star.s2 { top: 26px; left: 17%; animation-delay: -1.2s; }
-.star.s3 { top: 9px; left: 29%; animation-delay: -2.4s; }
-.star.s4 { top: 33px; left: 38%; animation-delay: -0.6s; }
-.star.s5 { top: 17px; left: 47%; animation-delay: -3.1s; }
-.star.s6 { top: 28px; left: 56%; animation-delay: -1.8s; }
-.star.s7 { top: 11px; left: 66%; animation-delay: -4.2s; }
-.star.s8 { top: 31px; left: 76%; animation-delay: -2.7s; }
-.star.s9 { top: 20px; left: 90%; animation-delay: -3.6s; }
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* 눈은 위에서 아래로 천천히 */
-.flake {
-  position: absolute;
-  top: -6px;
-  width: 3px;
-  height: 3px;
-  background: #ffffff;
-  border-radius: 50%;
-  animation: fall 14s linear infinite;
-}
-.flake.f1 { left: 6%; }
-.flake.f2 { left: 15%; animation-delay: -3s; animation-duration: 18s; }
-.flake.f3 { left: 24%; animation-delay: -7s; }
-.flake.f4 { left: 33%; animation-delay: -11s; animation-duration: 20s; }
-.flake.f5 { left: 45%; animation-delay: -5s; }
-.flake.f6 { left: 55%; animation-delay: -9s; animation-duration: 17s; }
-.flake.f7 { left: 66%; animation-delay: -2s; }
-.flake.f8 { left: 75%; animation-delay: -13s; animation-duration: 21s; }
-.flake.f9 { left: 85%; animation-delay: -6s; }
-.flake.f10 { left: 94%; animation-delay: -10s; animation-duration: 16s; }
-@keyframes fall {
-  to {
-    transform: translateY(126px);
-  }
+.figure {
+  width: 30px;
+  height: 35px;
+  display: block;
+  overflow: visible;
 }
 
 /*
- * 배경 고르기.
- *
- * 처음엔 마당 안에 이름 다섯 개를 늘어놓았는데 휴대폰에서 마당 폭의
- * 절반을 넘게 차지해 무대를 가렸다. 밖으로 빼고 화살표만 남겼더니
- * 이번엔 누를 수 있는 것인지조차 알 수 없었다.
- * 테두리를 둘러 버튼처럼 보이게 하고, 가운데에 점을 놓아
- * 바꿀 게 다섯 개라는 것과 지금 어디인지를 함께 보이게 했다.
+ * 스티커 컷아웃.
+ * 아래 층은 흰색으로 두껍게 둘러 오려낸 자국을 만들고 위에 진짜 색을 얹는다.
+ * 표지에 스티커를 붙인 것처럼 보이는 게 이 라인의 핵심 장치다.
  */
-.switcher {
+.cut * {
+  fill: #fff;
+  stroke: #fff;
+  stroke-width: 4.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.ink .body,
+.ink .arm,
+.ink .leg {
+  fill: var(--coat);
+}
+.ink .head {
+  fill: #f6e7d8;
+}
+.ink .eye {
+  fill: #2b2b2f;
+}
+.ink .gear {
+  fill: color-mix(in srgb, var(--coat) 72%, #1a1a1e);
+  stroke: color-mix(in srgb, var(--coat) 72%, #1a1a1e);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 걸음. 다리만 번갈아 움직인다 */
+.ink .leg.one,
+.cut .leg.one {
+  animation: stepA var(--step) ease-in-out infinite;
+}
+.ink .leg.two,
+.cut .leg.two {
+  animation: stepB var(--step) ease-in-out infinite;
+}
+.ink .arm.one,
+.cut .arm.one {
+  animation: stepB var(--step) ease-in-out infinite;
+}
+.ink .arm.two,
+.cut .arm.two {
+  animation: stepA var(--step) ease-in-out infinite;
+}
+@keyframes stepA {
+  50% {
+    transform: translateY(-1.1px) rotate(7deg);
+  }
+}
+@keyframes stepB {
+  50% {
+    transform: translateY(-1.1px) rotate(-7deg);
+  }
+}
+.leg,
+.arm {
+  transform-origin: center top;
+  transform-box: fill-box;
+}
+
+/* 사람이 늘고 줄 때 */
+.walker-enter-active,
+.walker-leave-active {
+  transition:
+    opacity var(--dur-move) var(--ease-out),
+    transform var(--dur-move) var(--ease-out);
+}
+.walker-enter-from,
+.walker-leave-to {
+  opacity: 0;
+  transform: scale(calc(var(--scale) * 0.6));
+}
+
+/* ── 고정 프레임 ── */
+.frame-label,
+.frame-sign {
+  position: absolute;
+  bottom: 7px;
+  margin: 0;
+  font-size: 8.5px;
+  pointer-events: none;
+  /* 어두운 무대든 밝은 무대든 읽히게 */
+  mix-blend-mode: difference;
+  color: #d8d4cc;
+}
+.frame-label {
+  left: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.frame-sign {
+  right: 10px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* 넓게 볼 수 있다는 표시 */
+.hint {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: #f2ead9;
+  background: rgba(12, 14, 18, 0.34);
+  border: 1px solid rgba(242, 234, 217, 0.28);
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-state) var(--ease-out);
+}
+.stage:hover .hint,
+.stage:focus-visible .hint,
+.stage.open .hint {
+  opacity: 1;
+}
+.hint svg {
+  width: 9px;
+  height: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  transition: transform var(--dur-move) var(--ease-out);
+}
+.stage.open .hint svg {
+  transform: rotate(180deg);
+}
+
+/* ── 무대 고르기 ── */
+.picker {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 10px;
 }
-
 .arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   width: 22px;
   height: 22px;
   color: var(--color-ink-3);
-  background: var(--color-paper);
+  background: none;
   border: 1px solid var(--color-line);
-  border-radius: 50%;
+  border-radius: 999px;
   cursor: pointer;
   transition:
-    color 0.12s ease,
-    border-color 0.12s ease;
+    color var(--dur-state) var(--ease-out),
+    border-color var(--dur-state) var(--ease-out);
 }
 .arrow:hover {
   color: var(--color-ink);
   border-color: var(--color-line-2);
 }
-.arrow:active {
-  background: var(--color-paper-2);
-}
 .arrow svg {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-
 .dots {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 .dot {
   width: 5px;
@@ -739,178 +745,40 @@ const walkers = computed(() => {
   padding: 0;
   background: var(--color-line-2);
   border: 0;
-  border-radius: 50%;
+  border-radius: 999px;
   cursor: pointer;
   transition:
-    background 0.14s ease,
-    transform 0.14s ease;
+    background-color var(--dur-state) var(--ease-out),
+    transform var(--dur-state) var(--ease-out);
 }
 .dot:hover {
   background: var(--color-ink-3);
 }
 .dot.on {
-  background: var(--color-ink);
-  transform: scale(1.35);
-}
-
-/* ── 걸어다니는 사람들 ── */
-
-/*
- * 폭을 마당 전체로 잡아 둔다.
- * transform 의 100% 는 컨테이너가 아니라 자기 자신의 폭을 뜻한다.
- * 처음에 이걸 몰라서 사람이 제자리에서 20px 만 오갔다.
- */
-.walker {
-  position: absolute;
-  pointer-events: none;
-  bottom: calc(4px + var(--back));
-  left: 0;
-  width: 100%;
-  /*
-   * 걸음은 일정한 속도로.
-   * ease-in-out 으로 뒀더니 양 끝에서 느려져 거기에 여럿이 뭉쳐 서 있었다.
-   * 도는 동작은 keyframes 안에 멈추는 구간으로 따로 넣었다.
-   */
-  animation: patrol var(--dur) linear var(--delay) infinite;
-}
-
-.figure {
-  display: block;
-  width: 26px;
-  height: 31px;
-  /*
-   * 크기와 좌우 뒤집기는 transform 이 아니라 scale 속성으로 준다.
-   * transform 은 위아래로 흔들리는 데 써야 해서 비워 뒀다.
-   */
-  scale: var(--scale) var(--scale);
-  transform-origin: bottom center;
-  animation:
-    bob var(--step) ease-in-out infinite alternate,
-    face var(--dur) step-end var(--delay) infinite;
-}
-
-.body,
-.arm,
-.leg,
-.gear {
-  fill: var(--coat);
-}
-/* 얼굴은 옷보다 밝게. 표정이 보이려면 대비가 있어야 한다 */
-.head {
-  fill: #f4ede4;
-}
-.eye {
-  fill: #2b3138;
-}
-
-.leg {
-  transform-origin: 50% 12%;
-  animation: step var(--step) ease-in-out infinite alternate;
-}
-.leg.two,
-.arm.two {
-  animation-direction: alternate-reverse;
-}
-
-/* 팔은 다리와 반대로 흔들린다. 같은 쪽으로 가면 걷는 것처럼 안 보인다 */
-.arm {
-  transform-origin: 50% 10%;
-  animation: swing var(--step) ease-in-out infinite alternate-reverse;
-}
-.arm.two {
-  animation-direction: alternate;
-}
-
-/*
- * 끝까지 가면 잠깐 멈췄다가 돌아온다.
- * 멈추는 구간이 있어야 몸을 돌리는 것처럼 보인다.
- */
-@keyframes patrol {
-  0% {
-    transform: translateX(6px);
-  }
-  46% {
-    transform: translateX(calc(100% - 32px));
-  }
-  54% {
-    transform: translateX(calc(100% - 32px));
-  }
-  96% {
-    transform: translateX(6px);
-  }
-  100% {
-    transform: translateX(6px);
-  }
-}
-/* 돌아서는 순간에 맞춰 몸도 뒤집는다 */
-@keyframes face {
-  0% {
-    scale: var(--scale) var(--scale);
-  }
-  50% {
-    scale: calc(var(--scale) * -1) var(--scale);
-  }
-  98% {
-    scale: var(--scale) var(--scale);
-  }
-}
-@keyframes bob {
-  to {
-    transform: translateY(-1.5px);
-  }
-}
-@keyframes step {
-  from {
-    transform: rotate(-14deg);
-  }
-  to {
-    transform: rotate(14deg);
-  }
-}
-@keyframes swing {
-  from {
-    transform: rotate(-10deg);
-  }
-  to {
-    transform: rotate(10deg);
-  }
-}
-
-/* 사람이 늘거나 줄면 함께 나타나고 사라진다 */
-.walker-enter-active,
-.walker-leave-active {
-  transition: opacity 0.6s ease;
-}
-.walker-enter-from,
-.walker-leave-to {
-  opacity: 0;
+  background: var(--color-gold);
+  transform: scale(1.5);
 }
 
 @media (max-width: 560px) {
-  .yard {
-    height: 100px;
+  .stage {
+    height: 116px;
+  }
+  .figure {
+    width: 26px;
+    height: 30px;
   }
 }
 
-/*
- * 움직임을 끈 사람에게는 걷지 않는다.
- * 다만 지우지는 않는다. 마당에 챙기는 수만큼 서 있는 것으로 뜻은 남는다.
- */
 @media (prefers-reduced-motion: reduce) {
-  .dot {
-    transition: none;
-  }
   .walker,
-  .figure,
-  .leg,
-  .arm,
-  .cloud {
+  .ink .leg,
+  .ink .arm,
+  .cut .leg,
+  .cut .arm {
     animation: none;
   }
   .walker {
-    /* 걷지 않으니 고르게 세워 둔다 */
-    left: calc((var(--back) * 3%) + 6%);
-    width: auto;
+    left: calc(6% + var(--back) * 2.4%);
   }
 }
 </style>

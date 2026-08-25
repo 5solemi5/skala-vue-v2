@@ -68,6 +68,8 @@ const fetchCurrent = async (city, lang) => {
      * 해가 다른 자리에 있어야 창밖처럼 보인다.
      */
     clouds: data.clouds?.all ?? 0,
+    // 그곳이 UTC 에서 몇 초 떨어져 있는지. '그곳의 오늘 아침 6시' 를 계산할 때 쓴다
+    tz: data.timezone ?? 0,
     sunrise: data.sys?.sunrise ? hourOf(data.sys.sunrise, data.timezone) : 6,
     sunset: data.sys?.sunset ? hourOf(data.sys.sunset, data.timezone) : 18,
     // 판정에 쓰는 값. 언어와 상관없이 늘 같은 영문 코드다.
@@ -210,25 +212,40 @@ export const fetchHourly = async (city) => {
     params: {
       latitude: city.lat,
       longitude: city.lon,
-      hourly: 'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m',
+      hourly:
+        'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,cloud_cover',
       timezone: 'Asia/Seoul',
       forecast_days: 2,
+      /*
+       * 오늘 지나간 시각도 함께 받는다.
+       * 창에서 '해뜰 때' 를 보려면 오늘 아침 6시의 구름양이 있어야 하는데,
+       * 앞날치만 받으면 오후에 열었을 때 그 시각이 이미 지나 있어 빈다.
+       */
+      past_days: 1,
     },
   })
 
   const h = data.hourly
   const now = new Date()
 
-  return h.time
-    .map((t, i) => ({
-      at: new Date(t),
-      time: t.slice(11, 16),
-      hour: Number(t.slice(11, 13)),
-      temp: Math.round(h.temperature_2m[i]),
-      humidity: h.relative_humidity_2m[i],
-      rainProb: h.precipitation_probability[i] ?? 0,
-      wind: Number((h.wind_speed_10m[i] ?? 0).toFixed(1)),
-    }))
-    .filter((row) => row.at >= now)
-    .slice(0, 18)
+  const all = h.time.map((t, i) => ({
+    at: new Date(t),
+    time: t.slice(11, 16),
+    hour: Number(t.slice(11, 13)),
+    temp: Math.round(h.temperature_2m[i]),
+    humidity: h.relative_humidity_2m[i],
+    rainProb: h.precipitation_probability[i] ?? 0,
+    wind: Number((h.wind_speed_10m[i] ?? 0).toFixed(1)),
+    clouds: h.cloud_cover?.[i] ?? null,
+  }))
+
+  /*
+   * 두 벌로 나눠 돌려준다.
+   *   ahead  앞으로 열여덟 시간 — 시간축이 쓴다
+   *   all    오늘 지나간 시각까지 — 창이 '해뜰 때' 를 그릴 때 쓴다
+   */
+  return {
+    all,
+    ahead: all.filter((row) => row.at >= now).slice(0, 18),
+  }
 }

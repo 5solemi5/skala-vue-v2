@@ -77,6 +77,27 @@ const coord = computed(() => {
               <p class="region">{{ city.region }}</p>
               <h2>{{ city.name }}</h2>
               <p v-if="coord" class="coord engrave">{{ coord }}</p>
+              <!--
+                지금 창에 떠 있는 게 몇 시의 하늘인지.
+                '해질 때' 를 골라 놓고 그게 몇 시인지 모르면
+                그 사람 하루의 어디쯤인지 가늠할 수가 없다.
+              -->
+              <!--
+                지금 창에 떠 있는 게 몇 시의 하늘인지.
+                '지금' 을 보고 있을 때만 '그곳은 지금' 이라고 적는다.
+                해질 때를 골라 놓고 '그곳은 지금 19:10' 이라고 쓰면 거짓말이 된다.
+              -->
+              <p class="when engrave">
+                <template v-if="skyStore.view === 'now'">
+                  {{ configStore.t('view.there') }} {{ skyStore.atLabel }}
+                </template>
+                <template v-else>
+                  {{ skyStore.atLabel }}
+                  <span class="when-view">
+                    · {{ skyStore.views.find((v) => v.id === skyStore.view)?.ko }}
+                  </span>
+                </template>
+              </p>
             </div>
 
             <div class="temp">
@@ -111,6 +132,8 @@ const coord = computed(() => {
         {{ configStore.t('hero.rainProb') }} <span class="tnum">{{ city.rainProb }}%</span>
         <span class="sep">·</span>
         <span class="tnum">{{ city.wind }}m/s</span>
+        <!-- 렌즈를 씌웠으면 그 렌즈가 무엇을 보여 주는지 숫자로 밝힌다 -->
+        <span v-if="skyStore.lensNote" class="lens-note">{{ skyStore.lensNote }}</span>
       </p>
 
       <!--
@@ -263,6 +286,15 @@ h2 {
     0 1px 2px rgba(0, 0, 0, 0.55),
     0 3px 16px rgba(0, 0, 0, 0.5);
 }
+.when {
+  margin: 4px 0 0;
+  color: rgba(242, 234, 217, 0.72);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+.when-view {
+  color: var(--color-gold-lit);
+}
+
 .coord {
   margin: 7px 0 0;
   color: var(--color-gold-lit);
@@ -304,6 +336,14 @@ h2 {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--color-ink-2);
+}
+/* 렌즈가 보여 주는 값. 판정 색과 겹치지 않게 금색 계열로 둔다 */
+.lens-note {
+  margin-left: var(--sp-3);
+  padding-left: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--color-gold);
+  border-left: 1px solid var(--color-line);
 }
 .sep {
   margin: 0 6px;

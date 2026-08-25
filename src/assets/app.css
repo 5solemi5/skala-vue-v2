@@ -313,12 +313,15 @@ a {
  * 오디세이아·악의 꽃처럼 문학적인 판은 세리프,
  * 자오선·먹처럼 건조한 판은 산세리프로 표제를 세운다.
  */
+/*
+ * 표제 서체.
+ *
+ * 전에는 고른 하늘 에디션이 이 값을 정했다. 에디션을 걷어내면서
+ * 기본을 세리프로 옮겼다. 참고한 브랜드가 영문 표제는 세리프,
+ * 한글 본문은 산세리프로 쓰는데, Cormorant 에 한글이 없어서
+ * 한글은 저절로 산세리프로 떨어진다. 한 줄로 그 짜임이 나온다.
+ */
 :root {
-  --font-display: var(--font-sans);
-  --display-spacing: -0.01em;
-  --display-weight: 700;
-}
-:root[data-display='serif'] {
   --font-display: var(--font-serif);
   /* 세리프는 자간을 조금 벌려야 한글과 나란히 섰을 때 성기지 않다 */
   --display-spacing: 0.01em;

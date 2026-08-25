@@ -14,15 +14,18 @@ import { fetchAllWeather, fetchHourly, fetchCityWeather } from '../api/weatherAp
 import { useCityStore } from '@/stores/cityStore'
 import { usePeopleStore } from '@/stores/peopleStore'
 import { useConfigStore } from '@/stores/configStore'
+import { useSkyStore } from '@/stores/skyStore'
 
 const router = useRouter()
 const route = useRoute()
 const configStore = useConfigStore()
 const cityStore = useCityStore()
 const peopleStore = usePeopleStore()
+const skyStore = useSkyStore()
 
 const weatherList = ref([])
 const hourlyRows = ref([])
+const hourlyAll = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
 const failedCities = ref([])
@@ -83,13 +86,19 @@ const loadHourly = async () => {
   const city = cityStore.cities.find((c) => c.id === selectedId.value)
   if (!city) {
     hourlyRows.value = []
+    hourlyAll.value = []
     return
   }
   try {
-    hourlyRows.value = await fetchHourly(city)
+    const { ahead, all } = await fetchHourly(city)
+    hourlyRows.value = ahead
+    // 창은 오늘 지나간 시각까지 있어야 '해뜰 때' 를 그릴 수 있다
+    hourlyAll.value = all
+    skyStore.setHourly(all)
   } catch (error) {
     console.error('시간대별 예보를 불러오지 못했습니다:', error)
     hourlyRows.value = []
+    hourlyAll.value = []
   }
 }
 
