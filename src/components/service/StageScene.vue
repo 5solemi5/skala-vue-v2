@@ -515,240 +515,173 @@ const ridges = computed(() => {
         </g>
       </g>
 
-      <!--
-        ⑥'' 나는 갈매기.
-
-        새 떼(birds)는 한 무리가 대열을 지어 지나간다. 갈매기는 그렇게
-        날지 않는다 — 저마다 다른 높이에서 각자 오르내린다.
-        그래서 한 마리씩 다른 궤도와 박자를 준다.
-
-        날개는 갈매기의 전부다. 몸통을 그리지 않고 획 하나로 그린다.
-        멀리서 보는 갈매기는 실제로 그렇게만 보인다.
-      -->
-      <g v-if="stage.beach" class="gulls" fill="none" stroke-linecap="round">
-        <g
-          v-for="g in scene.gulls"
-          :key="`gl${g.i}`"
-          class="gull"
-          :class="{ back: g.back }"
-          :style="{
-            '--dur': `${g.dur}s`,
-            '--delay': `${g.delay}s`,
-            '--rise': `${g.rise}px`,
-          }"
-        >
-          <g :transform="`translate(0 ${g.y}) scale(${g.back ? -g.sc : g.sc} ${g.sc})`">
-            <!--
-              날개는 갈매기의 전부다. 몸통을 그리지 않고 획 하나로 그린다.
-              멀리서 보는 갈매기는 실제로 그렇게만 보인다.
-
-              희게 그린다. 바다색(near)으로 그렸더니 물 위를 날 때
-              바다에 묻혀 한 마리도 안 보였다. 갈매기는 원래 희다.
-            -->
-            <path
-              class="wing"
-              stroke="#fbfcfd"
-              :stroke-width="2.1 / g.sc"
-              d="M-9 0 q4.6 -5.2 9 -0.6 q4.4 -4.6 9 0.6"
-            />
-            <path
-              class="wing tip"
-              :stroke="stage.near"
-              :stroke-width="0.8 / g.sc"
-              opacity="0.5"
-              d="M-9 0 q4.6 -5.2 9 -0.6 q4.4 -4.6 9 0.6"
-            />
-          </g>
-        </g>
+      <g v-else-if="stage.motif === 'moon'">
+        <path d="M628 62a38 38 0 1 0 30 60a30 30 0 1 1-30-60z" />
+        <path d="M556 128l4-11 4 11 11 4-11 4-4 11-4-11-11-4z" />
       </g>
-
-      <!-- ⑦ 모티프 — 무대마다 하나 -->
-      <g
-        class="motif"
-        :stroke="stage.lang === 'illustrated' ? stage.motifColor || stage.accent : stage.accent"
-        :fill="stage.lang === 'illustrated' ? stage.motifColor || stage.accent : 'none'"
-      >
-        <g v-if="stage.motif === 'tree'">
-          <path d="M596 200V96" />
-          <path d="M596 132l-28-22M596 150l30-24M596 114l-20-18" />
-          <path d="M548 96a48 36 0 0 1 96 0a48 32 0 0 1-96 0z" />
+      <g v-else-if="stage.motif === 'bareTree'">
+        <path d="M600 202V74" />
+        <path d="M600 116l-32-28M600 140l34-30M600 94l-24-24M600 160l-28-22M600 106l28-26" />
+      </g>
+      <g v-else-if="stage.motif === 'lamp'">
+        <path d="M616 204V76" />
+        <path d="M616 76h-36" />
+        <path d="M566 76a13 10 0 0 0 26 0z" />
+        <path d="M579 96l-9 18M579 96l9 18M579 96v22" class="dim" />
+      </g>
+      <g v-else-if="stage.motif === 'voyagerInk'">
+        <g :stroke="stage.ink" stroke-width="2.4">
+          <path d="M600 118v34M566 96L486 40M636 100l84-52M600 84V40" />
+          <path d="M584 118h32l4 14h-40z" />
         </g>
-        <g v-else-if="stage.motif === 'gull'">
-          <path
-            d="M520 96c22-30 44-34 62-12c18-22 40-18 62 12c-24-10-44-4-62 12c-18-16-38-22-62-12z"
-          />
+        <ellipse cx="600" cy="88" rx="40" ry="34" :stroke="stage.accent" stroke-width="2.6" />
+        <ellipse cx="600" cy="88" rx="19" ry="16" :stroke="stage.accent" stroke-width="1.6" />
+      </g>
+      <g v-else-if="stage.motif === 'dino'">
+        <path
+          d="M540 168c-4-30 10-52 34-60c6-22 26-32 46-24c18 7 24 26 18 42c14 8 20 22 16 36c-4 10-14 8-18 0c-4 12-16 14-22 4c-8 10-22 8-26-2c-10 12-26 12-30 4c-8 6-16 4-18 0z"
+        />
+        <circle cx="616" cy="96" r="3.2" fill="#1c1c20" stroke="none" />
+      </g>
+      <g v-else-if="stage.motif === 'vine'" class="gloss">
+        <path d="M470 176c40-6 60-28 66-58c4-22 20-34 40-30" />
+        <path d="M536 118a13 13 0 1 0 0-26a13 13 0 0 0 0 26z" />
+        <path d="M576 88a11 11 0 1 0 0-22a11 11 0 0 0 0 22z" />
+        <path d="M614 108c30-4 46-22 48-46" />
+        <path d="M662 62a12 12 0 1 0 0-24a12 12 0 0 0 0 24z" />
+        <path d="M500 156c-14-10-16-26-6-38" />
+      </g>
+      <g v-else-if="stage.motif === 'singularity'">
+        <g class="groove">
+          <circle v-for="r0 in [30, 48, 66, 84, 102]" :key="r0" cx="600" cy="106" :r="r0" />
         </g>
-        <g v-else-if="stage.motif === 'moon'">
-          <path d="M628 62a38 38 0 1 0 30 60a30 30 0 1 1-30-60z" />
-          <path d="M556 128l4-11 4 11 11 4-11 4-4 11-4-11-11-4z" />
+        <path d="M600 106L742 44" stroke-width="1.2" />
+        <circle cx="600" cy="106" r="4.5" :fill="stage.accent" stroke="none" />
+      </g>
+      <g v-else-if="stage.motif === 'stars'">
+        <path d="M576 56c4 22 10 28 32 32c-22 4-28 10-32 32c-4-22-10-28-32-32c22-4 28-10 32-32z" />
+        <path
+          d="M648 108c2.6 14 6.4 18 20 20c-13.6 2-17.4 6-20 20c-2.6-14-6.4-18-20-20c13.6-2 17.4-6 20-20z"
+        />
+        <circle cx="690" cy="62" r="9" />
+        <ellipse
+          cx="690"
+          cy="62"
+          rx="17"
+          ry="5"
+          fill="none"
+          :stroke="stage.accent"
+          stroke-width="1.8"
+        />
+      </g>
+      <g v-else-if="stage.motif === 'glasses'">
+        <g v-for="(x, i) in [536, 600, 664]" :key="i">
+          <path :d="`M${x - 22} 62h44l-22 26z`" />
+          <path :d="`M${x} 88v30`" />
+          <path :d="`M${x - 13} 120h26`" />
         </g>
-        <g v-else-if="stage.motif === 'bareTree'">
-          <path d="M600 202V74" />
-          <path d="M600 116l-32-28M600 140l34-30M600 94l-24-24M600 160l-28-22M600 106l28-26" />
-        </g>
-        <g v-else-if="stage.motif === 'lamp'">
-          <path d="M616 204V76" />
-          <path d="M616 76h-36" />
-          <path d="M566 76a13 10 0 0 0 26 0z" />
-          <path d="M579 96l-9 18M579 96l9 18M579 96v22" class="dim" />
-        </g>
-        <g v-else-if="stage.motif === 'voyagerInk'">
-          <g :stroke="stage.ink" stroke-width="2.4">
-            <path d="M600 118v34M566 96L486 40M636 100l84-52M600 84V40" />
-            <path d="M584 118h32l4 14h-40z" />
-          </g>
-          <ellipse cx="600" cy="88" rx="40" ry="34" :stroke="stage.accent" stroke-width="2.6" />
-          <ellipse cx="600" cy="88" rx="19" ry="16" :stroke="stage.accent" stroke-width="1.6" />
-        </g>
-        <g v-else-if="stage.motif === 'dino'">
-          <path
-            d="M540 168c-4-30 10-52 34-60c6-22 26-32 46-24c18 7 24 26 18 42c14 8 20 22 16 36c-4 10-14 8-18 0c-4 12-16 14-22 4c-8 10-22 8-26-2c-10 12-26 12-30 4c-8 6-16 4-18 0z"
-          />
-          <circle cx="616" cy="96" r="3.2" fill="#1c1c20" stroke="none" />
-        </g>
-        <g v-else-if="stage.motif === 'vine'" class="gloss">
-          <path d="M470 176c40-6 60-28 66-58c4-22 20-34 40-30" />
-          <path d="M536 118a13 13 0 1 0 0-26a13 13 0 0 0 0 26z" />
-          <path d="M576 88a11 11 0 1 0 0-22a11 11 0 0 0 0 22z" />
-          <path d="M614 108c30-4 46-22 48-46" />
-          <path d="M662 62a12 12 0 1 0 0-24a12 12 0 0 0 0 24z" />
-          <path d="M500 156c-14-10-16-26-6-38" />
-        </g>
-        <g v-else-if="stage.motif === 'singularity'">
-          <g class="groove">
-            <circle v-for="r0 in [30, 48, 66, 84, 102]" :key="r0" cx="600" cy="106" :r="r0" />
-          </g>
-          <path d="M600 106L742 44" stroke-width="1.2" />
-          <circle cx="600" cy="106" r="4.5" :fill="stage.accent" stroke="none" />
-        </g>
-        <g v-else-if="stage.motif === 'stars'">
-          <path
-            d="M576 56c4 22 10 28 32 32c-22 4-28 10-32 32c-4-22-10-28-32-32c22-4 28-10 32-32z"
-          />
-          <path
-            d="M648 108c2.6 14 6.4 18 20 20c-13.6 2-17.4 6-20 20c-2.6-14-6.4-18-20-20c13.6-2 17.4-6 20-20z"
-          />
-          <circle cx="690" cy="62" r="9" />
-          <ellipse
-            cx="690"
-            cy="62"
-            rx="17"
-            ry="5"
-            fill="none"
-            :stroke="stage.accent"
-            stroke-width="1.8"
-          />
-        </g>
-        <g v-else-if="stage.motif === 'glasses'">
-          <g v-for="(x, i) in [536, 600, 664]" :key="i">
-            <path :d="`M${x - 22} 62h44l-22 26z`" />
-            <path :d="`M${x} 88v30`" />
-            <path :d="`M${x - 13} 120h26`" />
-          </g>
-          <circle cx="600" cy="164" r="11" :fill="stage.seal" :stroke="stage.seal" />
-        </g>
-        <!--
+        <circle cx="600" cy="164" r="11" :fill="stage.seal" :stroke="stage.seal" />
+      </g>
+      <!--
           심해의 주인공. 커다란 해파리 하나.
 
           갓은 반원 아래에 물결을 물려 닫는다. 그냥 반원이면 버섯이다.
           촉수는 길이를 다 다르게 둔다 — 같으면 빗자루로 보인다.
         -->
-        <g v-else-if="stage.motif === 'jelly'" class="bigjelly">
-          <path
-            class="bell"
-            d="M512 128 A72 62 0 0 1 656 128 q-18 14 -36 0 q-18 14 -36 0 q-18 14 -36 0 q-18 14 -36 0Z"
-          />
-          <g
-            class="arms"
-            fill="none"
-            :stroke="stage.motifColor"
-            stroke-width="3"
-            stroke-linecap="round"
-          >
-            <path d="M534 132 q-14 52 4 96" />
-            <path d="M556 136 q10 60 -8 106" />
-            <path d="M584 138 q-6 66 6 112" />
-            <path d="M612 136 q-10 58 8 100" />
-            <path d="M634 132 q14 50 -4 92" />
-          </g>
-          <g class="veil" fill="none" :stroke="stage.bloom" stroke-width="1.6" opacity="0.6">
-            <path d="M528 122 A60 50 0 0 1 640 122" />
-            <path d="M546 116 A44 36 0 0 1 622 116" />
-          </g>
+      <g v-else-if="stage.motif === 'jelly'" class="bigjelly">
+        <path
+          class="bell"
+          d="M512 128 A72 62 0 0 1 656 128 q-18 14 -36 0 q-18 14 -36 0 q-18 14 -36 0 q-18 14 -36 0Z"
+        />
+        <g
+          class="arms"
+          fill="none"
+          :stroke="stage.motifColor"
+          stroke-width="3"
+          stroke-linecap="round"
+        >
+          <path d="M534 132 q-14 52 4 96" />
+          <path d="M556 136 q10 60 -8 106" />
+          <path d="M584 138 q-6 66 6 112" />
+          <path d="M612 136 q-10 58 8 100" />
+          <path d="M634 132 q14 50 -4 92" />
         </g>
-        <g v-else-if="stage.motif === 'whale'">
-          <path
-            d="M512 112c40-32 110-30 142 2c16 16 8 36-14 40c-46 8-104 0-134-18c-10-6-8-18 6-24z"
-          />
-          <path d="M672 116l30-22-8 32z" />
-          <path d="M556 88c8-16 18-26 28-28" fill="none" :stroke="stage.accent" stroke-width="2" />
-          <circle cx="538" cy="122" r="3" fill="#f4efe5" stroke="none" />
-        </g>
-        <g v-else-if="stage.motif === 'piano'">
-          <path d="M556 130c0-30 26-52 58-52c30 0 50 18 50 40c0 10-8 16-18 16h-90z" />
-          <path d="M556 130h90v10h-90z" />
-          <path d="M566 140v14M582 140v14M598 140v14M614 140v14M630 140v14" stroke-width="1.2" />
-          <path d="M470 96h74M676 96h74M470 112h74M676 112h74" stroke-width="0.9" class="dim" />
-        </g>
-        <g v-else-if="stage.motif === 'deadBranch'">
-          <path d="M598 200c0-46 6-80 18-106" />
-          <path
-            d="M608 152c-22-6-34-20-38-38M612 126c20-8 30-22 32-42M618 100c-16-10-22-24-20-40"
-          />
-          <path d="M574 112a7 5 0 1 0 0-10a7 5 0 0 0 0 10z" />
-          <path d="M646 82a6 4 0 1 0 0-8a6 4 0 0 0 0 8z" />
-          <path d="M600 58a6 5 0 1 0 0-10a6 5 0 0 0 0 10z" />
-        </g>
-        <g v-else-if="stage.motif === 'voyagerFoil'">
-          <ellipse cx="600" cy="96" rx="38" ry="33" />
-          <ellipse cx="600" cy="96" rx="18" ry="16" />
-          <path d="M600 129v28M562 76L508 38M638 76l56-40M600 63V30M570 122l-40 32M630 122l42 30" />
-          <circle cx="600" cy="96" r="4.5" :fill="stage.accent" stroke="none" />
-        </g>
-        <g v-else-if="stage.motif === 'runner'">
-          <circle cx="628" cy="56" r="11" />
-          <path d="M622 70l-14 34 16 12-6 34" stroke-width="9" stroke-linecap="round" fill="none" />
-          <path
-            d="M608 104l-26 6M624 116l26 14"
-            stroke-width="8"
-            stroke-linecap="round"
-            fill="none"
-          />
-          <path
-            d="M618 150l-24 22M618 150l16 26"
-            stroke-width="9"
-            stroke-linecap="round"
-            fill="none"
-          />
-          <path d="M580 186c8-10 20-10 24 0c-10 8-18 6-24 0z" :fill="stage.accent" stroke="none" />
-        </g>
-        <g v-else-if="stage.motif === 'gorilla'">
-          <path d="M560 128c0-34 22-58 44-58s44 24 44 58c0 26-20 44-44 44s-44-18-44-44z" />
-          <path
-            d="M580 122c0-16 10-26 24-26s24 10 24 26c0 14-10 24-24 24s-24-10-24-24z"
-            fill="#3a2a30"
-            stroke="none"
-          />
-          <path
-            d="M566 96h76M566 110h76M566 124h76"
-            stroke="#f0d8c4"
-            stroke-width="2.4"
-            class="collage"
-          />
-          <circle cx="592" cy="112" r="3" fill="#1c1418" stroke="none" />
-          <circle cx="616" cy="112" r="3" fill="#1c1418" stroke="none" />
-        </g>
-        <g v-else-if="stage.motif === 'wings'">
-          <path d="M600 74c-4 26-4 56 0 84" stroke-width="2" />
-          <circle cx="600" cy="62" r="9" />
-          <path d="M596 88c-30-30-58-34-66-14c-6 18 18 36 62 30z" />
-          <path d="M604 88c30-30 58-34 66-14c6 18-18 36-62 30z" />
-          <path d="M596 118c-20-10-38-8-42 6c-4 12 14 20 42 6z" />
-          <path d="M604 118c20-10 38-8 42 6c4 12-14 20-42 6z" />
+        <g class="veil" fill="none" :stroke="stage.bloom" stroke-width="1.6" opacity="0.6">
+          <path d="M528 122 A60 50 0 0 1 640 122" />
+          <path d="M546 116 A44 36 0 0 1 622 116" />
         </g>
       </g>
+      <g v-else-if="stage.motif === 'whale'">
+        <path
+          d="M512 112c40-32 110-30 142 2c16 16 8 36-14 40c-46 8-104 0-134-18c-10-6-8-18 6-24z"
+        />
+        <path d="M672 116l30-22-8 32z" />
+        <path d="M556 88c8-16 18-26 28-28" fill="none" :stroke="stage.accent" stroke-width="2" />
+        <circle cx="538" cy="122" r="3" fill="#f4efe5" stroke="none" />
+      </g>
+      <g v-else-if="stage.motif === 'piano'">
+        <path d="M556 130c0-30 26-52 58-52c30 0 50 18 50 40c0 10-8 16-18 16h-90z" />
+        <path d="M556 130h90v10h-90z" />
+        <path d="M566 140v14M582 140v14M598 140v14M614 140v14M630 140v14" stroke-width="1.2" />
+        <path d="M470 96h74M676 96h74M470 112h74M676 112h74" stroke-width="0.9" class="dim" />
+      </g>
+      <g v-else-if="stage.motif === 'deadBranch'">
+        <path d="M598 200c0-46 6-80 18-106" />
+        <path d="M608 152c-22-6-34-20-38-38M612 126c20-8 30-22 32-42M618 100c-16-10-22-24-20-40" />
+        <path d="M574 112a7 5 0 1 0 0-10a7 5 0 0 0 0 10z" />
+        <path d="M646 82a6 4 0 1 0 0-8a6 4 0 0 0 0 8z" />
+        <path d="M600 58a6 5 0 1 0 0-10a6 5 0 0 0 0 10z" />
+      </g>
+      <g v-else-if="stage.motif === 'voyagerFoil'">
+        <ellipse cx="600" cy="96" rx="38" ry="33" />
+        <ellipse cx="600" cy="96" rx="18" ry="16" />
+        <path d="M600 129v28M562 76L508 38M638 76l56-40M600 63V30M570 122l-40 32M630 122l42 30" />
+        <circle cx="600" cy="96" r="4.5" :fill="stage.accent" stroke="none" />
+      </g>
+      <g v-else-if="stage.motif === 'runner'">
+        <circle cx="628" cy="56" r="11" />
+        <path d="M622 70l-14 34 16 12-6 34" stroke-width="9" stroke-linecap="round" fill="none" />
+        <path
+          d="M608 104l-26 6M624 116l26 14"
+          stroke-width="8"
+          stroke-linecap="round"
+          fill="none"
+        />
+        <path
+          d="M618 150l-24 22M618 150l16 26"
+          stroke-width="9"
+          stroke-linecap="round"
+          fill="none"
+        />
+        <path d="M580 186c8-10 20-10 24 0c-10 8-18 6-24 0z" :fill="stage.accent" stroke="none" />
+      </g>
+      <g v-else-if="stage.motif === 'gorilla'">
+        <path d="M560 128c0-34 22-58 44-58s44 24 44 58c0 26-20 44-44 44s-44-18-44-44z" />
+        <path
+          d="M580 122c0-16 10-26 24-26s24 10 24 26c0 14-10 24-24 24s-24-10-24-24z"
+          fill="#3a2a30"
+          stroke="none"
+        />
+        <path
+          d="M566 96h76M566 110h76M566 124h76"
+          stroke="#f0d8c4"
+          stroke-width="2.4"
+          class="collage"
+        />
+        <circle cx="592" cy="112" r="3" fill="#1c1418" stroke="none" />
+        <circle cx="616" cy="112" r="3" fill="#1c1418" stroke="none" />
+      </g>
+      <g v-else-if="stage.motif === 'wings'">
+        <path d="M600 74c-4 26-4 56 0 84" stroke-width="2" />
+        <circle cx="600" cy="62" r="9" />
+        <path d="M596 88c-30-30-58-34-66-14c-6 18 18 36 62 30z" />
+        <path d="M604 88c30-30 58-34 66-14c6 18-18 36-62 30z" />
+        <path d="M596 118c-20-10-38-8-42 6c-4 12 14 20 42 6z" />
+        <path d="M604 118c20-10 38-8 42 6c4 12-14 20-42 6z" />
+      </g>
+    </g>
 
-      <!--
+    <!--
         ⑧' 바다.
 
         수평선(y 150)에서 물가(y 206)까지 네 겹으로 내려온다.
@@ -756,151 +689,147 @@ const ridges = computed(() => {
         겹마다 윗선을 다르게 굽혀 두면 한 장의 파란 판이 아니라
         깊이가 다른 물로 읽힌다.
       -->
-      <g v-if="stage.beach" class="sea">
-        <!-- 먼 물. 수평선 쪽은 하늘빛을 받아 밝다 -->
-        <rect x="0" y="150" width="800" height="58" :fill="stage.near" />
-        <rect x="0" y="150" width="800" height="9" :fill="stage.mid" opacity="0.5" />
-        <!-- 깊은 골. 가운데가 가장 짙다 -->
-        <path fill="#0b3a57" opacity="0.2" d="M0 164 q100 -6 200 2 t200 1 t200 -4 t200 4 v22H0z" />
-        <!-- 얕아지는 물. 바닥이 비쳐 밝아진다 -->
-        <path
-          :fill="stage.mid"
-          opacity="0.78"
-          d="M0 186 q110 7 210 -2 t190 -1 t200 5 t200 -3 v26H0z"
+    <g v-if="stage.beach" class="sea">
+      <!-- 먼 물. 수평선 쪽은 하늘빛을 받아 밝다 -->
+      <rect x="0" y="150" width="800" height="58" :fill="stage.near" />
+      <rect x="0" y="150" width="800" height="9" :fill="stage.mid" opacity="0.5" />
+      <!-- 깊은 골. 가운데가 가장 짙다 -->
+      <path fill="#0b3a57" opacity="0.2" d="M0 164 q100 -6 200 2 t200 1 t200 -4 t200 4 v22H0z" />
+      <!-- 얕아지는 물. 바닥이 비쳐 밝아진다 -->
+      <path
+        :fill="stage.mid"
+        opacity="0.78"
+        d="M0 186 q110 7 210 -2 t190 -1 t200 5 t200 -3 v26H0z"
+      />
+      <path :fill="stage.sky" opacity="0.5" d="M0 198 q120 5 220 -1 t180 0 t200 3 t200 -2 v14H0z" />
+    </g>
+
+    <!-- ⑧ 원경 언덕 -->
+    <path
+      v-if="!stage.beach"
+      :fill="stage.far"
+      d="M0 168c118-26 196-22 296 4s176 20 270-10 158-18 234 12v86H0z"
+    />
+
+    <!-- ⑨ 안개 띠. 원경과 중경을 갈라 깊이를 만든다 -->
+    <rect
+      v-if="!stage.beach"
+      x="0"
+      y="150"
+      width="800"
+      height="52"
+      :fill="`url(#mist-${uid})`"
+      class="mist"
+    />
+
+    <!-- ⑩ 나무. 중경에 흩어진다 -->
+    <g v-if="!stage.under" class="trees">
+      <g v-for="t in scene.trees" :key="`t${t.i}`" :transform="`translate(${t.x} ${t.base})`">
+        <rect :x="-1.6" :y="-t.h * 0.42" width="3.2" :height="t.h * 0.42" :fill="stage.veg" />
+        <ellipse
+          cx="0"
+          :cy="-t.h * 0.58"
+          :rx="t.w * 0.5"
+          :ry="t.h * 0.34"
+          :fill="t.dark ? stage.veg : stage.veg2"
         />
-        <path
-          :fill="stage.sky"
-          opacity="0.5"
-          d="M0 198 q120 5 220 -1 t180 0 t200 3 t200 -2 v14H0z"
+        <ellipse
+          cx="-4"
+          :cy="-t.h * 0.72"
+          :rx="t.w * 0.32"
+          :ry="t.h * 0.24"
+          :fill="stage.veg2"
+          opacity="0.7"
         />
       </g>
+    </g>
 
-      <!-- ⑧ 원경 언덕 -->
-      <path
-        v-if="!stage.beach"
-        :fill="stage.far"
-        d="M0 168c118-26 196-22 296 4s176 20 270-10 158-18 234 12v86H0z"
-      />
+    <!-- ⑪ 근경 -->
+    <path
+      v-if="!stage.beach"
+      :fill="stage.near"
+      d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z"
+    />
 
-      <!-- ⑨ 안개 띠. 원경과 중경을 갈라 깊이를 만든다 -->
-      <rect
-        v-if="!stage.beach"
-        x="0"
-        y="150"
-        width="800"
-        height="52"
-        :fill="`url(#mist-${uid})`"
-        class="mist"
-      />
-
-      <!-- ⑩ 나무. 중경에 흩어진다 -->
-      <g v-if="!stage.under" class="trees">
-        <g v-for="t in scene.trees" :key="`t${t.i}`" :transform="`translate(${t.x} ${t.base})`">
-          <rect :x="-1.6" :y="-t.h * 0.42" width="3.2" :height="t.h * 0.42" :fill="stage.veg" />
-          <ellipse
-            cx="0"
-            :cy="-t.h * 0.58"
-            :rx="t.w * 0.5"
-            :ry="t.h * 0.34"
-            :fill="t.dark ? stage.veg : stage.veg2"
-          />
-          <ellipse
-            cx="-4"
-            :cy="-t.h * 0.72"
-            :rx="t.w * 0.32"
-            :ry="t.h * 0.24"
-            :fill="stage.veg2"
-            opacity="0.7"
-          />
-        </g>
-      </g>
-
-      <!-- ⑪ 근경 -->
-      <path
-        v-if="!stage.beach"
-        :fill="stage.near"
-        d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z"
-      />
-
-      <!--
+    <!--
         ⑪' 젖은 모래.
 
         물이 닿았다 간 자리. 마른 모래보다 어둡고 조금 반짝인다.
         이 띠가 없으면 바다와 모래가 자로 그은 듯 갈려서,
         물이 밀려온 적 없는 해변이 된다.
       -->
-      <path
-        v-if="stage.beach"
-        :fill="stage.veg"
-        opacity="0.55"
-        d="M0 206 q110 7 210 1 t190 -2 t200 5 t200 -3 v54H0z"
-      />
+    <path
+      v-if="stage.beach"
+      :fill="stage.veg"
+      opacity="0.55"
+      d="M0 206 q110 7 210 1 t190 -2 t200 5 t200 -3 v54H0z"
+    />
 
-      <!-- ⑫ 덤불과 꽃 -->
-      <g v-if="!stage.under" class="flowers">
-        <g
-          v-for="(f, i) in scene.flowers"
-          :key="`f${i}`"
-          :style="{ '--sway': `${f.sway}s` }"
-          class="bloom"
-        >
-          <path :d="`M${f.x} ${f.y + 8}v-8`" :stroke="stage.veg" stroke-width="1" />
-          <circle :cx="f.x" :cy="f.y" :r="f.r" :fill="stage.bloom" />
-        </g>
+    <!-- ⑫ 덤불과 꽃 -->
+    <g v-if="!stage.under" class="flowers">
+      <g
+        v-for="(f, i) in scene.flowers"
+        :key="`f${i}`"
+        :style="{ '--sway': `${f.sway}s` }"
+        class="bloom"
+      >
+        <path :d="`M${f.x} ${f.y + 8}v-8`" :stroke="stage.veg" stroke-width="1" />
+        <circle :cx="f.x" :cy="f.y" :r="f.r" :fill="stage.bloom" />
       </g>
+    </g>
 
-      <!--
+    <!--
         ⑪' 가까운 물고기 떼와 해파리.
 
         해파리는 갓을 오므렸다 펴며 위로 밀려 올라갔다가 다시 가라앉는다.
         박자를 다 다르게 둬야 한 무리가 아니라 각자 떠 있는 것으로 보인다.
       -->
-      <g v-if="stage.under" class="school near" :fill="stage.motifColor">
-        <g
-          v-for="f in scene.fish.filter((x) => x.band > 0)"
-          :key="`fn${f.i}`"
-          class="fish"
-          :style="{
-            '--dur': `${f.dur}s`,
-            '--delay': `${f.delay}s`,
-            '--dir': f.back ? -1 : 1,
-          }"
-        >
-          <g :transform="`translate(${f.x} ${f.y}) scale(${f.sc})`">
-            <path d="M0 0 q7 -4.4 14 0 q-7 4.4 -14 0Z" />
-            <path d="M14 0 l5 -3.4 v6.8Z" />
+    <g v-if="stage.under" class="school near" :fill="stage.motifColor">
+      <g
+        v-for="f in scene.fish.filter((x) => x.band > 0)"
+        :key="`fn${f.i}`"
+        class="fish"
+        :style="{
+          '--dur': `${f.dur}s`,
+          '--delay': `${f.delay}s`,
+          '--dir': f.back ? -1 : 1,
+        }"
+      >
+        <g :transform="`translate(${f.x} ${f.y}) scale(${f.sc})`">
+          <path d="M0 0 q7 -4.4 14 0 q-7 4.4 -14 0Z" />
+          <path d="M14 0 l5 -3.4 v6.8Z" />
+        </g>
+      </g>
+    </g>
+
+    <g v-if="stage.under" class="jellies">
+      <g
+        v-for="j in scene.jellies"
+        :key="`j${j.i}`"
+        class="jelly"
+        :style="{
+          '--dur': `${j.dur}s`,
+          '--delay': `${j.delay}s`,
+          '--rise': `${j.rise}px`,
+        }"
+      >
+        <g :transform="`translate(${j.x} ${j.y}) scale(${j.sc})`">
+          <path
+            class="bell"
+            :fill="stage.bloom"
+            d="M-11 2 A11 10 0 0 1 11 2 q-5.5 3.4 -11 0 q-5.5 3.4 -11 0Z"
+          />
+          <g class="arms" :stroke="stage.bloom">
+            <path d="M-6 3 q-2.5 11 0.6 21" />
+            <path d="M-2 4 q1.6 12 -1 22" />
+            <path d="M2 4 q-1.6 12 1 22" />
+            <path d="M6 3 q2.5 11 -0.6 21" />
           </g>
         </g>
       </g>
+    </g>
 
-      <g v-if="stage.under" class="jellies">
-        <g
-          v-for="j in scene.jellies"
-          :key="`j${j.i}`"
-          class="jelly"
-          :style="{
-            '--dur': `${j.dur}s`,
-            '--delay': `${j.delay}s`,
-            '--rise': `${j.rise}px`,
-          }"
-        >
-          <g :transform="`translate(${j.x} ${j.y}) scale(${j.sc})`">
-            <path
-              class="bell"
-              :fill="stage.bloom"
-              d="M-11 2 A11 10 0 0 1 11 2 q-5.5 3.4 -11 0 q-5.5 3.4 -11 0Z"
-            />
-            <g class="arms" :stroke="stage.bloom">
-              <path d="M-6 3 q-2.5 11 0.6 21" />
-              <path d="M-2 4 q1.6 12 -1 22" />
-              <path d="M2 4 q-1.6 12 1 22" />
-              <path d="M6 3 q2.5 11 -0.6 21" />
-            </g>
-          </g>
-        </g>
-      </g>
-
-      <!--
+    <!--
         ⑫' 파도.
 
         밀려왔다 빠진다. 다가올수록 굵어지고 진해지다가
@@ -908,109 +837,107 @@ const ridges = computed(() => {
         저마다 다른 박자라야 바다가 숨 쉬는 것으로 보인다.
         다 같이 밀려오면 그건 파도가 아니라 줄무늬다.
       -->
-      <g v-if="stage.beach" class="surf" stroke="#ffffff" fill="none" stroke-linecap="round">
-        <path
-          v-for="w in scene.waves"
-          :key="`sf${w.i}`"
-          :d="`M-20 ${w.y} q100 -4 200 0 t200 0 t200 0 t240 0`"
-          :stroke-width="w.w"
-          :style="{ '--dur': `${w.dur}s`, '--delay': `${w.delay}s`, '--o': w.o }"
-        />
-      </g>
+    <g v-if="stage.beach" class="surf" stroke="#ffffff" fill="none" stroke-linecap="round">
+      <path
+        v-for="w in scene.waves"
+        :key="`sf${w.i}`"
+        :d="`M-20 ${w.y} q100 -4 200 0 t200 0 t200 0 t240 0`"
+        :stroke-width="w.w"
+        :style="{ '--dur': `${w.dur}s`, '--delay': `${w.delay}s`, '--o': w.o }"
+      />
+    </g>
 
-      <!-- ⑬ 지면 -->
-      <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
+    <!-- ⑬ 지면 -->
+    <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
 
-      <!--
+    <!--
         ⑬'' 소라 · 조개 · 불가사리.
 
         가만히 있는 것들이라 자리만 정해 주면 된다.
         기울기를 조금씩 달리 두는 게 전부인데, 그것만으로도
         누가 늘어놓은 게 아니라 파도가 밀어 놓은 것으로 보인다.
       -->
-      <g v-if="stage.beach" class="shells">
-        <g
-          v-for="(h, i) in scene.shells"
-          :key="`sh${i}`"
-          :transform="`translate(${h.x} ${h.y}) rotate(${h.tilt}) scale(${h.sc})`"
-        >
-          <!-- 소라 -->
-          <template v-if="h.kind === 0">
-            <path
-              :fill="stage.bloom"
-              d="M0 3 C-4.4 3 -5.4 -1.4 -2.6 -3.4 C-0.4 -5 3.2 -4 4.4 -1 C5.2 1 3.2 3 0 3 Z"
-            />
-            <path
-              :stroke="stage.veg"
-              fill="none"
-              stroke-width="0.7"
-              d="M-2.4 2.4 q1.6 -3.6 4.4 -4.6 M-0.4 3 q0.6 -4 3.4 -5"
-            />
-          </template>
-          <!-- 조개 -->
+    <g v-if="stage.beach" class="shells">
+      <g
+        v-for="(h, i) in scene.shells"
+        :key="`sh${i}`"
+        :transform="`translate(${h.x} ${h.y}) rotate(${h.tilt}) scale(${h.sc})`"
+      >
+        <!-- 소라 -->
+        <template v-if="h.kind === 0">
           <path
-            v-else-if="h.kind === 1"
-            :fill="stage.veg2"
+            :fill="stage.bloom"
+            d="M0 3 C-4.4 3 -5.4 -1.4 -2.6 -3.4 C-0.4 -5 3.2 -4 4.4 -1 C5.2 1 3.2 3 0 3 Z"
+          />
+          <path
             :stroke="stage.veg"
-            stroke-width="0.6"
-            d="M-4.6 2.4 A4.6 4.2 0 0 1 4.6 2.4 Z M-2.4 2.4 L-1 -1.6 M0 2.4 L0 -1.9 M2.4 2.4 L1 -1.6"
+            fill="none"
+            stroke-width="0.7"
+            d="M-2.4 2.4 q1.6 -3.6 4.4 -4.6 M-0.4 3 q0.6 -4 3.4 -5"
           />
-          <!-- 불가사리 -->
-          <path
-            v-else
-            :fill="stage.motifColor"
-            opacity="0.72"
-            d="M0 -4.6 L1.4 -1.4 L4.6 -1.1 L2.1 1.1 L2.8 4.3 L0 2.6 L-2.8 4.3 L-2.1 1.1 L-4.6 -1.1 L-1.4 -1.4 Z"
-          />
-        </g>
+        </template>
+        <!-- 조개 -->
+        <path
+          v-else-if="h.kind === 1"
+          :fill="stage.veg2"
+          :stroke="stage.veg"
+          stroke-width="0.6"
+          d="M-4.6 2.4 A4.6 4.2 0 0 1 4.6 2.4 Z M-2.4 2.4 L-1 -1.6 M0 2.4 L0 -1.9 M2.4 2.4 L1 -1.6"
+        />
+        <!-- 불가사리 -->
+        <path
+          v-else
+          :fill="stage.motifColor"
+          opacity="0.72"
+          d="M0 -4.6 L1.4 -1.4 L4.6 -1.1 L2.1 1.1 L2.8 4.3 L0 2.6 L-2.8 4.3 L-2.1 1.1 L-4.6 -1.1 L-1.4 -1.4 Z"
+        />
       </g>
+    </g>
 
-      <!--
+    <!--
         ⑬''' 꽃게.
 
         옆으로만 걷는다. 앞으로 걷는 꽃게는 꽃게가 아니다.
         집게발을 번갈아 들었다 놓으면 종종거리는 것으로 보인다.
       -->
-      <g v-if="stage.beach" class="crabs">
-        <g
-          v-for="c in scene.crabs"
-          :key="`cr${c.i}`"
-          class="crab"
-          :style="{
-            '--dur': `${c.dur}s`,
-            '--delay': `${c.delay}s`,
-            '--span': `${c.span}px`,
-            '--step': `${c.step}s`,
-            '--dir': c.back ? -1 : 1,
-          }"
-        >
-          <g :transform="`translate(${c.x} ${c.y}) scale(${c.sc})`" :fill="stage.motifColor">
-            <!-- 다리 여섯 -->
-            <g :stroke="stage.motifColor" stroke-width="0.85" fill="none" stroke-linecap="round">
-              <path
-                d="M-3.4 1.6 l-2.6 2.4 M-1.2 2.1 l-1.4 2.8 M1.2 2.1 l1.4 2.8 M3.4 1.6 l2.6 2.4"
-              />
-            </g>
-            <!-- 집게발 -->
-            <g class="claw one">
-              <path
-                d="M-4.2 -0.6 q-2.8 -0.6 -3.6 -2.6 q1.6 -0.6 2.8 0.2 q-1.2 -1.4 -0.4 -2.4 q1.8 1 2.4 3z"
-              />
-            </g>
-            <g class="claw two">
-              <path
-                d="M4.2 -0.6 q2.8 -0.6 3.6 -2.6 q-1.6 -0.6 -2.8 0.2 q1.2 -1.4 0.4 -2.4 q-1.8 1 -2.4 3z"
-              />
-            </g>
-            <!-- 등딱지 -->
-            <ellipse cx="0" cy="0" rx="4.6" ry="3" />
-            <circle cx="-1.7" cy="-2.4" r="0.75" fill="#2b2b2f" />
-            <circle cx="1.7" cy="-2.4" r="0.75" fill="#2b2b2f" />
+    <g v-if="stage.beach" class="crabs">
+      <g
+        v-for="c in scene.crabs"
+        :key="`cr${c.i}`"
+        class="crab"
+        :style="{
+          '--dur': `${c.dur}s`,
+          '--delay': `${c.delay}s`,
+          '--span': `${c.span}px`,
+          '--step': `${c.step}s`,
+          '--dir': c.back ? -1 : 1,
+        }"
+      >
+        <g :transform="`translate(${c.x} ${c.y}) scale(${c.sc})`" :fill="stage.motifColor">
+          <!-- 다리 여섯 -->
+          <g :stroke="stage.motifColor" stroke-width="0.85" fill="none" stroke-linecap="round">
+            <path d="M-3.4 1.6 l-2.6 2.4 M-1.2 2.1 l-1.4 2.8 M1.2 2.1 l1.4 2.8 M3.4 1.6 l2.6 2.4" />
           </g>
+          <!-- 집게발 -->
+          <g class="claw one">
+            <path
+              d="M-4.2 -0.6 q-2.8 -0.6 -3.6 -2.6 q1.6 -0.6 2.8 0.2 q-1.2 -1.4 -0.4 -2.4 q1.8 1 2.4 3z"
+            />
+          </g>
+          <g class="claw two">
+            <path
+              d="M4.2 -0.6 q2.8 -0.6 3.6 -2.6 q-1.6 -0.6 -2.8 0.2 q1.2 -1.4 0.4 -2.4 q-1.8 1 -2.4 3z"
+            />
+          </g>
+          <!-- 등딱지 -->
+          <ellipse cx="0" cy="0" rx="4.6" ry="3" />
+          <circle cx="-1.7" cy="-2.4" r="0.75" fill="#2b2b2f" />
+          <circle cx="1.7" cy="-2.4" r="0.75" fill="#2b2b2f" />
         </g>
       </g>
+    </g>
 
-      <!--
+    <!--
         ⑬''''' 파라솔.
 
         모티프 자리(⑦)에 두었더니 바다에 잠겼다. 그 자리는 하늘 다음이라
@@ -1019,147 +946,217 @@ const ridges = computed(() => {
 
         비스듬히 꽂는다. 곧게 세우면 심어 놓은 것 같다.
       -->
-      <g v-if="stage.beach" class="parasol">
-        <g transform="rotate(-9 640 214)">
-          <path :stroke="stage.veg" stroke-width="2.6" stroke-linecap="round" d="M640 214 V150" />
-          <path
-            :fill="stage.motifColor"
-            d="M584 154 q14 10 28 0 q14 10 28 0 q14 10 28 0 q14 10 28 0 A56 40 0 0 0 584 154 Z"
-          />
-          <path
-            fill="#fdfaf2"
-            opacity="0.9"
-            d="M612 154 q14 10 28 0 q14 10 28 0 A56 40 0 0 0 640 114 q0 20 0 40 z"
-          />
-          <circle :fill="stage.veg" cx="640" cy="112" r="2.4" />
-        </g>
-      </g>
+    <g v-if="stage.beach" class="parasol">
+      <g transform="rotate(-9 640 214)">
+        <!-- 자루. 갓 꼭대기까지 올라가야 갓이 얹힌 것으로 보인다 -->
+        <path :stroke="stage.veg" stroke-width="2.6" stroke-linecap="round" d="M640 214 V118" />
+        <!-- 갓. 아래 가장자리를 물결로 닫는다 -->
+        <path
+          :fill="stage.motifColor"
+          d="M584 154 q14 10 28 0 q14 10 28 0 q14 10 28 0 q14 10 28 0 A56 40 0 0 0 584 154 Z"
+        />
+        <!--
+          널 두 장을 번갈아 흰색으로.
 
-      <!--
+          한 장만 칠했더니 갓 한쪽에 흰 무늬가 얹힌 꼴이었다.
+          파라솔은 널이 번갈아 갈리는 물건이라, 꼭짓점에서 가장자리까지
+          곧게 그은 선으로 나눠야 파라솔로 읽힌다.
+        -->
+        <path fill="#fdfaf2" d="M584 154 q14 10 28 0 L640 116 Z" />
+        <path fill="#fdfaf2" d="M640 154 q14 10 28 0 L640 116 Z" />
+        <circle :fill="stage.veg" cx="640" cy="114" r="2.6" />
+      </g>
+    </g>
+
+    <!--
         ⑬'''' 모래 위를 걷는 갈매기.
 
         갈매기는 나는 시간보다 서 있는 시간이 길다. 물가를 따라
         종종거리다 멈춰 서서 모래를 쪼는 게 실제 해변의 모습이다.
         나는 것만 두면 해변이 아니라 하늘이 된다.
       -->
-      <g v-if="stage.beach" class="strollers">
-        <g
-          v-for="g in scene.strollers"
-          :key="`st${g.i}`"
-          class="stroller"
-          :style="{
-            '--dur': `${g.dur}s`,
-            '--delay': `${g.delay}s`,
-            '--span': `${g.span}px`,
-            '--step': `${g.step}s`,
-            '--dir': g.back ? -1 : 1,
-          }"
-        >
-          <g :transform="`translate(${g.x} ${g.y}) scale(${g.sc})`">
-            <g class="legs" :stroke="stage.motifColor" stroke-width="0.8" stroke-linecap="round">
-              <path class="leg a" d="M-0.8 3.2 v3" />
-              <path class="leg b" d="M1 3.2 v3" />
-            </g>
-            <path
-              fill="#fdfdfb"
-              d="M-5.4 1.6 C-5.4 -1.6 -2.6 -3.4 0.4 -3.4 C3.6 -3.4 5.6 -1.4 5.6 0.6 C5.6 2.6 3 3.8 0 3.8 C-3 3.8 -5.4 3.2 -5.4 1.6 Z"
-            />
-            <path
-              :fill="stage.veg"
-              opacity="0.5"
-              d="M-5.2 1.4 q3 1.6 6.4 1.2 q-2.6 1.2 -6.4 0.4 z"
-            />
-            <circle cx="3.4" cy="-2.6" r="2.5" fill="#fdfdfb" />
-            <circle cx="4.2" cy="-3.1" r="0.62" fill="#2b2b2f" />
-            <path :fill="stage.bloom" d="M5.6 -2.6 l3 0.8 l-3 0.9z" />
+    <g v-if="stage.beach" class="strollers">
+      <g
+        v-for="g in scene.strollers"
+        :key="`st${g.i}`"
+        class="stroller"
+        :style="{
+          '--dur': `${g.dur}s`,
+          '--delay': `${g.delay}s`,
+          '--span': `${g.span}px`,
+          '--step': `${g.step}s`,
+          '--dir': g.back ? -1 : 1,
+        }"
+      >
+        <g :transform="`translate(${g.x} ${g.y}) scale(${g.sc})`">
+          <g class="legs" :stroke="stage.motifColor" stroke-width="0.8" stroke-linecap="round">
+            <path class="leg a" d="M-0.8 3.2 v3" />
+            <path class="leg b" d="M1 3.2 v3" />
           </g>
-        </g>
-      </g>
-
-      <!-- ⑬' 산호. 지면 다음에 얹는다 — 먼저 그렸더니 바닥에 덮여 하나도 안 보였다 -->
-      <g v-if="stage.under" class="corals">
-        <g v-for="(c, i) in scene.corals" :key="`c${i}`">
           <path
-            v-for="a in c.arms"
-            :key="`ca${a}`"
-            :d="`M${c.x} ${c.y + 8} q${(a - c.arms / 2) * 5} ${-c.r * 0.7} ${(a - c.arms / 2) * 8} ${-c.r}`"
-            :stroke="c.lit ? stage.bloom : stage.veg"
-            :opacity="c.lit ? 0.75 : 1"
+            fill="#fdfdfb"
+            d="M-5.4 1.6 C-5.4 -1.6 -2.6 -3.4 0.4 -3.4 C3.6 -3.4 5.6 -1.4 5.6 0.6 C5.6 2.6 3 3.8 0 3.8 C-3 3.8 -5.4 3.2 -5.4 1.6 Z"
           />
+          <path :fill="stage.veg" opacity="0.5" d="M-5.2 1.4 q3 1.6 6.4 1.2 q-2.6 1.2 -6.4 0.4 z" />
+          <circle cx="3.4" cy="-2.6" r="2.5" fill="#fdfdfb" />
+          <circle cx="4.2" cy="-3.1" r="0.62" fill="#2b2b2f" />
+          <path :fill="stage.bloom" d="M5.6 -2.6 l3 0.8 l-3 0.9z" />
         </g>
       </g>
+    </g>
 
-      <!--
+    <!-- ⑬' 산호. 지면 다음에 얹는다 — 먼저 그렸더니 바닥에 덮여 하나도 안 보였다 -->
+    <g v-if="stage.under" class="corals">
+      <g v-for="(c, i) in scene.corals" :key="`c${i}`">
+        <path
+          v-for="a in c.arms"
+          :key="`ca${a}`"
+          :d="`M${c.x} ${c.y + 8} q${(a - c.arms / 2) * 5} ${-c.r * 0.7} ${(a - c.arms / 2) * 8} ${-c.r}`"
+          :stroke="c.lit ? stage.bloom : stage.veg"
+          :opacity="c.lit ? 0.75 : 1"
+        />
+      </g>
+    </g>
+
+    <!--
         ⑭' 해초. 바닥에 뿌리를 두고 물살에 눕는다.
 
         풀은 바람에 떨듯 흔들리지만 해초는 물에 밀려 천천히 눕는다.
         같은 흔들림을 두 배 느리게, 두 배 크게 준다. 그 차이가 물이다.
       -->
-      <g v-if="stage.under" class="kelp" :stroke="stage.veg2">
-        <path
-          v-for="(k, i) in scene.kelp"
-          :key="`k${i}`"
-          :d="`M${k.x} 262 c${k.lean * 0.5} ${-k.h * 0.32} ${k.lean * 1.7} ${-k.h * 0.44} ${k.lean * 1.05} ${-k.h * 0.72} c${-k.lean * 1.1} ${-k.h * 0.2} ${k.lean * 0.5} ${-k.h * 0.2} ${k.lean * 1.7} ${-k.h * 0.3}`"
-          :style="{
-            '--sway': `${k.sway}s`,
-            '--delay': `${k.delay}s`,
-            '--w': `${k.w}`,
-          }"
-        />
-      </g>
+    <g v-if="stage.under" class="kelp" :stroke="stage.veg2">
+      <path
+        v-for="(k, i) in scene.kelp"
+        :key="`k${i}`"
+        :d="`M${k.x} 262 c${k.lean * 0.5} ${-k.h * 0.32} ${k.lean * 1.7} ${-k.h * 0.44} ${k.lean * 1.05} ${-k.h * 0.72} c${-k.lean * 1.1} ${-k.h * 0.2} ${k.lean * 0.5} ${-k.h * 0.2} ${k.lean * 1.7} ${-k.h * 0.3}`"
+        :style="{
+          '--sway': `${k.sway}s`,
+          '--delay': `${k.delay}s`,
+          '--w': `${k.w}`,
+        }"
+      />
+    </g>
 
-      <!-- ⑭ 전경 풀. 바람에 흔들린다 -->
-      <g v-if="!stage.under" class="grass" :stroke="stage.veg">
-        <path
-          v-for="(g, i) in scene.grass"
-          :key="`g${i}`"
-          :d="`M${g.x} 260 q${g.lean} ${-g.h * 0.6} ${g.lean * 1.6} ${-g.h}`"
-          :style="{ '--sway': `${g.sway}s`, '--delay': `${g.delay}s` }"
-        />
-      </g>
+    <!-- ⑭ 전경 풀. 바람에 흔들린다 -->
+    <g v-if="!stage.under" class="grass" :stroke="stage.veg">
+      <path
+        v-for="(g, i) in scene.grass"
+        :key="`g${i}`"
+        :d="`M${g.x} 260 q${g.lean} ${-g.h * 0.6} ${g.lean * 1.6} ${-g.h}`"
+        :style="{ '--sway': `${g.sway}s`, '--delay': `${g.delay}s` }"
+      />
+    </g>
 
-      <!-- ⑮ 떠다니는 것 -->
-      <g class="motes" :class="stage.motes" :fill="stage.bloom">
-        <circle
-          v-for="(m, i) in scene.motes"
-          :key="`o${i}`"
-          :cx="m.x"
-          :cy="m.y"
-          :r="m.r"
-          :style="{ '--dur': `${m.dur}s`, '--delay': `${m.delay}s`, '--drift': `${m.drift}px` }"
-        />
-      </g>
+    <!-- ⑮ 떠다니는 것 -->
+    <g class="motes" :class="stage.motes" :fill="stage.bloom">
+      <circle
+        v-for="(m, i) in scene.motes"
+        :key="`o${i}`"
+        :cx="m.x"
+        :cy="m.y"
+        :r="m.r"
+        :style="{ '--dur': `${m.dur}s`, '--delay': `${m.delay}s`, '--drift': `${m.drift}px` }"
+      />
+    </g>
 
-      <!--
+    <!--
         ⑮' 마린 스노우.
         심해를 심해로 보이게 하는 건 사실 이것 하나다.
         물이 맑으면 그냥 파란 방이고, 무언가 천천히 가라앉고 있어야 깊이가 생긴다.
       -->
-      <g v-if="stage.under" class="marine" fill="#dff3f0">
-        <circle
-          v-for="(m, i) in scene.marine"
-          :key="`ms${i}`"
-          :cx="m.x"
-          :cy="m.y"
-          :r="m.r"
-          :style="{
-            '--dur': `${m.dur}s`,
-            '--delay': `${m.delay}s`,
-            '--drift': `${m.drift}px`,
-            '--o': m.o,
-          }"
-        />
-      </g>
+    <g v-if="stage.under" class="marine" fill="#dff3f0">
+      <circle
+        v-for="(m, i) in scene.marine"
+        :key="`ms${i}`"
+        :cx="m.x"
+        :cy="m.y"
+        :r="m.r"
+        :style="{
+          '--dur': `${m.dur}s`,
+          '--delay': `${m.delay}s`,
+          '--drift': `${m.drift}px`,
+          '--o': m.o,
+        }"
+      />
+    </g>
 
-      <!-- ⑮'' 스스로 빛나는 것들. 깊은 곳의 빛은 위에서 오지 않는다 -->
-      <g v-if="stage.under" class="glows" :fill="stage.bloom">
-        <circle
-          v-for="(g, i) in scene.glows"
-          :key="`gl${i}`"
-          :cx="g.x"
-          :cy="g.y"
-          :r="g.r"
-          :style="{ '--dur': `${g.dur}s`, '--delay': `${g.delay}s` }"
+    <!-- ⑮'' 스스로 빛나는 것들. 깊은 곳의 빛은 위에서 오지 않는다 -->
+    <g v-if="stage.under" class="glows" :fill="stage.bloom">
+      <circle
+        v-for="(g, i) in scene.glows"
+        :key="`gl${i}`"
+        :cx="g.x"
+        :cy="g.y"
+        :r="g.r"
+        :style="{ '--dur': `${g.dur}s`, '--delay': `${g.delay}s` }"
+      />
+    </g>
+
+    <!--
+        ⑬'''''' 나는 갈매기.
+
+        새 떼(birds)는 한 무리가 대열을 지어 지나간다. 갈매기는 그렇게
+        날지 않는다 — 저마다 다른 높이에서 각자 오르내린다.
+        그래서 한 마리씩 다른 궤도와 박자를 준다.
+
+        바다보다 나중에 그린다. 하늘 다음 자리(⑥)에 두었더니 뒤에 오는
+        바다가 갈매기를 덮어서, 물 위를 나는 동안에는 통째로 사라졌다.
+        하늘을 나는 것은 하늘보다 앞이지만 바다보다도 앞이다.
+
+        날개는 갈매기의 전부다. 몸통을 그리지 않고 획 하나로 그린다.
+        멀리서 보는 갈매기는 실제로 그렇게만 보인다.
+      -->
+    <g v-if="stage.beach" class="gulls" fill="none" stroke-linecap="round">
+      <g
+        v-for="g in scene.gulls"
+        :key="`gl${g.i}`"
+        class="gull"
+        :class="{ back: g.back }"
+        :style="{
+          '--dur': `${g.dur}s`,
+          '--delay': `${g.delay}s`,
+          '--rise': `${g.rise}px`,
+        }"
+      >
+        <g :transform="`translate(0 ${g.y}) scale(${g.back ? -g.sc : g.sc} ${g.sc})`">
+          <!--
+              날개는 갈매기의 전부다. 몸통을 그리지 않고 획 하나로 그린다.
+              멀리서 보는 갈매기는 실제로 그렇게만 보인다.
+
+              희게 그린다. 바다색(near)으로 그렸더니 물 위를 날 때
+              바다에 묻혀 한 마리도 안 보였다. 갈매기는 원래 희다.
+            -->
+          <path
+            class="wing"
+            stroke="#fbfcfd"
+            :stroke-width="2.1 / g.sc"
+            d="M-9 0 q4.6 -5.2 9 -0.6 q4.4 -4.6 9 0.6"
+          />
+          <path
+            class="wing tip"
+            :stroke="stage.near"
+            :stroke-width="0.8 / g.sc"
+            opacity="0.5"
+            d="M-9 0 q4.6 -5.2 9 -0.6 q4.4 -4.6 9 0.6"
+          />
+        </g>
+      </g>
+    </g>
+
+    <!-- ⑦ 모티프 — 무대마다 하나 -->
+    <g
+      class="motif"
+      :stroke="stage.lang === 'illustrated' ? stage.motifColor || stage.accent : stage.accent"
+      :fill="stage.lang === 'illustrated' ? stage.motifColor || stage.accent : 'none'"
+    >
+      <g v-if="stage.motif === 'tree'">
+        <path d="M596 200V96" />
+        <path d="M596 132l-28-22M596 150l30-24M596 114l-20-18" />
+        <path d="M548 96a48 36 0 0 1 96 0a48 32 0 0 1-96 0z" />
+      </g>
+      <g v-else-if="stage.motif === 'gull'">
+        <path
+          d="M520 96c22-30 44-34 62-12c18-22 40-18 62 12c-24-10-44-4-62 12c-18-16-38-22-62-12z"
         />
       </g>
 
