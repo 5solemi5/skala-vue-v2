@@ -21,6 +21,9 @@ const props = defineProps({
   delay: { type: Number, default: 0 },
   scale: { type: Number, default: 1 },
   step: { type: Number, default: 0.86 },
+  // 이 사람이 오가는 구간(%). 판 전체가 아니라 자기 몫만 오간다
+  from: { type: Number, default: 2 },
+  to: { type: Number, default: 92 },
   back: { type: Number, default: 0 },
   /*
    * 밖에서 시키는 동작. 없으면 스스로 정한 걸 한다.
@@ -42,6 +45,8 @@ const style = computed(() => ({
   '--delay': `${props.delay}s`,
   '--scale': String(props.scale),
   '--back': `${props.back}px`,
+  '--from': `${props.from}%`,
+  '--to': `${props.to}%`,
   zIndex: String(40 - props.back),
 }))
 </script>
@@ -77,29 +82,38 @@ const style = computed(() => ({
 
 @keyframes stroll {
   from {
-    left: 2%;
+    left: var(--from);
   }
   to {
-    left: 92%;
+    left: var(--to);
   }
 }
 
+/*
+ * 사람 크기.
+ *
+ * 30px 로 두었더니 사람마다 다르게 뽑아 둔 옷·모자 색이 보이지 않았다.
+ * 공들여 나눠 놓은 것이 화면에서는 회색 점 몇 개였다.
+ * 판이 132px 이고 발밑이 24~37px 이라, 54px 까지는 언덕을 가리지 않는다.
+ */
 .walker :deep(.figure) {
-  width: 30px;
-  height: 35px;
+  width: calc(44px * var(--size, 1));
+  height: calc(51px * var(--size, 1));
 }
 
 @media (max-width: 560px) {
+  /* 좁은 화면에서는 판도 116px 로 낮아진다 */
   .walker :deep(.figure) {
-    width: 26px;
-    height: 30px;
+    width: calc(36px * var(--size, 1));
+    height: calc(42px * var(--size, 1));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* 움직이지 않을 때는 자기 구간 한가운데에 선다 */
   .walker {
     animation: none;
-    left: calc(6% + var(--back) * 2.4%);
+    left: calc((var(--from) + var(--to)) / 2);
   }
 }
 </style>

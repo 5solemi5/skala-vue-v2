@@ -81,6 +81,19 @@ const hash = (text) => {
 // 걸음 시간이 음수가 되고 사람이 화면 밖에 서 버린다.
 const pick = (seed, shift, range) => (seed >>> shift) % range
 
+/*
+ * 사람 크기는 몇 명이냐에 따라 달라진다.
+ *
+ * 넷이 걸을 때와 열둘이 걸을 때 같은 크기로 두면,
+ * 넷일 때는 허전하고 열둘일 때는 서로 겹쳐 몇 명인지 세어지지 않는다.
+ * 다섯까지는 크게, 열둘로 갈수록 조금씩 줄인다.
+ */
+const sizeK = computed(() => {
+  const n = props.people.length || 1
+  if (n <= 5) return 1
+  return Number(Math.max(0.78, 1 - (n - 5) * 0.032).toFixed(3))
+})
+
 const walkers = computed(() => {
   const total = props.people.length || 1
 
@@ -88,15 +101,39 @@ const walkers = computed(() => {
     const seed = hash(person.id + i)
 
     // 산책이라 느긋해야 한다. 빠르면 쫓기는 것처럼 보인다.
-    const duration = 74 + pick(seed, 3, 46)
+    const pace = 74 + pick(seed, 3, 46)
 
     /*
-     * 출발 지점.
-     * 처음에는 id 에서 뽑은 수만 썼는데 몇 명 안 될 때 한쪽에 몰려 서 있었다.
-     * 자리를 먼저 고르게 나눠 주고 거기에 조금씩만 흔들어 준다.
+     * 자기 자리.
+     *
+     * 처음에는 출발 지점만 고르게 나눠 주고 모두가 판 전체를 오가게 두었다.
+     * 시작하는 순간에는 고르게 서 있었는데, 사람마다 걷는 속도가 달라서
+     * 몇 분 지나면 오른쪽에 넷이 뭉치고 왼쪽이 비었다.
+     * 출발을 나누는 것으로는 부족했다 — 오래 보고 있는 화면이라
+     * 어느 순간에 봐도 고르게 퍼져 있어야 한다.
+     *
+     * 그래서 자리를 나눠 준다. 각자 자기 구간 안에서만 오간다.
+     * 구간끼리는 조금씩 겹쳐 두어야 이웃과 마주쳐 악수할 일이 생긴다.
      */
-    const spread = i / total
-    const jitter = pick(seed, 7, 100) / 100 / total
+    /*
+     * 흔들림은 양쪽으로 줘야 한다.
+     * 0~+1칸으로만 밀었더니 열두 명이 모두 오른쪽으로만 밀려서,
+     * 자리를 고르게 나눠 놓고도 왼쪽이 비었다.
+     * 칸 한가운데를 기준으로 좌우 같은 만큼만 흔든다.
+     */
+    const home = (i + 0.5) / total + ((pick(seed, 7, 100) / 100 - 0.5) * 0.6) / total
+    const span = Math.min(0.44, Math.max(0.24, 1.6 / total))
+    let from = home - span / 2
+    let to = home + span / 2
+    // 판 밖으로 나가지 않게 통째로 안으로 민다. 폭을 줄이지는 않는다
+    if (from < 0.02) {
+      to += 0.02 - from
+      from = 0.02
+    }
+    if (to > 0.94) {
+      from = Math.max(0.02, from - (to - 0.94))
+      to = 0.94
+    }
 
     /*
      * 앞뒤 자리.
@@ -109,8 +146,16 @@ const walkers = computed(() => {
       id: person.id,
       person,
       seed,
-      dur: duration,
-      delay: -(duration * ((spread + jitter) % 1)),
+      /*
+       * 오가는 데 걸리는 시간.
+       * 구간이 좁아진 만큼 줄여야 걷는 속도가 그대로다.
+       * 안 줄이면 좁은 자리를 아주 느리게 기어가는 것처럼 보인다.
+       */
+      dur: Number((pace * ((to - from) / 0.9)).toFixed(1)),
+      // 같은 구간이라도 지금 어디쯤 와 있는지는 사람마다 다르다
+      delay: -(pace * ((to - from) / 0.9) * (pick(seed, 11, 100) / 100)),
+      from: Number((from * 100).toFixed(1)),
+      to: Number((to * 100).toFixed(1)),
       scale: Number((1.0 - (back / 32) * 0.32).toFixed(2)),
       // 느리게 걸으니 발도 느리게 놀려야 한다
       step: 0.62 + pick(seed, 15, 26) / 100,
@@ -136,7 +181,18 @@ let beat = null
    손을 놓자마자 같은 자리에서 또 잡으면 인사가 아니라 고장으로 보인다 */
 const cooled = new Map()
 
-const MEET_PX = 26
+/*
+ * 악수가 성립하는 사이.
+ *
+ * 30px 로 두었더니 몸이 거의 겹친 채로 손을 잡았다.
+ * 사람 하나가 44px 인데 30px 까지 붙으면 둘이 한 덩어리로 보여서,
+ * 악수를 하는 건지 겹쳐 서 있는 건지 알 수가 없었다.
+ *
+ * 몸 하나 너비쯤 떨어져 있을 때 잡는다. 사람 크기는 인원수와 깊이에 따라
+ * 달라지므로 고정 픽셀이 아니라 실제로 그려진 너비로 잰다.
+ */
+const MEET_LO = 0.86
+const MEET_HI = 1.3
 const GREET_MS = 2600
 const COOL_MS = 11000
 
@@ -148,7 +204,7 @@ const look = () => {
     if (!el) return
     const r = el.getBoundingClientRect()
     if (!r.width) return
-    seen.push({ id: p.id, x: r.left + r.width / 2, y: r.bottom })
+    seen.push({ id: p.id, x: r.left + r.width / 2, y: r.bottom, w: r.width })
   })
 
   for (let a = 0; a < seen.length; a += 1) {
@@ -158,11 +214,18 @@ const look = () => {
       if (greeting.value[one.id] || greeting.value[two.id]) continue
       // 같은 깊이에서 걷고 있어야 정말 마주친 것이다
       if (Math.abs(one.y - two.y) > 7) continue
-      if (Math.abs(one.x - two.x) > MEET_PX) continue
+      const gap = Math.abs(one.x - two.x)
+      const body = (one.w + two.w) / 2
+      if (gap < body * MEET_LO || gap > body * MEET_HI) continue
       const pair = one.id < two.id ? `${one.id}|${two.id}` : `${two.id}|${one.id}`
       if ((cooled.get(pair) ?? 0) > now) continue
 
-      greeting.value = { ...greeting.value, [one.id]: true, [two.id]: true }
+      /*
+       * 왼쪽에 선 사람이 오른팔을, 오른쪽에 선 사람이 왼팔을 뻗는다.
+       * 여기서만 누가 어느 쪽인지 알 수 있다.
+       */
+      const [lft, rgt] = one.x <= two.x ? [one, two] : [two, one]
+      greeting.value = { ...greeting.value, [lft.id]: 'greet', [rgt.id]: 'greetL' }
       cooled.set(pair, now + GREET_MS + COOL_MS)
       setTimeout(() => {
         const next = { ...greeting.value }
@@ -257,7 +320,13 @@ onUnmounted(() => clearInterval(beat))
       <StageScene :stage="stage" :open="open" />
 
       <!-- 걸어다니는 사람들 -->
-      <TransitionGroup name="walker" type="transition" tag="div" class="walkers">
+      <TransitionGroup
+        name="walker"
+        type="transition"
+        tag="div"
+        class="walkers"
+        :style="{ '--size': String(sizeK) }"
+      >
         <YardWalker
           v-for="w in walkers"
           :key="w.id"
@@ -269,8 +338,10 @@ onUnmounted(() => clearInterval(beat))
           :delay="w.delay"
           :scale="w.scale"
           :step="w.step"
+          :from="w.from"
+          :to="w.to"
           :back="w.back"
-          :forced="greeting[w.person.id] ? 'greet' : ''"
+          :forced="greeting[w.person.id] || ''"
         />
       </TransitionGroup>
 
