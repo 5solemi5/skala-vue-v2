@@ -33,14 +33,24 @@ const props = defineProps({
    * 즉 마당 전체를 보는 부모가 정해서 내려보낸다.
    */
   forced: { type: String, default: '' },
+  /*
+   * 물속인가.
+   *
+   * 물속에서는 바닥을 딛지 않는다. 발밑을 지면에 못 박아 두면
+   * 헤엄치는 자세로 해저를 걸어다니게 된다.
+   */
+  under: { type: Boolean, default: false },
+  // 물속에서 이 사람이 떠 있는 높이(판 아래에서 %)
+  depth: { type: Number, default: 30 },
 })
 
-const { act } = usePersonAct(props.seed)
+const { act } = usePersonAct(props.seed, props.under ? 'sea' : 'land')
 
 // 밖에서 시킨 게 있으면 그게 먼저다
 const shown = computed(() => props.forced || act.value)
 
 const style = computed(() => ({
+  '--depth': `${props.depth}%`,
   '--dur': `${props.dur}s`,
   '--delay': `${props.delay}s`,
   '--scale': String(props.scale),
@@ -52,7 +62,12 @@ const style = computed(() => ({
 </script>
 
 <template>
-  <div class="walker" :class="{ resting: shown !== 'walk' }" :data-wid="person.id" :style="style">
+  <div
+    class="walker"
+    :class="{ resting: shown !== 'walk' && shown !== 'swim', under }"
+    :data-wid="person.id"
+    :style="style"
+  >
     <PersonFigure :person="person" :variant="variant" :accent="accent" :act="shown" :step="step" />
   </div>
 </template>
@@ -78,6 +93,39 @@ const style = computed(() => ({
  */
 .walker.resting {
   animation-play-state: paused;
+}
+
+/*
+ * 물속.
+ *
+ * 지면에서 재지 않고 판 아래에서 %로 잰다. 물기둥 어디에나 있을 수
+ * 있어야 위아래로 흩어져 뜬다. 가로로만 늘어서면 수영장 레인이 된다.
+ *
+ * 헤엄치는 동안에는 자리가 계속 옮겨진다. 멈추는 건 떠 있거나
+ * 흐르거나 구를 때뿐이다.
+ */
+.walker.under {
+  bottom: var(--depth);
+  /*
+   * 가는 방향으로 몸을 돌린다.
+   *
+   * stroll 은 alternate 라 한 바퀴가 두 배 시간이다 —
+   * 앞의 dur 동안 오른쪽으로 가고 뒤의 dur 동안 왼쪽으로 돌아온다.
+   * 그래서 두 배 길이의 애니메이션으로 절반 지점에서 판을 뒤집으면
+   * 늘 나아가는 쪽을 보게 된다. 뒤집지 않으면 갈 때는 헤엄치고
+   * 올 때는 뒤로 끌려가는 것처럼 보인다.
+   */
+  animation:
+    stroll var(--dur) linear var(--delay) infinite alternate,
+    face calc(var(--dur) * 2) steps(1, end) var(--delay) infinite;
+}
+@keyframes face {
+  0% {
+    transform: scale(var(--scale)) scaleX(1);
+  }
+  50% {
+    transform: scale(var(--scale)) scaleX(-1);
+  }
 }
 
 @keyframes stroll {

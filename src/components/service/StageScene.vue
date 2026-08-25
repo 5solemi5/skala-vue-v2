@@ -128,7 +128,123 @@ const scene = computed(() => {
     drift: pick(-30, 30),
   }))
 
-  return { clouds, birds, trees, flowers, grass, motes }
+  /*
+   * ── 물속 ────────────────────────────────────────
+   * 물고기 떼 · 해파리 · 해초 · 산호.
+   *
+   * 뭍의 것들과 규칙이 다르다. 나무는 땅에 박혀 있지만
+   * 물고기와 해파리는 물기둥 어디에나 있을 수 있고, 늘 움직인다.
+   */
+  const fish = Array.from({ length: (s.fish ?? 0) * 6 }, (_, i) => ({
+    i,
+    // 한 떼가 비슷한 높이에서 함께 흐른다
+    band: Math.floor(i / 6),
+    x: pick(-60, 820),
+    y: 44 + Math.floor(i / 6) * 52 + pick(-14, 14),
+    sc: pick(0.55, 1.15),
+    dur: pick(26, 54),
+    delay: pick(-40, 0),
+    // 절반은 반대로 헤엄친다
+    back: r() > 0.55,
+  }))
+
+  const jellies = Array.from({ length: s.jellies ?? 0 }, (_, i) => ({
+    i,
+    x: pick(40, 760),
+    y: pick(40, 200),
+    sc: pick(0.5, 1.25),
+    dur: pick(7, 13),
+    delay: pick(-10, 0),
+    rise: pick(16, 44),
+  }))
+
+  // 해초. 바닥에 뿌리를 두고 물살에 눕는다
+  const kelp = s.kelp
+    ? Array.from({ length: 22 }, () => ({
+        x: pick(-20, 820),
+        h: pick(70, 190),
+        lean: pick(-26, 26),
+        sway: pick(4.5, 9),
+        delay: pick(0, 5),
+        w: pick(2.4, 6),
+      }))
+    : []
+
+  // 산호. 바닥에 앉은 덩어리들
+  const corals = s.corals
+    ? Array.from({ length: 14 }, () => ({
+        x: pick(0, 800),
+        y: pick(226, 248),
+        r: pick(6, 20),
+        arms: 3 + Math.floor(r() * 3),
+        lit: r() > 0.62,
+      }))
+    : []
+
+  /*
+   * 암초.
+   *
+   * 산 능선을 색만 바꿔 쓰면 물속에서도 산으로 보인다. 능선은 하늘과
+   * 맞닿은 선이라 위가 뾰족하고 아래가 넓은데, 물속 바위는 그렇지 않다 —
+   * 물이 깎아서 위가 둥글고 옆으로 퍼진다.
+   * 그래서 꺾인 선이 아니라 둥근 덩어리를 겹쳐 세운다.
+   */
+  const reef = s.reef
+    ? Array.from({ length: 3 }, (_, band) => ({
+        band,
+        o: 0.32 + band * 0.3,
+        rocks: Array.from({ length: 5 - band }, () => {
+          const w = pick(120, 300) * (1 - band * 0.16)
+          return { x: pick(-80, 820), w, h: pick(46, 128) * (1 - band * 0.2) }
+        }),
+        base: 236 - band * 30,
+      }))
+    : []
+
+  /*
+   * 마린 스노우.
+   *
+   * 위에서 끊임없이 내려오는 부유물. 심해를 심해로 보이게 하는 것은
+   * 사실 이것 하나다 — 물이 맑으면 그냥 파란 방이고,
+   * 무언가가 천천히 가라앉고 있어야 깊이가 생긴다.
+   * 아주 느리게, 아주 작게. 눈처럼 흩날리면 눈이 된다.
+   */
+  const marine = s.marine
+    ? Array.from({ length: 54 }, () => ({
+        x: pick(0, 800),
+        y: pick(-30, 260),
+        r: pick(0.5, 1.7),
+        dur: pick(30, 80),
+        delay: pick(-70, 0),
+        drift: pick(-16, 16),
+        o: pick(0.18, 0.5),
+      }))
+    : []
+
+  // 스스로 빛나는 것들. 깊을수록 빛은 위에서 오지 않는다
+  const glows = Array.from({ length: s.glows ?? 0 }, () => ({
+    x: pick(16, 784),
+    y: pick(46, 244),
+    r: pick(1.4, 3.6),
+    dur: pick(3, 8),
+    delay: pick(-8, 0),
+  }))
+
+  return {
+    clouds,
+    birds,
+    trees,
+    flowers,
+    grass,
+    motes,
+    fish,
+    jellies,
+    kelp,
+    corals,
+    reef,
+    marine,
+    glows,
+  }
 })
 
 // 산 능선. 겹마다 높이와 들쭉날쭉함을 달리한다
@@ -214,7 +330,11 @@ const ridges = computed(() => {
 
       <!-- ③ 빛줄기. 구름 사이로 내리는 빛 -->
       <g v-if="stage.rays" class="rays" :fill="stage.bloom">
-        <path v-for="k in 5" :key="k" :d="`M${520 + k * 26} 8 L${430 + k * 34} 260 L${470 + k * 34} 260Z`" />
+        <path
+          v-for="k in 5"
+          :key="k"
+          :d="`M${520 + k * 26} 8 L${430 + k * 34} 260 L${470 + k * 34} 260Z`"
+        />
       </g>
 
       <!-- ④ 먼 산. 뒤로 갈수록 옅다 -->
@@ -228,7 +348,7 @@ const ridges = computed(() => {
       />
 
       <!-- ⑤ 구름 -->
-      <g class="clouds" :fill="stage.bloom">
+      <g v-if="!stage.under" class="clouds" :fill="stage.bloom">
         <g
           v-for="c in scene.clouds"
           :key="`c${c.i}`"
@@ -243,13 +363,67 @@ const ridges = computed(() => {
       </g>
 
       <!-- ⑥ 새 떼 -->
-      <g v-if="scene.birds.length" class="flock" :stroke="stage.veg">
+      <g v-if="!stage.under && scene.birds.length" class="flock" :stroke="stage.veg">
         <path
           v-for="bd in scene.birds"
           :key="`b${bd.i}`"
           :d="`M${bd.x} ${bd.y} q4 -4 8 0 q4 -4 8 0`"
           :transform="`scale(${bd.s})`"
         />
+      </g>
+
+      <!--
+        ⑤' 수면. 물속에서만 보인다.
+
+        위에서 들어온 빛이 물결에 흔들려 아래로 어른거린다.
+        이 한 겹이 있고 없고가 '파란 배경' 과 '물속' 을 가른다 —
+        물은 투명해서 그 자체로는 안 보이고, 빛이 지나갈 때만 보인다.
+      -->
+      <g v-if="stage.under" class="surface" :stroke="stage.bloom">
+        <path
+          v-for="k in 6"
+          :key="`w${k}`"
+          :d="`M-60 ${7 + k * 10} q64 ${k % 2 ? 8 : -8} 128 0 q64 ${k % 2 ? -8 : 8} 128 0 q64 ${k % 2 ? 8 : -8} 128 0 q64 ${k % 2 ? -8 : 8} 128 0 q64 ${k % 2 ? 8 : -8} 128 0 q64 ${k % 2 ? -8 : 8} 128 0 q64 ${k % 2 ? 8 : -8} 128 0`"
+          :style="{
+            '--dur': `${6 + (k % 4) * 2.2}s`,
+            '--delay': `${k * -1.1}s`,
+            '--o': 0.34 - k * 0.045,
+          }"
+        />
+      </g>
+
+      <!--
+        암초. 능선 대신 둥근 덩어리를 세 겹 세운다.
+        능선은 하늘과 맞닿은 선이라 위가 뾰족한데,
+        물이 깎은 바위는 위가 둥글고 옆으로 퍼진다.
+      -->
+      <g v-if="stage.under" class="reef">
+        <g v-for="b in scene.reef" :key="`rf${b.band}`" :opacity="b.o" :fill="stage.veg">
+          <path
+            v-for="(k, i) in b.rocks"
+            :key="`rk${i}`"
+            :d="`M${k.x} 260 L${k.x} ${b.base} q${k.w * 0.16} ${-k.h} ${k.w * 0.5} ${-k.h * 0.94} q${k.w * 0.34} ${-0.06 * k.h} ${k.w * 0.5} ${k.h * 0.94} L${k.x + k.w} 260Z`"
+          />
+        </g>
+      </g>
+
+      <!-- ⑥' 먼 물고기 떼. 모티프보다 뒤라 작고 흐리다 -->
+      <g v-if="stage.under" class="school far" :fill="stage.veg2">
+        <g
+          v-for="f in scene.fish.filter((x) => x.band === 0)"
+          :key="`ff${f.i}`"
+          class="fish"
+          :style="{
+            '--dur': `${f.dur}s`,
+            '--delay': `${f.delay}s`,
+            '--dir': f.back ? -1 : 1,
+          }"
+        >
+          <g :transform="`translate(${f.x} ${f.y}) scale(${f.sc * 0.7})`">
+            <path d="M0 0 q7 -4.4 14 0 q-7 4.4 -14 0Z" />
+            <path d="M14 0 l5 -3.4 v6.8Z" />
+          </g>
+        </g>
       </g>
 
       <!-- ⑦ 모티프 — 무대마다 하나 -->
@@ -264,7 +438,9 @@ const ridges = computed(() => {
           <path d="M548 96a48 36 0 0 1 96 0a48 32 0 0 1-96 0z" />
         </g>
         <g v-else-if="stage.motif === 'gull'">
-          <path d="M520 96c22-30 44-34 62-12c18-22 40-18 62 12c-24-10-44-4-62 12c-18-16-38-22-62-12z" />
+          <path
+            d="M520 96c22-30 44-34 62-12c18-22 40-18 62 12c-24-10-44-4-62 12c-18-16-38-22-62-12z"
+          />
         </g>
         <g v-else-if="stage.motif === 'moon'">
           <path d="M628 62a38 38 0 1 0 30 60a30 30 0 1 1-30-60z" />
@@ -310,10 +486,22 @@ const ridges = computed(() => {
           <circle cx="600" cy="106" r="4.5" :fill="stage.accent" stroke="none" />
         </g>
         <g v-else-if="stage.motif === 'stars'">
-          <path d="M576 56c4 22 10 28 32 32c-22 4-28 10-32 32c-4-22-10-28-32-32c22-4 28-10 32-32z" />
-          <path d="M648 108c2.6 14 6.4 18 20 20c-13.6 2-17.4 6-20 20c-2.6-14-6.4-18-20-20c13.6-2 17.4-6 20-20z" />
+          <path
+            d="M576 56c4 22 10 28 32 32c-22 4-28 10-32 32c-4-22-10-28-32-32c22-4 28-10 32-32z"
+          />
+          <path
+            d="M648 108c2.6 14 6.4 18 20 20c-13.6 2-17.4 6-20 20c-2.6-14-6.4-18-20-20c13.6-2 17.4-6 20-20z"
+          />
           <circle cx="690" cy="62" r="9" />
-          <ellipse cx="690" cy="62" rx="17" ry="5" fill="none" :stroke="stage.accent" stroke-width="1.8" />
+          <ellipse
+            cx="690"
+            cy="62"
+            rx="17"
+            ry="5"
+            fill="none"
+            :stroke="stage.accent"
+            stroke-width="1.8"
+          />
         </g>
         <g v-else-if="stage.motif === 'glasses'">
           <g v-for="(x, i) in [536, 600, 664]" :key="i">
@@ -323,8 +511,39 @@ const ridges = computed(() => {
           </g>
           <circle cx="600" cy="164" r="11" :fill="stage.seal" :stroke="stage.seal" />
         </g>
+        <!--
+          심해의 주인공. 커다란 해파리 하나.
+
+          갓은 반원 아래에 물결을 물려 닫는다. 그냥 반원이면 버섯이다.
+          촉수는 길이를 다 다르게 둔다 — 같으면 빗자루로 보인다.
+        -->
+        <g v-else-if="stage.motif === 'jelly'" class="bigjelly">
+          <path
+            class="bell"
+            d="M512 128 A72 62 0 0 1 656 128 q-18 14 -36 0 q-18 14 -36 0 q-18 14 -36 0 q-18 14 -36 0Z"
+          />
+          <g
+            class="arms"
+            fill="none"
+            :stroke="stage.motifColor"
+            stroke-width="3"
+            stroke-linecap="round"
+          >
+            <path d="M534 132 q-14 52 4 96" />
+            <path d="M556 136 q10 60 -8 106" />
+            <path d="M584 138 q-6 66 6 112" />
+            <path d="M612 136 q-10 58 8 100" />
+            <path d="M634 132 q14 50 -4 92" />
+          </g>
+          <g class="veil" fill="none" :stroke="stage.bloom" stroke-width="1.6" opacity="0.6">
+            <path d="M528 122 A60 50 0 0 1 640 122" />
+            <path d="M546 116 A44 36 0 0 1 622 116" />
+          </g>
+        </g>
         <g v-else-if="stage.motif === 'whale'">
-          <path d="M512 112c40-32 110-30 142 2c16 16 8 36-14 40c-46 8-104 0-134-18c-10-6-8-18 6-24z" />
+          <path
+            d="M512 112c40-32 110-30 142 2c16 16 8 36-14 40c-46 8-104 0-134-18c-10-6-8-18 6-24z"
+          />
           <path d="M672 116l30-22-8 32z" />
           <path d="M556 88c8-16 18-26 28-28" fill="none" :stroke="stage.accent" stroke-width="2" />
           <circle cx="538" cy="122" r="3" fill="#f4efe5" stroke="none" />
@@ -337,7 +556,9 @@ const ridges = computed(() => {
         </g>
         <g v-else-if="stage.motif === 'deadBranch'">
           <path d="M598 200c0-46 6-80 18-106" />
-          <path d="M608 152c-22-6-34-20-38-38M612 126c20-8 30-22 32-42M618 100c-16-10-22-24-20-40" />
+          <path
+            d="M608 152c-22-6-34-20-38-38M612 126c20-8 30-22 32-42M618 100c-16-10-22-24-20-40"
+          />
           <path d="M574 112a7 5 0 1 0 0-10a7 5 0 0 0 0 10z" />
           <path d="M646 82a6 4 0 1 0 0-8a6 4 0 0 0 0 8z" />
           <path d="M600 58a6 5 0 1 0 0-10a6 5 0 0 0 0 10z" />
@@ -351,14 +572,33 @@ const ridges = computed(() => {
         <g v-else-if="stage.motif === 'runner'">
           <circle cx="628" cy="56" r="11" />
           <path d="M622 70l-14 34 16 12-6 34" stroke-width="9" stroke-linecap="round" fill="none" />
-          <path d="M608 104l-26 6M624 116l26 14" stroke-width="8" stroke-linecap="round" fill="none" />
-          <path d="M618 150l-24 22M618 150l16 26" stroke-width="9" stroke-linecap="round" fill="none" />
+          <path
+            d="M608 104l-26 6M624 116l26 14"
+            stroke-width="8"
+            stroke-linecap="round"
+            fill="none"
+          />
+          <path
+            d="M618 150l-24 22M618 150l16 26"
+            stroke-width="9"
+            stroke-linecap="round"
+            fill="none"
+          />
           <path d="M580 186c8-10 20-10 24 0c-10 8-18 6-24 0z" :fill="stage.accent" stroke="none" />
         </g>
         <g v-else-if="stage.motif === 'gorilla'">
           <path d="M560 128c0-34 22-58 44-58s44 24 44 58c0 26-20 44-44 44s-44-18-44-44z" />
-          <path d="M580 122c0-16 10-26 24-26s24 10 24 26c0 14-10 24-24 24s-24-10-24-24z" fill="#3a2a30" stroke="none" />
-          <path d="M566 96h76M566 110h76M566 124h76" stroke="#f0d8c4" stroke-width="2.4" class="collage" />
+          <path
+            d="M580 122c0-16 10-26 24-26s24 10 24 26c0 14-10 24-24 24s-24-10-24-24z"
+            fill="#3a2a30"
+            stroke="none"
+          />
+          <path
+            d="M566 96h76M566 110h76M566 124h76"
+            stroke="#f0d8c4"
+            stroke-width="2.4"
+            class="collage"
+          />
           <circle cx="592" cy="112" r="3" fill="#1c1418" stroke="none" />
           <circle cx="616" cy="112" r="3" fill="#1c1418" stroke="none" />
         </g>
@@ -379,11 +619,24 @@ const ridges = computed(() => {
       <rect x="0" y="150" width="800" height="52" :fill="`url(#mist-${uid})`" class="mist" />
 
       <!-- ⑩ 나무. 중경에 흩어진다 -->
-      <g class="trees">
+      <g v-if="!stage.under" class="trees">
         <g v-for="t in scene.trees" :key="`t${t.i}`" :transform="`translate(${t.x} ${t.base})`">
           <rect :x="-1.6" :y="-t.h * 0.42" width="3.2" :height="t.h * 0.42" :fill="stage.veg" />
-          <ellipse cx="0" :cy="-t.h * 0.58" :rx="t.w * 0.5" :ry="t.h * 0.34" :fill="t.dark ? stage.veg : stage.veg2" />
-          <ellipse cx="-4" :cy="-t.h * 0.72" :rx="t.w * 0.32" :ry="t.h * 0.24" :fill="stage.veg2" opacity="0.7" />
+          <ellipse
+            cx="0"
+            :cy="-t.h * 0.58"
+            :rx="t.w * 0.5"
+            :ry="t.h * 0.34"
+            :fill="t.dark ? stage.veg : stage.veg2"
+          />
+          <ellipse
+            cx="-4"
+            :cy="-t.h * 0.72"
+            :rx="t.w * 0.32"
+            :ry="t.h * 0.24"
+            :fill="stage.veg2"
+            opacity="0.7"
+          />
         </g>
       </g>
 
@@ -391,7 +644,7 @@ const ridges = computed(() => {
       <path :fill="stage.near" d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z" />
 
       <!-- ⑫ 덤불과 꽃 -->
-      <g class="flowers">
+      <g v-if="!stage.under" class="flowers">
         <g
           v-for="(f, i) in scene.flowers"
           :key="`f${i}`"
@@ -403,11 +656,94 @@ const ridges = computed(() => {
         </g>
       </g>
 
+      <!--
+        ⑪' 가까운 물고기 떼와 해파리.
+
+        해파리는 갓을 오므렸다 펴며 위로 밀려 올라갔다가 다시 가라앉는다.
+        박자를 다 다르게 둬야 한 무리가 아니라 각자 떠 있는 것으로 보인다.
+      -->
+      <g v-if="stage.under" class="school near" :fill="stage.motifColor">
+        <g
+          v-for="f in scene.fish.filter((x) => x.band > 0)"
+          :key="`fn${f.i}`"
+          class="fish"
+          :style="{
+            '--dur': `${f.dur}s`,
+            '--delay': `${f.delay}s`,
+            '--dir': f.back ? -1 : 1,
+          }"
+        >
+          <g :transform="`translate(${f.x} ${f.y}) scale(${f.sc})`">
+            <path d="M0 0 q7 -4.4 14 0 q-7 4.4 -14 0Z" />
+            <path d="M14 0 l5 -3.4 v6.8Z" />
+          </g>
+        </g>
+      </g>
+
+      <g v-if="stage.under" class="jellies">
+        <g
+          v-for="j in scene.jellies"
+          :key="`j${j.i}`"
+          class="jelly"
+          :style="{
+            '--dur': `${j.dur}s`,
+            '--delay': `${j.delay}s`,
+            '--rise': `${j.rise}px`,
+          }"
+        >
+          <g :transform="`translate(${j.x} ${j.y}) scale(${j.sc})`">
+            <path
+              class="bell"
+              :fill="stage.bloom"
+              d="M-11 2 A11 10 0 0 1 11 2 q-5.5 3.4 -11 0 q-5.5 3.4 -11 0Z"
+            />
+            <g class="arms" :stroke="stage.bloom">
+              <path d="M-6 3 q-2.5 11 0.6 21" />
+              <path d="M-2 4 q1.6 12 -1 22" />
+              <path d="M2 4 q-1.6 12 1 22" />
+              <path d="M6 3 q2.5 11 -0.6 21" />
+            </g>
+          </g>
+        </g>
+      </g>
+
       <!-- ⑬ 지면 -->
       <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
 
+      <!-- ⑬' 산호. 지면 다음에 얹는다 — 먼저 그렸더니 바닥에 덮여 하나도 안 보였다 -->
+      <g v-if="stage.under" class="corals">
+        <g v-for="(c, i) in scene.corals" :key="`c${i}`">
+          <path
+            v-for="a in c.arms"
+            :key="`ca${a}`"
+            :d="`M${c.x} ${c.y + 8} q${(a - c.arms / 2) * 5} ${-c.r * 0.7} ${(a - c.arms / 2) * 8} ${-c.r}`"
+            :stroke="c.lit ? stage.bloom : stage.veg"
+            :opacity="c.lit ? 0.75 : 1"
+          />
+        </g>
+      </g>
+
+      <!--
+        ⑭' 해초. 바닥에 뿌리를 두고 물살에 눕는다.
+
+        풀은 바람에 떨듯 흔들리지만 해초는 물에 밀려 천천히 눕는다.
+        같은 흔들림을 두 배 느리게, 두 배 크게 준다. 그 차이가 물이다.
+      -->
+      <g v-if="stage.under" class="kelp" :stroke="stage.veg2">
+        <path
+          v-for="(k, i) in scene.kelp"
+          :key="`k${i}`"
+          :d="`M${k.x} 262 c${k.lean * 0.5} ${-k.h * 0.32} ${k.lean * 1.7} ${-k.h * 0.44} ${k.lean * 1.05} ${-k.h * 0.72} c${-k.lean * 1.1} ${-k.h * 0.2} ${k.lean * 0.5} ${-k.h * 0.2} ${k.lean * 1.7} ${-k.h * 0.3}`"
+          :style="{
+            '--sway': `${k.sway}s`,
+            '--delay': `${k.delay}s`,
+            '--w': `${k.w}`,
+          }"
+        />
+      </g>
+
       <!-- ⑭ 전경 풀. 바람에 흔들린다 -->
-      <g class="grass" :stroke="stage.veg">
+      <g v-if="!stage.under" class="grass" :stroke="stage.veg">
         <path
           v-for="(g, i) in scene.grass"
           :key="`g${i}`"
@@ -425,6 +761,39 @@ const ridges = computed(() => {
           :cy="m.y"
           :r="m.r"
           :style="{ '--dur': `${m.dur}s`, '--delay': `${m.delay}s`, '--drift': `${m.drift}px` }"
+        />
+      </g>
+
+      <!--
+        ⑮' 마린 스노우.
+        심해를 심해로 보이게 하는 건 사실 이것 하나다.
+        물이 맑으면 그냥 파란 방이고, 무언가 천천히 가라앉고 있어야 깊이가 생긴다.
+      -->
+      <g v-if="stage.under" class="marine" fill="#dff3f0">
+        <circle
+          v-for="(m, i) in scene.marine"
+          :key="`ms${i}`"
+          :cx="m.x"
+          :cy="m.y"
+          :r="m.r"
+          :style="{
+            '--dur': `${m.dur}s`,
+            '--delay': `${m.delay}s`,
+            '--drift': `${m.drift}px`,
+            '--o': m.o,
+          }"
+        />
+      </g>
+
+      <!-- ⑮'' 스스로 빛나는 것들. 깊은 곳의 빛은 위에서 오지 않는다 -->
+      <g v-if="stage.under" class="glows" :fill="stage.bloom">
+        <circle
+          v-for="(g, i) in scene.glows"
+          :key="`gl${i}`"
+          :cx="g.x"
+          :cy="g.y"
+          :r="g.r"
+          :style="{ '--dur': `${g.dur}s`, '--delay': `${g.delay}s` }"
         />
       </g>
 
@@ -613,6 +982,176 @@ const ridges = computed(() => {
 }
 .motes.dust circle {
   opacity: 0.3;
+}
+/* 기포는 위로만 간다. 물속에서 아래로 떠다니는 것은 없다 */
+.motes.bubble circle {
+  animation-name: rise;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.8;
+}
+
+/* ── 물속 ─────────────────────────────────────────── */
+
+/*
+ * 수면의 일렁임.
+ * 물은 투명해서 그 자체로는 안 보이고 빛이 지나갈 때만 보인다.
+ * 세로로 늘어진 빛의 결이 좌우로 아주 느리게 미끄러진다.
+ */
+.surface path {
+  fill: none;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  opacity: var(--o);
+  animation: slide var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes slide {
+  from {
+    transform: translateX(-46px) scaleY(0.88);
+  }
+  to {
+    transform: translateX(46px) scaleY(1.12);
+  }
+}
+
+/* 물고기 떼. 한 방향으로 천천히 흐르다 판을 벗어나면 되돌아온다 */
+.fish {
+  animation: swimBy var(--dur) linear var(--delay) infinite;
+}
+.school.far .fish {
+  opacity: 0.5;
+}
+@keyframes swimBy {
+  from {
+    transform: translateX(calc(-260px * var(--dir)));
+  }
+  to {
+    transform: translateX(calc(260px * var(--dir)));
+  }
+}
+
+/*
+ * 해파리.
+ * 갓을 오므리면 위로 밀리고, 펴면서 가라앉는다.
+ * 미는 순간과 뜨는 순간을 어긋나게 둬야 헤엄치는 것으로 보인다.
+ */
+.jelly {
+  animation: pulse var(--dur) ease-in-out var(--delay) infinite;
+}
+.jelly .bell {
+  opacity: 0.5;
+}
+.jelly .arms {
+  fill: none;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  22% {
+    transform: translateY(calc(var(--rise) * -0.55)) scale(0.86, 1.14);
+  }
+  46% {
+    transform: translateY(calc(var(--rise) * -1)) scale(1.1, 0.9);
+  }
+  75% {
+    transform: translateY(calc(var(--rise) * -0.4)) scale(1, 1);
+  }
+}
+
+/* 큰 해파리도 같은 박자로 숨 쉰다. 다만 훨씬 느리다 */
+.bigjelly {
+  animation: pulse 11s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+  --rise: 16px;
+}
+.bigjelly .bell {
+  opacity: 0.42;
+}
+
+/* 산호 */
+.corals path {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+}
+
+/* 해초. 풀보다 두껍고 두 배 느리게 눕는다 */
+.kelp path {
+  fill: none;
+  stroke-width: calc(var(--w) * 1px);
+  stroke-linecap: round;
+  opacity: 0.8;
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  animation: lean var(--sway) ease-in-out var(--delay) infinite alternate;
+}
+/* 풀은 바람에 떨듯 흔들리지만 해초는 물에 밀려 뿌리부터 눕는다 */
+@keyframes lean {
+  from {
+    transform: rotate(-5deg) scaleY(0.97);
+  }
+  to {
+    transform: rotate(5deg) scaleY(1.03);
+  }
+}
+
+/* 마린 스노우. 아주 느리게 내려앉는다 */
+.marine circle {
+  opacity: 0;
+  animation: sink var(--dur) linear var(--delay) infinite;
+}
+@keyframes sink {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  10%,
+  86% {
+    opacity: var(--o);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(300px) translateX(var(--drift));
+  }
+}
+
+/* 발광. 숨 쉬듯 밝아졌다 사그라든다 */
+.glows circle {
+  animation: bio var(--dur) ease-in-out var(--delay) infinite;
+}
+@keyframes bio {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  12% {
+    opacity: 0.55;
+  }
+  88% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-180px) translateX(var(--drift));
+  }
 }
 
 .vig {

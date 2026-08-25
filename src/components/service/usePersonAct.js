@@ -6,6 +6,10 @@ import { ref, onUnmounted } from 'vue'
  * 걷기만 시켜 놓으면 열두 명이 한 줄로 좌우를 오가는 컨베이어가 된다.
  * 걷다가 멈춰 서고, 기지개를 켜고, 앉아 쉬다가, 가끔 폴짝 뛴다.
  *
+ * 무대가 물속이면 동작 표가 통째로 바뀐다.
+ * 걷기·앉기·점프는 바닥과 중력이 있어야 성립하는 동작이라
+ * 심해에서는 쓸 수가 없다. 색만 바꿔 쓰면 물속에서 걸어다니게 된다.
+ *
  * ── 왜 CSS 만으로 안 했나 ──────────────────────────
  * 한 벌의 긴 keyframes 안에 여섯 가지 동작을 시간대별로 욱여넣을 수는 있다.
  * 그런데 동작마다 움직이는 부위가 달라서(앉기는 다리, 기지개는 팔)
@@ -62,13 +66,57 @@ const NEXT = {
   spin: ['walk', 'walk', 'idle', 'dance'],
 }
 
-const spec = (id) => ACTS.find((a) => a.id === id) ?? ACTS[0]
+/*
+ * ── 물속 ──────────────────────────────────────────
+ *
+ * 뭍의 동작을 색만 바꿔 쓸 수가 없다.
+ * 걷기는 바닥을 디뎌야 하고, 앉기와 쪼그려 앉기는 중력이 있어야 하고,
+ * 점프는 떨어질 곳이 있어야 한다. 물속에는 셋 다 없다.
+ *
+ * 여기서는 기본이 헤엄이고, 멈추면 걷는 게 아니라 뜬다.
+ */
+const SEA_ACTS = [
+  { id: 'swim', min: 8, max: 18 },
+  // 팔다리를 접고 가만히 떠 있기
+  { id: 'hover', min: 3, max: 7 },
+  // 물살에 몸을 맡기고 흐르기
+  { id: 'drift', min: 4, max: 9 },
+  // 위로 차고 오르기
+  { id: 'ascend', min: 2.4, max: 4 },
+  // 아래로 가라앉기
+  { id: 'sink', min: 2.6, max: 4.5 },
+  // 앞으로 한 바퀴
+  { id: 'roll', min: 1.8, max: 3 },
+  // 몸을 웅크렸다 펴며 나아가기
+  { id: 'tuck', min: 2.2, max: 3.6 },
+  // 물속에서도 인사는 한다
+  { id: 'wave', min: 1.8, max: 2.8 },
+]
+
+const SEA_NEXT = {
+  swim: ['hover', 'drift', 'roll', 'tuck', 'ascend', 'sink', 'swim', 'swim', 'swim'],
+  hover: ['swim', 'swim', 'drift', 'wave', 'roll'],
+  drift: ['swim', 'swim', 'hover', 'sink'],
+  ascend: ['swim', 'drift', 'hover'],
+  sink: ['swim', 'hover', 'drift'],
+  roll: ['swim', 'swim', 'hover', 'tuck'],
+  tuck: ['swim', 'swim', 'roll'],
+  wave: ['swim', 'swim', 'hover'],
+}
+
+const SETS = {
+  land: { acts: ACTS, next: NEXT, first: 'walk' },
+  sea: { acts: SEA_ACTS, next: SEA_NEXT, first: 'swim' },
+}
+
+const spec = (set, id) => set.acts.find((a) => a.id === id) ?? set.acts[0]
 
 /**
  * @param seed  사람마다 다른 수. 같은 사람은 늘 같은 차례로 움직인다
  */
-export const usePersonAct = (seed = 1) => {
-  const act = ref('walk')
+export const usePersonAct = (seed = 1, world = 'land') => {
+  const set = SETS[world] ?? SETS.land
+  const act = ref(set.first)
 
   // 사람마다 다른 차례가 나오도록 씨앗에서 뽑는다
   let x = seed >>> 0 || 1
@@ -83,10 +131,10 @@ export const usePersonAct = (seed = 1) => {
 
   let timer = null
   const step = () => {
-    const s = spec(act.value)
+    const s = spec(set, act.value)
     const hold = (s.min + rand() * (s.max - s.min)) * 1000
     timer = setTimeout(() => {
-      const pool = NEXT[act.value] ?? ['walk']
+      const pool = set.next[act.value] ?? [set.first]
       act.value = pool[Math.floor(rand() * pool.length)]
       step()
     }, hold)

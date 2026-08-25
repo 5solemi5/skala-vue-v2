@@ -81,6 +81,8 @@ const look = computed(() => {
     hat: pick(seed, 9, 5),
     // 모자를 안 썼을 때 쓸 머리 모양. 민머리로 두면 열두 명이 다 같아 보인다
     hair: pick(seed, 25, 4),
+    // 볼은 있는 사람만 있다. 전원이 볼그레하면 한 벌로 찍어낸 인형이 된다
+    blush: pick(seed, 29, 3) === 0,
     hold: pick(seed, 13, 4),
     coat: COATS[pick(seed, 19, COATS.length)],
   }
@@ -126,6 +128,13 @@ const rim = computed(() => ({
 const layers = computed(() => {
   if (props.variant === 'line') return ['line']
   if (props.variant === 'silhouette') return ['shade']
+  /*
+   * 흰 테두리.
+   *
+   * 4.2 로 두껍게 둘렀더니 사람이 흰 덩어리 안에 갇혀 보였고,
+   * 아예 없애 보니 어두운 무대에서 몸이 배경에 녹았다.
+   * 형태가 뭉개지지 않을 만큼만, 배경에서 떨어질 만큼만 얇게 두른다.
+   */
   return ['cut', 'ink']
 })
 </script>
@@ -273,13 +282,17 @@ const layers = computed(() => {
           <!--
             실루엣에는 얼굴을 그리지 않는다. 역광에서는 안 보인다.
 
-            눈은 점 두 개였다. 조금 키우고 왼쪽 위에 반짝임을 하나 찍으면
-            같은 점인데 눈이 된다. 빛이 어디서 오는지가 생기기 때문이다.
+            왼쪽 위에 흰 점을 하나 찍는다. 이게 없으면 까만 점 두 개만 남아
+            무언가 노려보는 것처럼 보인다. 점 하나가 '보고 있다' 와
+            '뚫려 있다' 를 가른다.
             볼은 눈보다 아래 바깥에 둔다 — 눈에 붙으면 부은 것처럼 보인다.
+            셋 중 하나만 볼이 있다. 전원이 볼그레하면 한 벌로 찍어낸 인형이 된다.
           -->
           <template v-if="variant !== 'silhouette'">
-            <circle class="blush" cx="6.9" cy="9.9" r="1.7" />
-            <circle class="blush" cx="17.1" cy="9.9" r="1.7" />
+            <template v-if="look.blush">
+              <circle class="blush" cx="7.05" cy="9.85" r="1.42" />
+              <circle class="blush" cx="16.95" cy="9.85" r="1.42" />
+            </template>
             <!--
               뜬 눈과 웃는 눈을 둘 다 그려 두고 하나만 보인다.
               모양이 바뀌는 것이라 CSS 로 바꿔 그릴 수가 없어서,
@@ -288,8 +301,8 @@ const layers = computed(() => {
             <g class="eyes">
               <circle class="eye" cx="9.55" cy="7.7" r="1.3" />
               <circle class="eye" cx="14.45" cy="7.7" r="1.3" />
-              <circle class="spark" cx="9.16" cy="7.28" r="0.46" />
-              <circle class="spark" cx="14.06" cy="7.28" r="0.46" />
+              <circle class="spark" cx="9.16" cy="7.28" r="0.44" />
+              <circle class="spark" cx="14.06" cy="7.28" r="0.44" />
             </g>
             <g class="smile">
               <path d="M8.3 8.15 A1.4 1.4 0 0 1 10.8 8.15" />
@@ -963,6 +976,252 @@ const layers = computed(() => {
   }
 }
 
+/*
+ * ── 물속 ──────────────────────────────────────────
+ *
+ * 물속에서는 몸이 늘 조금씩 기운다. 딛고 선 것이 없어서다.
+ * 그래서 어떤 동작이든 바탕에 흔들림이 깔린다.
+ *
+ * 팔다리는 물을 밀어야 하므로 뭍보다 크고 느리게 움직인다.
+ * 걸음(pfStep)은 7도쯤 흔들리지만 헤엄은 30도 넘게 젓는다.
+ * 작게 저으면 물속에서 걷는 것처럼 보인다.
+ */
+.figure:is(.swim, .hover, .drift, .ascend, .sink, .roll, .tuck) {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* 헤엄 — 팔로 물을 젓고 다리로 찬다 */
+.figure.swim {
+  animation: pfSwimBody 2.6s ease-in-out infinite;
+}
+.figure.swim .arm.one {
+  animation: pfPaddleA 1.5s ease-in-out infinite;
+}
+.figure.swim .arm.two {
+  animation: pfPaddleB 1.5s ease-in-out infinite;
+}
+.figure.swim .leg.one {
+  animation: pfKickA 1.1s ease-in-out infinite;
+}
+.figure.swim .leg.two {
+  animation: pfKickB 1.1s ease-in-out infinite;
+}
+/*
+ * 물속에서는 몸이 눕는다.
+ *
+ * 처음에는 선 자세에서 7도쯤만 기울였는데, 그건 헤엄이 아니라
+ * 물속에서 걷는 것이었다. 사람은 나아가는 쪽으로 몸을 눕힌다.
+ * 60도쯤 눕히고 그 언저리에서 물결처럼 오르내린다.
+ *
+ * 어느 쪽으로 눕느냐는 부모가 정한다 — 가는 방향이 바뀌면
+ * 판을 통째로 뒤집어서 늘 앞으로 나아가는 것으로 보이게 한다.
+ */
+@keyframes pfSwimBody {
+  0%,
+  100% {
+    transform: rotate(-58deg) translateY(1px);
+  }
+  50% {
+    transform: rotate(-70deg) translateY(-3px);
+  }
+}
+@keyframes pfPaddleA {
+  0%,
+  100% {
+    transform: rotate(-26deg);
+  }
+  50% {
+    transform: rotate(-96deg);
+  }
+}
+@keyframes pfPaddleB {
+  0%,
+  100% {
+    transform: rotate(96deg);
+  }
+  50% {
+    transform: rotate(26deg);
+  }
+}
+@keyframes pfKickA {
+  0%,
+  100% {
+    transform: rotate(16deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+@keyframes pfKickB {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+
+/* 떠 있기 — 팔다리를 늘어뜨리고 물결에 맡긴다 */
+.figure.hover {
+  animation: pfHover 3.8s ease-in-out infinite;
+}
+.figure.hover .arm.one {
+  transform: rotate(-30deg);
+}
+.figure.hover .arm.two {
+  transform: rotate(30deg);
+}
+.figure.hover .leg.one {
+  transform: rotate(9deg);
+}
+.figure.hover .leg.two {
+  transform: rotate(-9deg);
+}
+@keyframes pfHover {
+  0%,
+  100% {
+    transform: rotate(-13deg) translateY(2px);
+  }
+  50% {
+    transform: rotate(-4deg) translateY(-3px);
+  }
+}
+
+/* 흐르기 — 물살에 옆으로 누워 실려 간다 */
+.figure.drift {
+  animation: pfDrift 5.2s ease-in-out infinite;
+}
+.figure.drift .arm.one {
+  transform: rotate(-58deg);
+}
+.figure.drift .arm.two {
+  transform: rotate(18deg);
+}
+@keyframes pfDrift {
+  0%,
+  100% {
+    transform: rotate(-42deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-31deg) translateY(-4px);
+  }
+}
+
+/* 차고 오르기 / 가라앉기 — 팔의 방향이 몸이 가는 쪽을 말한다 */
+.figure.ascend {
+  animation: pfAscend 1.6s ease-in-out infinite;
+}
+.figure.ascend .arm.one {
+  transform: rotate(158deg);
+}
+.figure.ascend .arm.two {
+  transform: rotate(-158deg);
+}
+.figure.ascend :is(.leg.one, .leg.two) {
+  animation: pfKickA 0.62s ease-in-out infinite;
+}
+@keyframes pfAscend {
+  0%,
+  100% {
+    transform: translateY(2px) scaleY(0.97);
+  }
+  50% {
+    transform: translateY(-6px) scaleY(1.04);
+  }
+}
+.figure.sink {
+  animation: pfSink 3.4s ease-in-out infinite;
+}
+.figure.sink .arm.one {
+  transform: rotate(-46deg);
+}
+.figure.sink .arm.two {
+  transform: rotate(46deg);
+}
+@keyframes pfSink {
+  0%,
+  100% {
+    transform: translateY(-2px) rotate(3deg);
+  }
+  50% {
+    transform: translateY(5px) rotate(-3deg);
+  }
+}
+
+/* 앞구르기 — 물속에서는 넘어질 걱정이 없다 */
+.figure.roll {
+  animation: pfRoll 1.9s ease-in-out infinite;
+}
+.figure.roll :is(.arm.one, .arm.two) {
+  transform: rotate(0deg) scaleY(0.8);
+}
+.figure.roll :is(.leg.one, .leg.two) {
+  transform: scaleY(0.78);
+}
+@keyframes pfRoll {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 웅크렸다 펴며 나아가기. 해파리가 하는 방식이다 */
+.figure.tuck {
+  animation: pfTuck 1.5s ease-in-out infinite;
+}
+.figure.tuck .arm.one {
+  animation: pfTuckArmA 1.5s ease-in-out infinite;
+}
+.figure.tuck .arm.two {
+  animation: pfTuckArmB 1.5s ease-in-out infinite;
+}
+.figure.tuck :is(.leg.one, .leg.two) {
+  animation: pfTuckLeg 1.5s ease-in-out infinite;
+}
+@keyframes pfTuck {
+  0%,
+  100% {
+    transform: rotate(-52deg) scale(1, 1);
+  }
+  35% {
+    transform: rotate(-52deg) scale(1.1, 0.84);
+  }
+  62% {
+    transform: rotate(-56deg) scale(0.92, 1.12) translateY(-5px);
+  }
+}
+@keyframes pfTuckArmA {
+  0%,
+  100% {
+    transform: rotate(-24deg);
+  }
+  35% {
+    transform: rotate(-74deg);
+  }
+}
+@keyframes pfTuckArmB {
+  0%,
+  100% {
+    transform: rotate(24deg);
+  }
+  35% {
+    transform: rotate(74deg);
+  }
+}
+@keyframes pfTuckLeg {
+  0%,
+  100% {
+    transform: rotate(0deg) scaleY(1);
+  }
+  35% {
+    transform: rotate(0deg) scaleY(0.66);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .figure,
   .figure * {
@@ -980,13 +1239,6 @@ const layers = computed(() => {
   --rim-fade: 0.6;
 }
 
-.cut * {
-  fill: #fff;
-  stroke: #fff;
-  stroke-width: 4.2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
 .ink .body,
 .ink .arm,
 .ink .leg {
@@ -1030,9 +1282,6 @@ const layers = computed(() => {
  * 스티커에서만 쓴다. 각인형 무대는 금박 선 몇 개로만 그리는 결이라
  * 거기에 분홍 볼을 찍으면 두 언어가 한 얼굴에서 부딪는다.
  */
-.spark {
-  fill: #fff;
-}
 
 /*
  * 웃는 눈.
@@ -1051,10 +1300,10 @@ const layers = computed(() => {
 .line .smile {
   stroke: var(--accent);
 }
-.figure:is(.greet, .greetL, .five, .fiveL, .wave, .dance, .jump) .smile {
+.figure:is(.greet, .greetL, .five, .fiveL, .wave, .dance, .jump, .roll, .tuck, .ascend) .smile {
   display: block;
 }
-.figure:is(.greet, .greetL, .five, .fiveL, .wave, .dance, .jump) .eyes {
+.figure:is(.greet, .greetL, .five, .fiveL, .wave, .dance, .jump, .roll, .tuck, .ascend) .eyes {
   display: none;
 }
 
@@ -1126,10 +1375,29 @@ const layers = computed(() => {
     transform: rotate(5deg) translateY(-0.5px);
   }
 }
+/*
+ * 안광.
+ *
+ * 한 번 걷어냈다가 되살렸다. 없애 놓으니 까만 점 두 개만 남아
+ * 인형이 아니라 무언가 노려보는 것처럼 보였다.
+ * 흰 점 하나가 있고 없고가 '보고 있다' 와 '뚫려 있다' 를 가른다.
+ */
+.spark {
+  fill: #fff;
+}
 .blush {
   fill: #efa6a0;
   opacity: 0.6;
 }
+/* 아주 얇은 흰 테두리. 형태를 덮지 않고 윤곽만 짚는다 */
+.cut * {
+  fill: #fff;
+  stroke: #fff;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
 .line :is(.spark, .blush),
 .cut :is(.spark, .blush) {
   display: none;

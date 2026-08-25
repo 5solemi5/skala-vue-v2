@@ -156,6 +156,11 @@ const walkers = computed(() => {
       delay: -(pace * ((to - from) / 0.9) * (pick(seed, 11, 100) / 100)),
       from: Number((from * 100).toFixed(1)),
       to: Number((to * 100).toFixed(1)),
+      /*
+       * 물속에서는 back 이 앞뒤가 아니라 높이다.
+       * 바닥(24px)에서 재던 것을 판 아래에서 %로 재서, 물기둥 전체에 흩어진다.
+       */
+      depth: Number((10 + ((i * 37 + pick(seed, 17, 40)) % 62)).toFixed(0)),
       scale: Number((1.0 - (back / 32) * 0.32).toFixed(2)),
       // 느리게 걸으니 발도 느리게 놀려야 한다
       step: 0.62 + pick(seed, 15, 26) / 100,
@@ -350,6 +355,8 @@ onUnmounted(() => clearInterval(beat))
           :delay="w.delay"
           :scale="w.scale"
           :step="w.step"
+          :under="!!stage.under"
+          :depth="w.depth"
           :from="w.from"
           :to="w.to"
           :back="w.back"
