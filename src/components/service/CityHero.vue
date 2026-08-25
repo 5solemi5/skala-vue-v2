@@ -17,6 +17,8 @@ const props = defineProps({
   adviceList: { type: Array, default: () => [] },
   hourlyRows: { type: Array, default: () => [] },
   statusText: { type: String, default: '' },
+  // 사람을 고르고 있으면 그 사람의 일을 따르므로 일상 탭을 숨긴다
+  showModes: { type: Boolean, default: true },
 })
 
 defineEmits(['open-detail'])
@@ -169,7 +171,12 @@ const coord = computed(() => {
         같은 하늘을 보고도 하는 일마다 해야 할 게 달라진다는 게 이 화면의 전부라,
         하늘과 판정 사이가 그 말이 놓일 자리다.
       -->
-      <ModeBar class="modes" />
+      <!--
+        무엇을 볼까요 — 일상 항목.
+        사람을 고르고 있을 때는 감춘다. 그때 판정은 그 사람이 하는 일을 따르므로
+        여기서 빨래·산책을 고를 수 있게 두면 위아래가 어긋난다.
+      -->
+      <ModeBar v-if="showModes" class="modes" />
 
       <div v-if="lead" class="verdict">
         <VerdictMark :level="lead.level" size="lg" />

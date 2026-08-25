@@ -26,7 +26,7 @@ const DEFAULT_PEOPLE = [
   {
     id: 'p_shop',
     who: '정비소',
-    modeId: 'repair',
+    modeId: 'site',
     city: {
       id: 'geo_35.824_127.148',
       name: '전주',

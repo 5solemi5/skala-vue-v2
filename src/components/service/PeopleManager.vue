@@ -13,7 +13,7 @@ const isOpen = ref(false)
 const editingId = ref('')
 
 // 편집 중인 내용
-const form = ref({ who: '', modeId: 'repair', city: null })
+const form = ref({ who: '', modeId: 'site', city: null })
 const query = ref('')
 const results = ref([])
 const isSearching = ref(false)
@@ -36,7 +36,7 @@ const startAdd = () => {
     return
   }
   editingId.value = 'new'
-  form.value = { who: '', modeId: configStore.modeList[0].id, city: null }
+  form.value = { who: '', modeId: configStore.workModeList[0].id, city: null }
   query.value = ''
   results.value = []
   message.value = ''
@@ -147,7 +147,7 @@ const remove = (person) => {
           <fieldset class="field">
             <legend>{{ configStore.t('edit.what') }}</legend>
             <div class="modes">
-              <label v-for="mode in configStore.modeList" :key="mode.id" class="radio">
+              <label v-for="mode in configStore.workModeList" :key="mode.id" class="radio">
                 <input v-model="form.modeId" type="radio" :value="mode.id" />
                 <span>{{ mode.label }}</span>
               </label>
@@ -201,7 +201,7 @@ const remove = (person) => {
           <fieldset class="field">
             <legend>{{ configStore.t('edit.what') }}</legend>
             <div class="modes">
-              <label v-for="mode in configStore.modeList" :key="mode.id" class="radio">
+              <label v-for="mode in configStore.workModeList" :key="mode.id" class="radio">
                 <input v-model="form.modeId" type="radio" :value="mode.id" />
                 <span>{{ mode.label }}</span>
               </label>

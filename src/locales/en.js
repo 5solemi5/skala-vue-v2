@@ -43,6 +43,20 @@ export default {
   // ── yard scenery ──
 
   // ── weather ─────────────────────────────────
+  'mode.site': 'Site work',
+  'mode.farm': 'Farming',
+  'mode.commute': 'Commute',
+  'mode.school': 'School run',
+  'mode.baseball': 'Baseball',
+  'mode.hike': 'Hiking',
+  'mode.laundry': 'Laundry & airing',
+  'mode.walk': 'A walk',
+  'mode.bike': 'Cycling',
+  'mode.workout': 'Outdoor training',
+  'mode.wash': 'Washing the car',
+  'mode.outing': 'A day out',
+  'mode.eyebrow': 'What are we checking',
+  'mode.aria': 'Choose what to check',
   'cond.clear': 'Clear',
   'cond.clouds': 'Cloudy',
   'cond.rain': 'Rain',
@@ -50,15 +64,6 @@ export default {
   'cond.haze': 'Hazy',
 
   // ── what you look after ─────────────────────
-  'mode.repair': 'Auto repair shop',
-  'mode.farm': 'Farming',
-  'mode.site': 'Site work',
-  'mode.bike': 'Cycling',
-  'mode.hike': 'Hiking',
-  'mode.baseball': 'Baseball',
-  'mode.laundry': 'Laundry & airing',
-  'mode.eyebrow': 'What are we checking',
-  'mode.aria': 'Choose what to check',
 
   // ── the people you look after ───────────────
   'yard.plate': 'The Yard',

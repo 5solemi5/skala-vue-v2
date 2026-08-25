@@ -40,8 +40,22 @@ const searchQuery = ref('')
 const selectedCityInfo = ref(configStore.t('home.hint'))
 const selectedId = ref('')
 
-const modeList = computed(() => configStore.modeList)
 const currentMode = computed(() => configStore.currentMode)
+
+/*
+ * 창의 큰 판정은 무엇을 따르는가.
+ *
+ * 사람을 고르고 있으면 그 사람이 하는 일을 따른다.
+ * 정비소를 챙기러 들어왔는데 '빨래 널기 좋은 날' 이 큰 글씨로 떠 있으면
+ * 무엇을 보러 온 화면인지 알 수 없다.
+ *
+ * 사람이 아니라 지역을 보고 있을 때(헤더의 '내 위치' 로 들어온 경우)에는
+ * 챙길 사람이 없으니 내가 고른 일상 항목을 따른다.
+ */
+const selectedPerson = computed(
+  () => peopleStore.people.find((p) => p.id === selectedPersonId.value) ?? null,
+)
+const heroMode = computed(() => selectedPerson.value?.modeId ?? configStore.currentMode)
 
 const loadWeather = async () => {
   isLoading.value = true
@@ -178,6 +192,11 @@ const filteredWeatherList = computed(() => {
 // 판정 문구를 만들 때 필요한 것들. 언어나 단위가 바뀌면 문구도 따라 바뀐다.
 const adviceOpts = computed(() => ({ lang: configStore.lang, unit: configStore.unit }))
 
+/* 창에 뜬 지역의 판정. 사람을 고르고 있으면 그 사람 기준이다 */
+const heroAdvice = computed(() =>
+  selectedCity.value ? buildAdvice(selectedCity.value, heroMode.value, adviceOpts.value) : [],
+)
+
 const adviceMap = computed(() => {
   const map = {}
   weatherList.value.forEach((item) => {
@@ -237,8 +256,9 @@ watchEffect(() => {
   console.log(`[watchEffect] 현재 검색어 '${searchQuery.value}' 로 목록을 필터링합니다.`)
 })
 
-watch(currentMode, (newMode, oldMode) => {
-  console.log(`[watch] 모드 변경: ${oldMode} -> ${newMode} — 채비 기준을 다시 적용합니다.`)
+// 일상 항목을 바꾸는 건 사람이 아니라 지역을 보고 있을 때뿐이다
+watch(currentMode, () => {
+  if (selectedPerson.value) return
   selectedCityInfo.value = configStore.t('home.modeChanged', { mode: configStore.currentModeLabel })
 })
 
@@ -246,7 +266,11 @@ watch(currentMode, (newMode, oldMode) => {
 // 정비소를 골랐는데 서울 날씨로 판정하던 문제를 여기서 막는다.
 const handlePersonSelect = (person) => {
   selectedPersonId.value = person.id
-  configStore.setMode(person.modeId)
+  /*
+   * 예전에는 여기서 화면의 모드를 그 사람 것으로 바꿨다.
+   * 지금은 목록이 둘로 갈려서(일 / 일상) 그럴 수가 없다.
+   * 그 사람의 일은 heroMode 가 알아서 따라가므로 여기서 손대지 않는다.
+   */
 
   const known = weatherList.value.find((c) => c.id === person.city.id)
   if (known) {
@@ -256,7 +280,8 @@ const handlePersonSelect = (person) => {
     cityStore.addCity(person.city)
     selectedId.value = person.city.id
   }
-  selectedCityInfo.value = `${person.who} · ${person.city.name}`
+  const job = configStore.modeList.find((m) => m.id === person.modeId)?.label ?? ''
+  selectedCityInfo.value = `${person.who} · ${person.city.name} · ${job}`
 }
 
 const handleSelect = (city) => {
@@ -293,7 +318,8 @@ const handleDetail = (city) => {
       -->
       <CityHero
         :city="selectedCity"
-        :advice-list="selectedCity ? adviceMap[selectedCity.id] : []"
+        :advice-list="heroAdvice"
+        :show-modes="!selectedPerson"
         :hourly-rows="hourlyRows"
         :status-text="selectedCityInfo"
         @open-detail="handleDetail"

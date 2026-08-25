@@ -15,7 +15,7 @@ const configStore = useConfigStore()
     <p class="eyebrow">{{ configStore.t('mode.eyebrow') }}</p>
     <div class="seg" role="tablist" :aria-label="configStore.t('mode.aria')">
       <button
-        v-for="mode in configStore.modeList"
+        v-for="mode in configStore.lifeModeList"
         :key="mode.id"
         type="button"
         role="tab"

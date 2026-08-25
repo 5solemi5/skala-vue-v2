@@ -135,26 +135,58 @@ export const useConfigStore = defineStore('config', () => {
     if (isKnownTheme(id)) yardTheme.value = id
   }
 
-  // state: 사용 가능한 모드 목록과 현재 선택된 모드
-  // 이름은 언어를 타므로 id 만 두고 표시용 이름은 그때그때 번역해서 만든다.
-  const MODE_IDS = ['repair', 'farm', 'site', 'bike', 'hike', 'baseball', 'laundry']
-  const modeList = computed(() =>
-    MODE_IDS.map((id) => ({ id, label: t.value(`mode.${id}`) })),
-  )
+  /*
+   * 하는 일은 두 갈래다.
+   *
+   *   일(WORK)    그 사람이 무엇을 하는가. 사람을 등록할 때 한 번 고른다.
+   *               직업이거나 꾸준한 일과라 잘 바뀌지 않는다.
+   *   일상(LIFE)  오늘 내가 무엇을 할까. 볼 때마다 바꿔 가며 본다.
+   *
+   * 처음에는 한 목록을 양쪽이 같이 썼다. 그랬더니
+   * '자동차 정비소' 와 '빨래·환기' 가 같은 줄에 서서 급이 안 맞았고,
+   * 사람을 등록할 때 '빨래·환기 하는 사람' 을 고를 수 있게 되어 있었다.
+   *
+   * 이름은 언어를 타므로 id 만 두고 표시용 이름은 그때그때 번역해서 만든다.
+   */
+  const WORK_MODES = ['site', 'farm', 'commute', 'school', 'baseball', 'hike']
+  const LIFE_MODES = ['laundry', 'walk', 'bike', 'workout', 'wash', 'outing']
+  const MODE_IDS = [...WORK_MODES, ...LIFE_MODES]
+
+  const asList = (ids) => ids.map((id) => ({ id, label: t.value(`mode.${id}`) }))
+  const workModeList = computed(() => asList(WORK_MODES))
+  const lifeModeList = computed(() => asList(LIFE_MODES))
+  // 이름을 찾아 쓸 때 쓰는 전체 목록
+  const modeList = computed(() => asList(MODE_IDS))
+
+  /*
+   * 예전에 쓰던 id 를 지금 것으로 옮긴다.
+   * '자동차 정비소' 는 '현장 작업' 이 모든 현장을 아우르게 되면서 그리로 합쳤다.
+   * 저장된 값을 그냥 버리면 등록해 둔 사람의 하는 일이 사라진다.
+   */
+  const RETIRED = { repair: 'site' }
 
   // 저장된 값이 지금 목록에 없는 경우가 있다.
   // 모드를 바꾸거나 이름을 고치면 예전에 저장된 id 가 그대로 남아
   // 어떤 규칙에도 걸리지 않고 빈 판정만 나온다. 그래서 확인 후 되돌린다.
   const isKnownMode = (id) => MODE_IDS.includes(id)
-  const currentMode = ref(isKnownMode(saved.currentMode) ? saved.currentMode : MODE_IDS[0])
+  /** 옛 id 를 지금 것으로 바꿔 준다. 모르는 값이면 그대로 돌려보낸다 */
+  const migrateMode = (id) => RETIRED[id] ?? id
+
+  /*
+   * 화면에서 고르는 건 일상 쪽이다.
+   * 그 사람의 일은 사람마다 따로 붙어 있어서 여기서 고르지 않는다.
+   */
+  const savedMode = migrateMode(saved.currentMode)
+  const currentMode = ref(LIFE_MODES.includes(savedMode) ? savedMode : LIFE_MODES[0])
 
   // getter: 현재 모드의 표시용 이름
   const currentModeLabel = computed(() => t.value(`mode.${currentMode.value}`))
 
   // action: 모드 변경 (목록에 없는 값이 들어오면 무시한다)
   function setMode(modeId) {
-    if (isKnownMode(modeId)) {
-      currentMode.value = modeId
+    const id = migrateMode(modeId)
+    if (isKnownMode(id)) {
+      currentMode.value = id
     }
   }
 
@@ -198,6 +230,10 @@ export const useConfigStore = defineStore('config', () => {
     setTheme,
     cycleTheme,
     modeList,
+    workModeList,
+    lifeModeList,
+    isKnownMode,
+    migrateMode,
     currentMode,
     currentModeLabel,
     setMode,

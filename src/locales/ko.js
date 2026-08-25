@@ -47,6 +47,22 @@ export default {
   // ── 마당 배경 ──
 
   // ── 날씨 상태 ────────────────────────────────
+  // ── 일 — 그 사람이 하는 일 ──
+  'mode.site': '현장 작업',
+  'mode.farm': '농사',
+  'mode.commute': '출퇴근',
+  'mode.school': '등하교',
+  'mode.baseball': '야구',
+  'mode.hike': '등산',
+  // ── 일상 — 오늘 내가 무엇을 할까 ──
+  'mode.laundry': '빨래·환기',
+  'mode.walk': '산책',
+  'mode.bike': '자전거',
+  'mode.workout': '야외운동',
+  'mode.wash': '세차',
+  'mode.outing': '나들이·외출',
+  'mode.eyebrow': '무엇을 볼까요',
+  'mode.aria': '무엇을 볼지 고르기',
   'cond.clear': '맑음',
   'cond.clouds': '구름',
   'cond.rain': '비',
@@ -54,15 +70,6 @@ export default {
   'cond.haze': '흐림',
 
   // ── 하는 일 ─────────────────────────────────
-  'mode.repair': '자동차 정비소',
-  'mode.farm': '농사',
-  'mode.site': '현장 작업',
-  'mode.bike': '자전거',
-  'mode.hike': '등산',
-  'mode.baseball': '야구',
-  'mode.laundry': '빨래·환기',
-  'mode.eyebrow': '무엇을 볼까요',
-  'mode.aria': '하는 일 선택',
 
   // ── 오늘, 내 사람들 ───────────────────────────
   'yard.plate': '마당',
