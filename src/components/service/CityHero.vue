@@ -17,8 +17,19 @@ const props = defineProps({
   adviceList: { type: Array, default: () => [] },
   hourlyRows: { type: Array, default: () => [] },
   statusText: { type: String, default: '' },
-  // 사람을 고르고 있으면 그 사람의 일을 따르므로 일상 탭을 숨긴다
-  showModes: { type: Boolean, default: true },
+  /*
+   * 한 화면에 판정이 둘이다.
+   *
+   *   adviceList      그 사람이 하는 일 기준 — 챙기러 들어온 이유
+   *   lifeAdviceList  내가 고른 일상 항목 기준 — 같은 날씨로 내 하루도 본다
+   *
+   * 처음에는 사람을 고르면 일상 탭을 감췄다. 그런데 화면에 들어오면
+   * 첫 사람이 자동으로 골라지고, 선택이 풀리는 건 '내 위치' 로 들어올 때뿐이라
+   * 일상 여섯 가지가 사실상 닿을 수 없는 자리에 있었다.
+   */
+  lifeAdviceList: { type: Array, default: () => [] },
+  // '정비소 · 현장 작업' — 위 판정이 누구의 무엇인지 밝힌다
+  jobLabel: { type: String, default: '' },
 })
 
 defineEmits(['open-detail'])
@@ -46,6 +57,13 @@ const conditionLabel = computed(() => {
   return configStore.t(`cond.${groupOf(c)}`)
 })
 const rest = computed(() => sorted.value.slice(1))
+
+// 일상 판정도 같은 순서로 세운다
+const lifeSorted = computed(() =>
+  [...props.lifeAdviceList].sort((a, b) => order[a.level] - order[b.level]),
+)
+const lifeLead = computed(() => lifeSorted.value[0] ?? null)
+const lifeRest = computed(() => lifeSorted.value.slice(1))
 
 /*
  * 창밖은 지금 보고 있는 지역의 하늘이다.
@@ -176,21 +194,46 @@ const coord = computed(() => {
         사람을 고르고 있을 때는 감춘다. 그때 판정은 그 사람이 하는 일을 따르므로
         여기서 빨래·산책을 고를 수 있게 두면 위아래가 어긋난다.
       -->
-      <ModeBar v-if="showModes" class="modes" />
+      <!-- ① 그 사람이 하는 일. 이 화면에 들어온 이유다 -->
+      <section v-if="lead" class="block">
+        <p v-if="jobLabel" class="who-job">{{ jobLabel }}</p>
+        <div class="verdict">
+          <VerdictMark :level="lead.level" size="lg" />
+          <h3>{{ lead.title }}</h3>
+          <p class="reason">{{ lead.desc }}</p>
+        </div>
 
-      <div v-if="lead" class="verdict">
-        <VerdictMark :level="lead.level" size="lg" />
-        <h3>{{ lead.title }}</h3>
-        <p class="reason">{{ lead.desc }}</p>
-      </div>
+        <ul v-if="rest.length" class="rest">
+          <li v-for="(advice, i) in rest" :key="i">
+            <VerdictMark :level="advice.level" />
+            <span class="t">{{ advice.title }}</span>
+            <span class="d">{{ advice.desc }}</span>
+          </li>
+        </ul>
+      </section>
 
-      <ul v-if="rest.length" class="rest">
-        <li v-for="(advice, i) in rest" :key="i">
-          <VerdictMark :level="advice.level" />
-          <span class="t">{{ advice.title }}</span>
-          <span class="d">{{ advice.desc }}</span>
-        </li>
-      </ul>
+      <!--
+        ② 같은 날씨로 내 하루도 본다.
+        그 사람을 챙기러 왔지만 날씨는 나에게도 같으니,
+        빨래를 널지 산책을 갈지는 여기서 고른다.
+      -->
+      <section class="block life">
+        <ModeBar class="modes" />
+
+        <div v-if="lifeLead" class="verdict small">
+          <VerdictMark :level="lifeLead.level" />
+          <h3>{{ lifeLead.title }}</h3>
+          <p class="reason">{{ lifeLead.desc }}</p>
+        </div>
+
+        <ul v-if="lifeRest.length" class="rest">
+          <li v-for="(advice, i) in lifeRest" :key="i">
+            <VerdictMark :level="advice.level" />
+            <span class="t">{{ advice.title }}</span>
+            <span class="d">{{ advice.desc }}</span>
+          </li>
+        </ul>
+      </section>
 
       <HourlyBar
         v-if="hourlyRows.length"
@@ -291,10 +334,27 @@ const coord = computed(() => {
   z-index: 5;
 }
 
-.modes {
-  margin-top: 18px;
-  padding-top: 16px;
+/*
+ * 판정 두 덩이.
+ * 사이를 선으로 가른다. 붙여 두면 아래 문장이 위 판정의 딸린 설명처럼 읽힌다.
+ */
+.block + .block {
+  margin-top: 22px;
+  padding-top: 20px;
   border-top: 1px solid var(--color-line);
+}
+
+/* 위 판정이 누구의 무엇인지 밝힌다 */
+.who-job {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.12em;
+  color: var(--color-ink-3);
+}
+
+.modes {
+  margin: 0 0 4px;
 }
 
 .sill {
@@ -391,6 +451,13 @@ h2 {
 
 .verdict {
   margin-top: 18px;
+}
+/*
+ * 내 일상은 그 사람의 일보다 한 급 작게 둔다.
+ * 여기 온 이유는 그 사람이지 내 빨래가 아니다.
+ */
+.verdict.small h3 {
+  font-size: var(--fs-lg);
 }
 .verdict h3 {
   margin: 10px 0 0;

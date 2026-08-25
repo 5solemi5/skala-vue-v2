@@ -197,6 +197,26 @@ const heroAdvice = computed(() =>
   selectedCity.value ? buildAdvice(selectedCity.value, heroMode.value, adviceOpts.value) : [],
 )
 
+/*
+ * 같은 지역, 같은 날씨를 내 일상 기준으로도 본다.
+ *
+ * 그 사람을 챙기러 들어왔지만 날씨는 나에게도 같다.
+ * 빨래를 널지 산책을 갈지는 이 판정이 답한다.
+ */
+const lifeAdvice = computed(() =>
+  selectedCity.value
+    ? buildAdvice(selectedCity.value, configStore.currentMode, adviceOpts.value)
+    : [],
+)
+
+/* 위 판정이 누구의 무엇인지 — '정비소 · 현장 작업' */
+const jobLabel = computed(() => {
+  const p = selectedPerson.value
+  if (!p) return ''
+  const job = configStore.modeList.find((m) => m.id === p.modeId)?.label ?? ''
+  return `${p.who} · ${job}`
+})
+
 const adviceMap = computed(() => {
   const map = {}
   weatherList.value.forEach((item) => {
@@ -319,7 +339,8 @@ const handleDetail = (city) => {
       <CityHero
         :city="selectedCity"
         :advice-list="heroAdvice"
-        :show-modes="!selectedPerson"
+        :life-advice-list="lifeAdvice"
+        :job-label="jobLabel"
         :hourly-rows="hourlyRows"
         :status-text="selectedCityInfo"
         @open-detail="handleDetail"
