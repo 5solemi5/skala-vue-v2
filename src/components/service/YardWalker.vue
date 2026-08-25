@@ -22,9 +22,20 @@ const props = defineProps({
   scale: { type: Number, default: 1 },
   step: { type: Number, default: 0.86 },
   back: { type: Number, default: 0 },
+  /*
+   * 밖에서 시키는 동작. 없으면 스스로 정한 걸 한다.
+   *
+   * 악수만은 혼자 정할 수 없다. 마주 서 있지 않은데 손을 내밀면
+   * 허공에 대고 흔드는 것이 되어서, 누가 옆에 왔는지 아는 쪽 —
+   * 즉 마당 전체를 보는 부모가 정해서 내려보낸다.
+   */
+  forced: { type: String, default: '' },
 })
 
 const { act } = usePersonAct(props.seed)
+
+// 밖에서 시킨 게 있으면 그게 먼저다
+const shown = computed(() => props.forced || act.value)
 
 const style = computed(() => ({
   '--dur': `${props.dur}s`,
@@ -36,14 +47,8 @@ const style = computed(() => ({
 </script>
 
 <template>
-  <div class="walker" :class="{ resting: act !== 'walk' }" :style="style">
-    <PersonFigure
-      :person="person"
-      :variant="variant"
-      :accent="accent"
-      :act="act"
-      :step="step"
-    />
+  <div class="walker" :class="{ resting: shown !== 'walk' }" :data-wid="person.id" :style="style">
+    <PersonFigure :person="person" :variant="variant" :accent="accent" :act="shown" :step="step" />
   </div>
 </template>
 

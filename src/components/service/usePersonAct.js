@@ -26,6 +26,16 @@ const ACTS = [
   { id: 'sit', min: 6, max: 12 },
   { id: 'jump', min: 1.6, max: 2.4 },
   { id: 'look', min: 2.4, max: 4 },
+  // 뛰어서 날아가듯. 오래 하면 마당이 아니라 운동장이 되므로 짧게
+  { id: 'dash', min: 2.2, max: 3.6 },
+  // 손 흔들기. 짧아야 인사로 읽힌다. 길면 누굴 부르는 것 같다
+  { id: 'wave', min: 1.8, max: 2.8 },
+  // 리듬 타기
+  { id: 'dance', min: 3, max: 5.5 },
+  // 쪼그려 앉아 들여다보기. 오래 봐도 어색하지 않다
+  { id: 'crouch', min: 4, max: 8 },
+  // 제자리에서 한 바퀴
+  { id: 'spin', min: 1.6, max: 3 },
 ]
 
 /*
@@ -36,12 +46,20 @@ const ACTS = [
  * 앉았다가 바로 또 앉는 것도 막는다.
  */
 const NEXT = {
-  walk: ['idle', 'stretch', 'sit', 'jump', 'look', 'walk'],
-  idle: ['walk', 'walk', 'stretch', 'look'],
-  stretch: ['walk', 'walk', 'idle'],
+  walk: ['idle', 'stretch', 'sit', 'jump', 'look', 'dash', 'crouch', 'walk', 'walk', 'walk'],
+  idle: ['walk', 'walk', 'stretch', 'look', 'wave', 'dance', 'spin'],
+  stretch: ['walk', 'walk', 'idle', 'dance'],
   sit: ['walk', 'walk', 'idle', 'look'],
-  jump: ['walk', 'walk', 'idle'],
-  look: ['walk', 'walk', 'sit'],
+  jump: ['walk', 'walk', 'dash', 'spin', 'idle'],
+  look: ['walk', 'walk', 'sit', 'wave'],
+  // 뛰고 나면 숨을 고른다. 계속 날아다니면 한 명만 따로 노는 것처럼 보인다
+  dash: ['walk', 'walk', 'idle', 'jump'],
+  // 손을 흔들었으면 가던 길을 간다. 흔들고 또 흔들면 인사가 아니게 된다
+  wave: ['walk', 'walk', 'idle'],
+  dance: ['walk', 'idle', 'spin', 'walk'],
+  // 들여다보다 일어나면 기지개가 자연스럽다
+  crouch: ['walk', 'stretch', 'idle', 'walk'],
+  spin: ['walk', 'walk', 'idle', 'dance'],
 }
 
 const spec = (id) => ACTS.find((a) => a.id === id) ?? ACTS[0]
@@ -53,7 +71,7 @@ export const usePersonAct = (seed = 1) => {
   const act = ref('walk')
 
   // 사람마다 다른 차례가 나오도록 씨앗에서 뽑는다
-  let x = (seed >>> 0) || 1
+  let x = seed >>> 0 || 1
   const rand = () => {
     x ^= x << 13
     x >>>= 0

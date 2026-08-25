@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 import { STAGE_GROUPS, stageById } from './stages'
 import StageScene from './StageScene.vue'
@@ -33,9 +33,7 @@ const stage = computed(() => stageById(configStore.yardTheme))
 const isEngraved = computed(() => stage.value.lang === 'engraved')
 
 // 무대 이름. 에디션은 고유명사라 영문을 앞세우고 한글을 붙인다
-const stageName = computed(() =>
-  configStore.lang === 'en' ? stage.value.en : stage.value.ko,
-)
+const stageName = computed(() => (configStore.lang === 'en' ? stage.value.en : stage.value.ko))
 
 const groups = computed(() =>
   STAGE_GROUPS.map((g) => ({
@@ -120,7 +118,66 @@ const walkers = computed(() => {
     }
   })
 })
+/*
+ * 마주치면 악수한다.
+ *
+ * 자리 이동은 CSS 가 맡고 있어서(left 를 % 로 오가는 keyframes)
+ * 누가 지금 어디 있는지는 자바스크립트가 알 도리가 없다.
+ * 그래서 계산하지 않고 재기로 했다 — 실제로 그려진 자리를 읽는다.
+ *
+ * 깊이(back)가 비슷한 둘만 짝으로 본다. 화면에서 겹쳐 보인다고
+ * 다 만난 게 아니다. 뒤쪽 언덕을 걷는 사람과 앞쪽 풀밭을 걷는 사람은
+ * 가로 자리가 같아도 서로 다른 자리에 있다.
+ */
+const greeting = ref({})
+let beat = null
 
+/* 방금 인사한 둘은 한동안 다시 걸리지 않는다.
+   손을 놓자마자 같은 자리에서 또 잡으면 인사가 아니라 고장으로 보인다 */
+const cooled = new Map()
+
+const MEET_PX = 26
+const GREET_MS = 2600
+const COOL_MS = 11000
+
+const look = () => {
+  const now = Date.now()
+  const seen = []
+  props.people.forEach((p) => {
+    const el = document.querySelector(`.walker[data-wid="${CSS.escape(p.id)}"]`)
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (!r.width) return
+    seen.push({ id: p.id, x: r.left + r.width / 2, y: r.bottom })
+  })
+
+  for (let a = 0; a < seen.length; a += 1) {
+    for (let b = a + 1; b < seen.length; b += 1) {
+      const one = seen[a]
+      const two = seen[b]
+      if (greeting.value[one.id] || greeting.value[two.id]) continue
+      // 같은 깊이에서 걷고 있어야 정말 마주친 것이다
+      if (Math.abs(one.y - two.y) > 7) continue
+      if (Math.abs(one.x - two.x) > MEET_PX) continue
+      const pair = one.id < two.id ? `${one.id}|${two.id}` : `${two.id}|${one.id}`
+      if ((cooled.get(pair) ?? 0) > now) continue
+
+      greeting.value = { ...greeting.value, [one.id]: true, [two.id]: true }
+      cooled.set(pair, now + GREET_MS + COOL_MS)
+      setTimeout(() => {
+        const next = { ...greeting.value }
+        delete next[one.id]
+        delete next[two.id]
+        greeting.value = next
+      }, GREET_MS)
+    }
+  }
+}
+
+onMounted(() => {
+  beat = setInterval(look, 520)
+})
+onUnmounted(() => clearInterval(beat))
 </script>
 
 <template>
@@ -213,6 +270,7 @@ const walkers = computed(() => {
           :scale="w.scale"
           :step="w.step"
           :back="w.back"
+          :forced="greeting[w.person.id] ? 'greet' : ''"
         />
       </TransitionGroup>
 
