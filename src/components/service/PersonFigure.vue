@@ -21,17 +21,17 @@ const props = defineProps({
   // 금선으로 그릴 때 쓸 색
   accent: { type: String, default: '#EAC379' },
   /*
-   * 빛이 들어오는 쪽.
+   * 테두리 빛의 두께(px).
    *
-   * 해가 왼쪽에 있으면 사람의 왼쪽 테두리가 밝다.
-   * 그 방향을 밖에서 넘겨받는다. 창에서는 실제 해의 자리를 계산해서 주므로
-   * 아침에는 왼쪽, 저녁에는 오른쪽에서 빛이 든다.
+   * 한때는 빛이 들어오는 쪽(lightX·lightY)을 받아 그쪽만 밝혔다.
+   * 그런데 마당에 아무도 방향을 넘겨 주지 않아 열두 명이 전부
+   * 같은 값으로 왼쪽 위만 밝았고, 빛이 드는 게 아니라
+   * 후광이 한쪽으로 빗나가 붙은 것처럼 보였다.
    *
-   * 값은 픽셀이고, 위쪽이 음수다.
+   * 방향을 지우고 둘레를 고르게 두른다.
+   * 어느 쪽에서 봐도 어긋나 보이지 않는다.
    */
-  lightX: { type: Number, default: -1.6 },
-  lightY: { type: Number, default: -1.6 },
-  // 그 빛의 색. 노을이면 주황이고 한낮이면 흰빛에 가깝다
+  rimSize: { type: Number, default: 1.1 },
   lightColor: { type: String, default: 'rgba(255, 238, 198, 0.7)' },
   // 둘레로 번지는 빛. 아주 옅어야 한다
   lightSoft: { type: String, default: 'rgba(255, 226, 168, 0.28)' },
@@ -88,13 +88,17 @@ const look = computed(() => {
 /*
  * 테두리 빛.
  *
- * 그림자를 색만 바꿔 두 겹 얹는다.
- *   첫 겹  흐림 없이 빛이 오는 쪽으로 조금 밀어 둔다 → 그쪽 테두리만 밝아진다
- *   둘째 겹 아주 옅게 번지게 → 빛이 닿은 자리가 부드러워진다
+ * 그림자를 색만 바꿔 두 겹 얹는다. 둘 다 밀지 않고 흐림만 준다.
+ *   첫 겹  좁게  → 몸 둘레를 따라 얇게 밝은 선이 생긴다
+ *   둘째 겹 넓게 → 그 선 바깥으로 아주 옅게 번진다
  *
- * 처음에는 둘째 겹을 5px 로 넓게 퍼뜨렸더니 사람이 빛을 받는 게 아니라
- * 스스로 발광하는 것처럼 보였다. 스티커의 흰 테두리 위에 흰빛이 겹쳐
- * 후광이 되어 버렸다. 빛은 닿는 것이지 뿜는 것이 아니다.
+ * 처음에는 빛이 오는 쪽으로 밀어 한쪽 테두리만 밝혔다.
+ * 방향을 넘겨 주는 곳이 없어 전원이 같은 쪽으로 밀렸고,
+ * 결국 빛이 아니라 어긋나 붙은 후광이 되었다.
+ *
+ * 둘째 겹을 5px 로 넓게 퍼뜨렸을 때는 사람이 빛을 받는 게 아니라
+ * 스스로 발광하는 것처럼 보였다. 스티커의 흰 테두리 위에 흰빛이 겹쳐서다.
+ * 빛은 닿는 것이지 뿜는 것이 아니라, 좁게 두른다.
  *
  * 테두리를 직접 그리지 않는 건, 그림이 도형 여러 개로 되어 있어서
  * 각 도형마다 선이 생기면 몸 한가운데에도 줄이 그어지기 때문이다.
@@ -102,8 +106,8 @@ const look = computed(() => {
  */
 const rim = computed(() => ({
   filter:
-    `drop-shadow(${props.lightX}px ${props.lightY}px 0 ${props.lightColor})` +
-    ` drop-shadow(${props.lightX * 1.3}px ${props.lightY * 1.3}px 2.5px ${props.lightSoft})`,
+    `drop-shadow(0 0 ${props.rimSize}px ${props.lightColor})` +
+    ` drop-shadow(0 0 ${(props.rimSize * 2.8).toFixed(2)}px ${props.lightSoft})`,
 }))
 
 const layers = computed(() => {
