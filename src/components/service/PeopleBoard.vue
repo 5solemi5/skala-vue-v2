@@ -82,7 +82,7 @@ watch(
       </TransitionGroup>
     </div>
 
-    <PeopleAmbient :people="people" />
+    <PeopleAmbient :people="people" :weather-by-id="weatherById" />
   </section>
 </template>
 
@@ -174,9 +174,7 @@ h2 {
     var(--color-line-2) 300deg,
     var(--color-line) 360deg
   );
-  box-shadow:
-    var(--shadow-1),
-    var(--shadow-3);
+  box-shadow: var(--shadow-1), var(--shadow-3);
   animation: sheen 9s linear infinite;
   /*
    * 테두리를 돌 때 가장 밝아지는 지점.
@@ -202,13 +200,7 @@ h2 {
   right: 16px;
   top: 1.5px;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--gloss) 30%,
-    var(--gloss) 70%,
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--gloss) 30%, var(--gloss) 70%, transparent);
   pointer-events: none;
   z-index: 2;
 }

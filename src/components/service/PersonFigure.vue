@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { groupOf } from '@/utils/weatherCondition'
 
 /*
  * 챙기는 사람 하나를 그린다.
@@ -39,6 +40,15 @@ const props = defineProps({
    * 지금 무엇을 하고 있나 — walk / idle / stretch / sit / jump / look
    * 무엇을 할지는 usePersonAct 가 정하고, 어떻게 보일지는 이 파일이 정한다.
    */
+  /*
+   * 그곳의 지금 날씨.
+   *
+   * 이 사람이 무엇을 입고 무엇을 들었는지는 id 에서 뽑은 수로 정해진다 —
+   * 같은 사람은 늘 같은 모습이어야 알아볼 수 있기 때문이다.
+   * 날씨는 그 위에 덧입는다. 갈아입히지 않는다.
+   * 비 온다고 열둘이 다 같은 우산을 들면 마당이 아니라 우산 가게가 된다.
+   */
+  weather: { type: Object, default: null },
   act: { type: String, default: 'walk' },
   // 걸음 빠르기(초). 사람마다 조금씩 달라야 한 무리로 안 보인다
   step: { type: Number, default: 0.86 },
@@ -78,7 +88,7 @@ const COATS = ['#849CCB', '#EB7187', '#C69FC0', '#CF89C3', '#464F64', '#5FA98C']
 const look = computed(() => {
   const seed = hash(props.person.id)
   return {
-    hat: pick(seed, 9, 5),
+    hat: pick(seed, 9, 4),
     // 볼은 있는 사람만 있다. 전원이 볼그레하면 한 벌로 찍어낸 인형이 된다
     blush: pick(seed, 29, 3) === 0,
     hold: pick(seed, 13, 4),
@@ -123,6 +133,30 @@ const rim = computed(() => ({
   '--blink-dur': `${(4.2 + (hash(props.person.id + 'k') % 280) / 100).toFixed(2)}s`,
 }))
 
+/*
+ * 날씨가 사람에게 시키는 것.
+ *
+ * 약한 날씨에는 아무것도 하지 않는다. 구름이 조금 낀 날까지 무언가
+ * 걸치게 하면 늘 무언가 걸치고 있는 셈이라 신호가 되지 못한다.
+ * 챙길 일이 생겼을 때만 몸에 나타나야 그게 눈에 띈다.
+ */
+const wear = computed(() => {
+  const w = props.weather
+  if (!w) return {}
+  const g = groupOf(w.condition)
+  const temp = w.temp ?? 15
+  return {
+    // 비가 오는 중이거나 곧 올 참이면 우산을 편다
+    umbrella: g === 'rain' || (w.rainProb ?? 0) >= 60,
+    // 눈이 오거나 얼어붙는 날은 목을 감싼다
+    scarf: g === 'snow' || temp <= 4,
+    // 더운 날은 땀이 난다
+    sweat: temp >= 30,
+    // 바람이 세면 몸이 밀린다
+    windy: (w.wind ?? 0) >= 9,
+  }
+})
+
 const layers = computed(() => {
   if (props.variant === 'line') return ['line']
   if (props.variant === 'silhouette') return ['shade']
@@ -140,7 +174,7 @@ const layers = computed(() => {
 <template>
   <svg
     class="figure"
-    :class="[variant, act]"
+    :class="[variant, act, { gale: wear.windy }]"
     viewBox="0 0 24 28"
     :style="{ '--coat': look.coat, '--accent': accent, '--step': `${step}s`, ...rim }"
     aria-hidden="true"
@@ -197,11 +231,31 @@ const layers = computed(() => {
         모자를 따로 두었더니 고개를 돌릴 때 얼굴만 돌고 모자는 그 자리에 남았다.
       -->
         <g class="noggin">
+          <!--
+            목도리.
+
+            머리와 몸 사이, 목이 있을 자리에 두른다. 몸을 그린 뒤라
+            어깨 위에 얹히고, 머리를 그리기 전이라 턱에 가려진다.
+            그 순서라야 목에 감긴 것으로 보인다.
+
+            한쪽으로 늘어진 자락이 하나 있어야 목도리다.
+            띠만 두르면 옷깃이지 목도리가 아니다.
+          -->
+          <g v-if="wear.scarf" class="gear warm">
+            <rect x="6.9" y="11.4" width="10.2" height="2.9" rx="1.45" />
+            <path d="M14.6 13.4 q1.6 2.6 0.9 5.6 q-1.5 0.5 -2.5 -0.5 q0.6 -2.6 0.1 -4.9 Z" />
+          </g>
+
           <!-- 머리를 몸보다 크게 잡으면 귀엽게 읽힌다 -->
           <circle class="head" cx="12" cy="7" r="6.6" />
 
           <!--
-          쓴 것 네 가지. 같은 사람은 늘 같은 걸 쓴다.
+          쓴 것 세 가지. 같은 사람은 늘 같은 걸 쓴다.
+
+          네 번째 자리에 머리 장식을 두려다 접었다. 머리띠·막대 핀·하트·리본을
+          차례로 그려 봤는데, 머리핀은 '머리카락을 집는 것' 으로 정의되는
+          물건이라 집을 머리카락이 없는 이 캐릭터에서는 무엇을 그리든
+          민머리에 붙은 장식이 됐다.
 
           모자는 머리보다 넓어야 한다. 머리가 x 5.4~18.6 인데 크라운을
           6.6~17.4 로 잡았더니 쓴 것이 아니라 올려 둔 것으로 보였다.
@@ -264,40 +318,13 @@ const layers = computed(() => {
             <ellipse cx="12" cy="3.9" rx="10.6" ry="1.9" />
             <path d="M6.5 3.6 A5.6 5.2 0 0 1 17.5 3.6 Z" />
           </g>
-          <g v-else-if="look.hat === 4" class="gear">
-            <!--
-              리본 핀.
 
-              여기까지 네 번 갈아엎었다.
-                머리띠    채우면 두건, 선으로 그리면 허공에 뜬 고리였다.
-                          머리에 얹혀 지나가기만 하는 물건이라 얹힐 자리가 없었다
-                막대 핀    30px 에서는 핀이 아니라 머리에 긁힌 자국으로 보였다
-                앞머리     막대와 가닥이 붙어 무엇이 머리이고 무엇이 핀인지 몰랐다
-                하트      한 덩어리라 뭉개지진 않는데, 하트로 읽히지 핀으로는
-                          읽히지 않았다. 머리에 하트가 하나 떠 있을 뿐이었다
-
-              리본은 그 자체가 머리에 다는 물건이라 설명이 필요 없다.
-              고리 둘과 매듭 하나 — 셋이 다 보여야 리본이 된다.
-
-              매듭을 살색(pip)으로 찍었더니 리본이 안 됐다.
-              머리가 그 색이라 매듭이 아니라 구멍으로 보였고, 고리 둘이
-              따로 노는 점 두 개가 됐다. 매듭은 고리보다 어두워야
-              둘을 하나로 묶는 것으로 읽힌다.
-              작게 그렸을 때는 고리가 붙어 점 하나로 뭉쳤다.
-              머리 폭의 3분의 1쯤은 되어야 고리가 고리로 갈린다.
-            -->
-            <g transform="rotate(-12 15.0 2.4)">
-              <path
-                class="pin"
-                d="M15 2.4 C12.32 -0.28 10.97 0.33 11.22 2.03 C11.46 3.74 13.29 3.62 15 2.4 Z"
-              />
-              <path
-                class="pin"
-                d="M15 2.4 C17.68 -0.28 19.03 0.33 18.78 2.03 C18.54 3.74 16.71 3.62 15 2.4 Z"
-              />
-              <rect class="knot" x="14.15" y="1.15" width="1.7" height="2.5" rx="0.85" />
-            </g>
-          </g>
+          <!-- 더운 날 관자놀이에 맺히는 땀 한 방울 -->
+          <path
+            v-if="wear.sweat && variant !== 'silhouette'"
+            class="drop"
+            d="M18.6 5.4 q1.5 2 1.5 3.1 a1.5 1.5 0 0 1 -3 0 q0 -1.1 1.5 -3.1 Z"
+          />
 
           <!--
             실루엣에는 얼굴을 그리지 않는다. 역광에서는 안 보인다.
@@ -333,6 +360,26 @@ const layers = computed(() => {
 
         <rect class="leg one" x="7.8" y="21" width="3.2" height="5.6" rx="1.6" />
         <rect class="leg two" x="13" y="21" width="3.2" height="5.6" rx="1.6" />
+
+        <!--
+          펼친 우산.
+
+          들고 다니는 우산(hold === 1)은 접힌 채 손에 들려 있다.
+          비가 오면 그걸 펴서 머리 위로 올린다 — 사람마다 다른 것을 들고
+          있어도 비가 오면 모두 우산을 쓰므로, 든 것과 상관없이 여기서 그린다.
+
+          머리(y 0.4~13.6) 위를 덮어야 비를 막는 것으로 보인다.
+          갓을 머리 옆에 두면 우산이 아니라 그냥 큰 물건을 든 사람이다.
+          아래 가장자리를 물결로 닫아야 버섯이 아니라 우산이 된다.
+        -->
+        <g v-if="wear.umbrella" class="gear brolly">
+          <path
+            class="canopy"
+            d="M2.6 -1.4 Q6 1.4 9.4 -1.4 Q12.8 1.4 16.2 -1.4 Q19.6 1.4 23 -1.4 A10.2 8.6 0 0 0 2.6 -1.4 Z"
+          />
+          <path class="thin" d="M12.8 -1.4 L14.6 13.8" />
+          <path class="thin" d="M14.6 13.8 q0.2 1.6 -1.4 1.6" />
+        </g>
       </g>
     </g>
   </svg>
@@ -1278,21 +1325,6 @@ const layers = computed(() => {
 .gear .thin {
   fill: none;
 }
-/* 핀은 채움만 쓴다. 선을 두르면 막대가 얼룩이 된다 */
-.gear .pin {
-  stroke: none;
-}
-/*
- * 리본 매듭.
- * 고리보다 어둡게. 살색으로 두면 머리가 비쳐 보이는 구멍이 되고,
- * 고리와 같은 색으로 두면 셋이 한 덩어리로 뭉쳐 리본이 아니게 된다.
- */
-.gear .knot {
-  stroke: none;
-}
-.ink .gear .knot {
-  fill: color-mix(in srgb, var(--coat) 34%, #14141a);
-}
 /*
  * 머리카락.
  * 옷 색을 섞어 쓰는 다른 장비와 달리 제 색을 갖는다.
@@ -1417,6 +1449,79 @@ const layers = computed(() => {
  * 인형이 아니라 무언가 노려보는 것처럼 보였다.
  * 흰 점 하나가 있고 없고가 '보고 있다' 와 '뚫려 있다' 를 가른다.
  */
+/*
+ * ── 날씨가 덧입히는 것 ────────────────────────────
+ */
+
+/* 목도리는 옷과 다른 색이라야 덧입은 것으로 보인다 */
+.ink .gear.warm {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 0.9;
+}
+
+/*
+ * 펼친 우산.
+ * 갓은 옷 색을 따라가지 않는다. 같은 색이면 몸에서 자란 것처럼 보인다.
+ */
+.ink .gear.brolly .canopy {
+  fill: var(--accent);
+  stroke: none;
+}
+.ink .gear.brolly .thin {
+  stroke: color-mix(in srgb, var(--accent) 55%, #2b2b2f);
+  stroke-width: 1;
+}
+.line .gear.brolly .canopy {
+  fill: none;
+}
+
+/* 땀 한 방울 */
+.drop {
+  fill: #8fc7e8;
+  stroke: none;
+  animation: pfDrip 2.4s ease-in-out infinite;
+}
+.line .drop {
+  fill: var(--accent);
+}
+@keyframes pfDrip {
+  0%,
+  62%,
+  100% {
+    opacity: 0;
+    transform: translateY(-1px);
+  }
+  16%,
+  46% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * 바람이 센 날.
+ * 몸이 밀린다. 자세는 그대로 두고 기울기만 얹어서,
+ * 걷든 앉든 무엇을 하든 바람은 똑같이 분다.
+ */
+.figure.gale .lit {
+  animation: pfGale 1.9s ease-in-out infinite;
+  transform-origin: 12px 26px;
+  transform-box: view-box;
+}
+@keyframes pfGale {
+  0%,
+  100% {
+    transform: rotate(-3.5deg);
+  }
+  40% {
+    transform: rotate(2.5deg);
+  }
+  70% {
+    transform: rotate(-1.5deg);
+  }
+}
+
 .spark {
   fill: #fff;
 }

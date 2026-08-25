@@ -33,6 +33,8 @@ const props = defineProps({
    * 즉 마당 전체를 보는 부모가 정해서 내려보낸다.
    */
   forced: { type: String, default: '' },
+  // 그곳의 지금 날씨. 비가 오면 우산을 편다
+  weather: { type: Object, default: null },
   /*
    * 물속인가.
    *
@@ -68,7 +70,14 @@ const style = computed(() => ({
     :data-wid="person.id"
     :style="style"
   >
-    <PersonFigure :person="person" :variant="variant" :accent="accent" :act="shown" :step="step" />
+    <PersonFigure
+      :person="person"
+      :variant="variant"
+      :accent="accent"
+      :act="shown"
+      :step="step"
+      :weather="weather"
+    />
   </div>
 </template>
 

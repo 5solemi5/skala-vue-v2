@@ -27,6 +27,14 @@ const configStore = useConfigStore()
 
 const props = defineProps({
   people: { type: Array, required: true },
+  /*
+   * 사람마다 그곳의 지금 날씨.
+   *
+   * 마당은 원래 날씨를 몰랐다. 걸어다니는 것과 무슨 옷을 입었는지는
+   * 사람 id 에서 뽑은 수로만 정해져서, 비가 쏟아지는 날에도
+   * 우산을 든 사람은 우연히 든 사람뿐이었다.
+   */
+  weatherById: { type: Object, default: () => ({}) },
 })
 
 const stage = computed(() => stageById(configStore.yardTheme))
@@ -355,6 +363,7 @@ onUnmounted(() => clearInterval(beat))
           :delay="w.delay"
           :scale="w.scale"
           :step="w.step"
+          :weather="weatherById[w.person.id] ?? null"
           :under="!!stage.under"
           :depth="w.depth"
           :from="w.from"
