@@ -27,10 +27,22 @@ const displayTemp = computed(() => (props.city ? configStore.convertTemp(props.c
 const order = { stop: 0, warn: 1, info: 2, good: 3 }
 const sorted = computed(() => [...props.adviceList].sort((a, b) => order[a.level] - order[b.level]))
 const lead = computed(() => sorted.value[0] ?? null)
-// description 이 비어 있을 때만 쓰는 대체 표기
-const conditionLabel = computed(() =>
-  props.city ? configStore.t(`cond.${groupOf(props.city.condition)}`) : '',
-)
+/*
+ * 창 오른쪽에 적는 날씨 설명.
+ *
+ * '지금' 을 볼 때는 관측해서 받은 문구를 그대로 쓴다 ('온흐림' 처럼 결이 살아 있다).
+ * 다른 시각을 볼 때는 그 문구가 지금 것이라 맞지 않는다.
+ * 오늘 밤을 보고 있는데 낮에 관측한 '온흐림' 이 떠 있으면 창과 설명이 어긋난다.
+ * 그때는 그 시각 예보의 상태를 우리 말로 옮겨 쓴다.
+ */
+const conditionLabel = computed(() => {
+  if (!props.city) return ''
+  if (skyStore.view === 'now') {
+    return props.city.description ?? configStore.t(`cond.${groupOf(props.city.condition)}`)
+  }
+  const c = skyStore.reading.condition ?? props.city.condition
+  return configStore.t(`cond.${groupOf(c)}`)
+})
 const rest = computed(() => sorted.value.slice(1))
 
 /*
@@ -123,9 +135,7 @@ const coord = computed(() => {
               <p class="deg tnum">
                 {{ displayTemp }}<span class="unit">{{ configStore.unitSymbol }}</span>
               </p>
-              <p class="cond">
-                {{ city.description ?? conditionLabel }}
-              </p>
+              <p class="cond">{{ conditionLabel }}</p>
             </div>
           </div>
         </div>

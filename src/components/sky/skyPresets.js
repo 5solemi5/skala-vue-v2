@@ -92,14 +92,8 @@ export const momentOf = (view, weather, now = new Date()) => {
   }
 }
 
-/*
- * 그 시각의 날씨.
- * 시간별 예보에서 가장 가까운 칸을 찾는다.
- * 한 시간 반 넘게 떨어져 있으면 그 값을 그 시각이라고 부를 수 없으니
- * 지금 값으로 돌아간다. 하늘의 모양(해의 자리)은 어차피 계산으로 정확하다.
- */
-const weatherAt = (instant, rows, current) => {
-  if (!rows?.length) return current ?? {}
+/** 그 시각에 가장 가까운 예보 칸 */
+const nearestRow = (instant, rows) => {
   let best = null
   let gap = Infinity
   for (const r of rows) {
@@ -109,7 +103,41 @@ const weatherAt = (instant, rows, current) => {
       best = r
     }
   }
-  if (!best || gap > 90 * 60 * 1000) return current ?? {}
+  return best
+}
+
+/*
+ * 그 시각의 날씨.
+ * 시간별 예보에서 가장 가까운 칸을 찾는다.
+ * 한 시간 반 넘게 떨어져 있으면 그 값을 그 시각이라고 부를 수 없으니
+ * 지금 값으로 돌아간다. 하늘의 모양(해의 자리)은 어차피 계산으로 정확하다.
+ */
+const weatherAt = (instant, rows, current, isNow) => {
+  /*
+   * '지금' 은 예보를 보지 않는다.
+   *
+   * 두 곳에서 값을 받는데 성격이 다르다.
+   *   OpenWeatherMap  지금 실제로 관측된 값
+   *   Open-Meteo      시간별로 계산된 예보
+   *
+   * 지금을 보면서 예보를 쓰면 관측을 두고 추정을 쓰는 셈이다.
+   * 실제로 어긋난다 — 하늘이 온흐림(구름 100%)인 시각에
+   * 예보 칸은 11% 였다. 창은 맑게 그려지고 오른쪽 설명만 '온흐림' 이었다.
+   * 기온도 관측 31도, 예보 29도로 갈렸다.
+   *
+   * 그래서 지금은 관측한 값을 그대로 쓰고,
+   * 관측에 없는 강수확률만 그 시각 예보 칸에서 빌려 온다.
+   * (무료 플랜의 현재 날씨에는 강수확률이 없다)
+   */
+  if (isNow) {
+    const near = rows?.length ? nearestRow(instant, rows) : null
+    return { ...current, rainProb: near?.rainProb ?? current?.rainProb ?? 0 }
+  }
+  if (!rows?.length) return current ?? {}
+  const best = nearestRow(instant, rows)
+  if (!best || Math.abs(best.at.getTime() - instant.getTime()) > 90 * 60 * 1000) {
+    return current ?? {}
+  }
   return {
     ...current,
     temp: best.temp,
@@ -136,7 +164,7 @@ const weatherAt = (instant, rows, current) => {
 export const buildSky = ({ weather, hourly, view = 'now', now = new Date() }) => {
   const current = weather ?? {}
   const instant = momentOf(view, current, now)
-  const w = weatherAt(instant, hourly, current)
+  const w = weatherAt(instant, hourly, current, view === 'now')
 
   const lat = current.lat ?? 36.5
   const lon = current.lon ?? 127.5
@@ -211,9 +239,13 @@ export const buildSky = ({ weather, hourly, view = 'now', now = new Date() }) =>
     at: instant,
     reading: {
       temp: w.temp,
-      clouds: Math.round((w.clouds ?? 30)),
+      clouds: Math.round(w.clouds ?? 30),
       rainProb: Math.round(w.rainProb ?? 0),
       wind: windMs,
+      // 그 시각이 맑은지 흐린지. 창 오른쪽 설명이 이걸 따라간다
+      condition: w.condition,
+      // 지금을 볼 때만 관측한 설명 문구를 그대로 쓸 수 있다
+      description: w.description,
     },
   }
 }
