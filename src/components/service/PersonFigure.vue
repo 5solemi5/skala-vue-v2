@@ -189,25 +189,6 @@ const layers = computed(() => {
     -->
     <g class="lit">
       <g v-for="layer in layers" :key="layer" :class="layer">
-        <!--
-          우산대. 사람보다 먼저 그린다.
-
-          맨 위에 그렸더니 갓에서 손까지 내려오는 선이 얼굴을 세로로 갈랐다.
-          뒤에 두면 머리와 몸이 대를 가려서, 갓 아래 짧은 토막과
-          손 언저리만 보인다 — 실제로 우산을 쓰면 그렇게 보인다.
-
-          손(18.1, 19.4)에서 곧게 올라가는 대를 그린 다음,
-          그 손을 축으로 전체를 15도 기울인다. 갓과 대가 한 몸으로 돌아야
-          대가 갓 한가운데에 꽂힌 채로 남는다. 갓만 돌리면 대가 갓
-          가장자리에 붙어 부러진 우산이 된다.
-        -->
-        <path
-          v-if="wear.umbrella"
-          class="gear brolly-stem thin"
-          d="M18.1 19.4 L18.1 -5.1"
-          transform="rotate(-15 18.1 19.4)"
-        />
-
         <!-- 팔은 몸 뒤에 둔다. 앞에 두면 몸을 가로질러 지저분해진다 -->
         <rect class="arm one" x="4.4" y="13.4" width="2.8" height="6.4" rx="1.4" />
         <rect class="arm two" x="16.8" y="13.4" width="2.8" height="6.4" rx="1.4" />
@@ -222,18 +203,36 @@ const layers = computed(() => {
         thin 은 선으로만 그린다. 스티커 층은 gear 를 채우기도 해서,
         열린 곡선에 채움이 들어가면 손잡이가 부풀어 덩어리가 된다.
       -->
-        <g v-if="look.hold === 1 && !wear.umbrella" class="gear held">
+        <!--
+          비가 오면 손에 든 것을 우산으로 바꾼다.
+
+          한때 머리 위로 씌워 봤다. 비를 막는 그림으로는 맞는데,
+          갓이 머리를 덮으니 얼굴이 반쯤 가리고 대는 뒤로 숨겨야 해서
+          우산만 공중에 떠 있는 꼴이 됐다.
+          작은 우산을 손에 들고 있는 편이 훨씬 낫다.
+
+          접어 든 우산(hold === 1)과 같은 자리, 같은 크기다.
+          다른 건 갓이 펴져 있고 꼭지가 달렸다는 것뿐이다.
+        -->
+        <g v-if="wear.umbrella" class="gear held">
+          <path d="M16.8 6.2 Q18.9 7.7 21 6.2 Q23.1 7.7 25.2 6.2 A4.2 4.1 0 0 0 16.8 6.2 Z" />
+          <path class="thin" d="M21 2.1 v-1.6" />
+          <circle class="knob" cx="21" cy="-0.6" r="0.62" />
+          <path class="thin" d="M21 6.2 L19.2 18.4" />
+          <path class="thin" d="M19.2 18.4 q-0.3 1.5 -1.9 1.2" />
+        </g>
+        <g v-else-if="look.hold === 1" class="gear held">
           <!-- 갓. 아래 가장자리를 물결로 닫아야 버섯이 아니라 우산으로 읽힌다 -->
           <path d="M16.8 6.2 Q18.9 7.7 21 6.2 Q23.1 7.7 25.2 6.2 A4.2 4.1 0 0 0 16.8 6.2 Z" />
           <path class="thin" d="M21 6.2 L19.2 18.4" />
           <path class="thin" d="M19.1 18.4 q-0.3 1.5 -1.9 1.2" />
         </g>
-        <g v-else-if="look.hold === 2 && !wear.umbrella" class="gear held">
+        <g v-else-if="look.hold === 2" class="gear held">
           <!-- 손가방. 손 아래로 늘어뜨린다 -->
           <rect x="17.2" y="20.2" width="5.2" height="4.8" rx="1" />
           <path class="thin" d="M18.4 20.2 a1.4 1.5 0 0 1 2.8 0" />
         </g>
-        <g v-else-if="look.hold === 3 && !wear.umbrella" class="gear held">
+        <g v-else-if="look.hold === 3" class="gear held">
           <!-- 꽃 한 송이. 들판이니 꺾어 든 것이 있어도 이상하지 않다 -->
           <path class="thin" d="M18.5 19.6 L20 15.4" />
           <circle cx="20" cy="10" r="1.15" />
@@ -398,29 +397,6 @@ const layers = computed(() => {
           위에 두면 대가 얼굴을 세로로 가른다. 오른쪽으로 비켜 세워
           대가 눈 옆을 지나가게 한다.
         -->
-        <!--
-          갓과 꼭지. 맨 위에 그린다 — 머리 위에 있으니 가릴 것이 없다.
-
-          곧게 세운 자리에서 그리고 대와 함께 기울인다. 그래서 좌표는
-          손 바로 위(x 18.1)에 있지만, 15도 돌고 나면 머리 한가운데
-          위(x 11.8쯤)에 와 앉는다.
-
-          수평으로 머리에 딱 얹혀 있으면 우산이 아니라 얹어 놓은 판이다.
-          기울어져 있어야 손으로 들고 있는 것으로 보인다.
-
-          폭 15.2 로 머리 폭(5.4~18.6)을 덮는다.
-          한때 20.4 까지 키웠더니 우산을 쓴 사람이 아니라 우산 아래
-          눌린 사람이었고, 들고 다니던 크기(8.4) 그대로 두었더니
-          머리에 겹쳐 모자챙으로 보였다.
-        -->
-        <g v-if="wear.umbrella" class="gear brolly" transform="rotate(-15 18.1 19.4)">
-          <path
-            class="canopy"
-            d="M10.5 -5.1 Q14.3 -3.5 18.1 -5.1 Q21.9 -3.5 25.7 -5.1 A7.6 5.2 0 0 0 10.5 -5.1 Z"
-          />
-          <path class="thin" d="M18.1 -10.3 v-1.7" />
-          <circle class="knob" cx="18.1" cy="-12.4" r="0.62" />
-        </g>
       </g>
     </g>
   </svg>
@@ -1506,19 +1482,9 @@ const layers = computed(() => {
 .ink .gear.warm {
   stroke-width: 0.9;
 }
-.ink .gear.brolly .canopy {
+/* 꼭지. 대보다 굵어야 끝이 있는 것으로 보인다 */
+.gear .knob {
   stroke: none;
-}
-.ink .gear.brolly .thin,
-.ink .brolly-stem {
-  stroke-width: 1;
-}
-/* 꼭지. 대보다 조금 굵어야 끝이 있는 것으로 보인다 */
-.ink .gear.brolly .knob {
-  stroke: none;
-}
-.line .gear.brolly .canopy {
-  fill: none;
 }
 
 /* 땀 한 방울 */
