@@ -171,6 +171,7 @@ export default {
   'home.others': '다른 지역',
   'home.asOf': ({ time }) => `${time} 기준`,
   'home.refreshing': '갱신 중',
+  'home.cityFail': '그곳 날씨를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.',
   'home.refresh': '새로고침',
   'home.noCity': '보고 있는 지역이 없습니다.',
   'home.noCityHint': '아래에서 지역을 추가해 주세요.',

@@ -160,6 +160,7 @@ export default {
   'home.others': 'Other places',
   'home.asOf': ({ time }) => `as of ${time}`,
   'home.refreshing': 'Refreshing',
+  'home.cityFail': "Could not load that region's weather. Please try again shortly.",
   'home.refresh': 'Refresh',
   'home.noCity': 'No places on your list yet.',
   'home.noCityHint': 'Add one below.',

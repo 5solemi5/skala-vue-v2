@@ -66,8 +66,16 @@ const loadWeather = async () => {
     failedCities.value = failed.map((f) => f.city.name)
     updatedAt.value = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 
-    // 선택된 지역이 목록에서 빠졌으면 맨 앞으로 되돌린다
-    if (!list.some((c) => c.id === selectedId.value)) {
+    /*
+     * 선택된 지역이 목록에 없으면 맨 앞으로 되돌린다.
+     *
+     * 다만 사람을 고른 상태라면 되돌리지 않는다.
+     * 호출 제한에 걸려 전주만 못 받아 온 날, 머리에는 '정비소 · 현장 작업' 이
+     * 그대로 있는데 창에는 서울이 떠 있었다. 위아래가 어긋나면
+     * 무엇을 보고 있는 화면인지 알 수 없다.
+     * 그럴 때는 차라리 비워 두고 못 불러왔다고 말하는 편이 낫다.
+     */
+    if (!list.some((c) => c.id === selectedId.value) && !selectedPersonId.value) {
       selectedId.value = list[0]?.id ?? ''
     }
     loadHourly()
@@ -292,14 +300,24 @@ const handlePersonSelect = (person) => {
    * 그 사람의 일은 heroMode 가 알아서 따라가므로 여기서 손대지 않는다.
    */
 
-  const known = weatherList.value.find((c) => c.id === person.city.id)
-  if (known) {
-    selectedId.value = known.id
+  /*
+   * 그 사람의 지역을 목록에서 찾는다.
+   *
+   * id 로만 맞추면 안 된다. 같은 전주라도 기본 목록의 것은 city_04 이고
+   * 사람을 등록할 때 검색해서 고른 것은 geo_35.824_127.148 이라 서로 못 알아본다.
+   * 좌표로 맞춰서, 이미 있는 곳이면 그 지역의 id 를 쓴다.
+   *
+   * 여기서 person.city.id 를 그대로 넣었더니 목록에 없는 id 가 되어
+   * 창이 통째로 비었다. 목록에 있는 id 여야 그 날씨를 찾을 수 있다.
+   */
+  const same = cityStore.atSameSpot(person.city)
+  if (same) {
+    selectedId.value = same.id
   } else {
-    // 목록에 없는 지역이면 목록에 넣어 두고 이어서 보여준다
     cityStore.addCity(person.city)
     selectedId.value = person.city.id
   }
+
   const job = configStore.modeList.find((m) => m.id === person.modeId)?.label ?? ''
   selectedCityInfo.value = `${person.who} · ${person.city.name} · ${job}`
 }
@@ -336,7 +354,21 @@ const handleDetail = (city) => {
         고를 대상(사람 카드)은 바로 아래에 둔다.
         먼저 지금을 보여 주고, 다른 곳이 궁금하면 그때 고르게 한다.
       -->
+      <!--
+        고른 사람의 지역을 못 불러온 날.
+        전에는 조용히 첫 지역(서울)으로 바꿔 버려서
+        머리에는 '정비소' 인데 창에는 서울이 뜨는 어긋난 상태가 됐다.
+        지금은 바꾸지 않고 사정을 말한다.
+      -->
+      <div v-if="!selectedCity && selectedPersonId" class="empty">
+        <p>{{ configStore.t('home.cityFail') }}</p>
+        <button type="button" class="link" @click="loadWeather">
+          {{ configStore.t('home.refresh') }}
+        </button>
+      </div>
+
       <CityHero
+        v-else
         :city="selectedCity"
         :advice-list="heroAdvice"
         :life-advice-list="lifeAdvice"
