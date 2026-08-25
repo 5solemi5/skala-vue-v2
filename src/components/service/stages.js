@@ -68,29 +68,49 @@ const PLACES = [
     accent: '#EAC379',
   },
   {
+    /*
+     * 바닷가.
+     *
+     * 처음에는 들판의 겹을 색만 바꿔 썼다. 먼 산 두 겹, 구름, 새 떼,
+     * 풀 한 줌. 모래색 지면을 깔았지만 그건 바닷가가 아니라
+     * 모래색 들판이었다 — 바다가 없었다.
+     *
+     * 바닷가를 바닷가로 만드는 건 물이 뭍에 닿는 자리다.
+     * 수평선, 밀려왔다 빠지는 파도, 물이 닿았다 간 젖은 모래.
+     * 그 셋이 있어야 나머지(갈매기·꽃게·조개)가 놀러 온 해변이 된다.
+     */
     id: 'seaside',
-    motifColor: '#6E86B8',
-    haze: '#D4E0F0',
-    veg: '#7E8FA8',
-    veg2: '#98A9BE',
-    bloom: '#F0DCAE',
-    mountains: 2,
-    clouds: 3,
-    birds: 1,
+    beach: true,
+    motifColor: '#E0704F',
+    haze: '#DCE7F4',
+    veg: '#C6AE80',
+    veg2: '#E0CFA6',
+    bloom: '#FFF3D6',
+    // 뭍의 겹은 쓰지 않는다
+    mountains: 0,
+    clouds: 4,
+    birds: 0,
     trees: 0,
-    grass: 1,
+    grass: 0,
     flowers: 0,
+    rays: 0,
+    // 바닷가에만 있는 겹
     motes: 'spray',
-    rays: 1,
+    sea: 1,
+    waves: 5,
+    gulls: 4,
+    walkers: 3,
+    crabs: 3,
+    shells: 11,
     en: 'SEASIDE',
     ko: '바닷가',
     lang: 'illustrated',
-    motif: 'gull',
-    sky: '#C6D4EA',
-    mid: '#A6BADD',
-    far: '#849CCB',
-    near: '#6E86B8',
-    ground: '#D8C9A8',
+    motif: 'parasol',
+    sky: '#BFD9F0',
+    mid: '#93C1E2',
+    far: '#3E86B4',
+    near: '#2A6A93',
+    ground: '#EADFC0',
     accent: '#F0DCAE',
   },
   {

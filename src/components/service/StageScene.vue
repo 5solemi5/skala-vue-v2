@@ -230,7 +230,96 @@ const scene = computed(() => {
     delay: pick(-8, 0),
   }))
 
+  /*
+   * ── 바닷가 ──────────────────────────────────────
+   *
+   * 물이 뭍에 닿는 자리를 y 206 으로 잡았다. 그 위는 바다, 아래는 모래다.
+   * 사람은 지면(y 228)에서 걸으니 모래가 스물두 칸쯤 남는다 —
+   * 걸을 자리는 있고 바다는 충분히 넓다.
+   */
+  const SHORE = 206
+
+  // 파도. 해안선까지 밀려왔다가 빠진다. 저마다 다른 박자로
+  const waves = Array.from({ length: s.waves ?? 0 }, (_, i) => ({
+    i,
+    y: SHORE - 26 + i * 5.5,
+    dur: pick(5.5, 9),
+    delay: pick(-9, 0),
+    // 뒤쪽 파도일수록 옅고 얇다
+    o: 0.25 + i * 0.13,
+    w: 1.1 + i * 0.35,
+  }))
+
+  /*
+   * 나는 갈매기.
+   *
+   * 새 떼(birds)는 한 무리가 대열을 지어 지나간다. 바닷가 갈매기는
+   * 그렇게 날지 않는다 — 저마다 다른 높이에서 각자 원을 그린다.
+   * 그래서 한 마리씩 다른 궤도와 박자를 준다.
+   */
+  const gulls = Array.from({ length: s.gulls ?? 0 }, (_, i) => ({
+    i,
+    /*
+     * 바다 위를 낮게 난다.
+     *
+     * 처음에는 하늘 높이(y 28~128)에 띄웠다. 그런데 판은 접혀 있을 때가
+     * 대부분이고, 접히면 아래쪽 절반만 보인다. 갈매기가 통째로 잘려서
+     * 판을 펼치기 전에는 한 마리도 없는 바닷가였다.
+     *
+     * 접히면 화폭 아래쪽 y 137~260 만 보인다. 그 안에서 날아야 한다.
+     * 실제 갈매기도 하늘 높이 떠 있지 않다. 물 위를 낮게 훑는다.
+     */
+    y: pick(146, 196),
+    sc: pick(0.6, 1.25),
+    dur: pick(26, 52),
+    delay: pick(-50, 0),
+    // 오르내리는 폭. 갈매기는 곧게 날지 않는다
+    rise: pick(10, 30),
+    bob: pick(3.5, 7),
+    back: r() > 0.5,
+  }))
+
+  // 모래 위를 걷는 갈매기. 물가를 따라 종종거린다
+  const strollers = Array.from({ length: s.walkers ?? 0 }, (_, i) => ({
+    i,
+    x: pick(60, 720),
+    y: SHORE + pick(6, 18),
+    sc: pick(0.55, 0.8),
+    dur: pick(22, 40),
+    delay: pick(-30, 0),
+    span: pick(40, 110),
+    step: pick(0.5, 0.8),
+    back: r() > 0.5,
+  }))
+
+  // 꽃게. 옆으로만 걷는다
+  const crabs = Array.from({ length: s.crabs ?? 0 }, (_, i) => ({
+    i,
+    x: pick(40, 740),
+    y: SHORE + pick(14, 30),
+    sc: pick(0.6, 1),
+    dur: pick(14, 26),
+    delay: pick(-24, 0),
+    span: pick(50, 130),
+    step: pick(0.34, 0.5),
+    back: r() > 0.5,
+  }))
+
+  // 소라 · 조개 · 불가사리. 모래 위에 흩어져 가만히 있는 것들
+  const shells = Array.from({ length: s.shells ?? 0 }, () => ({
+    x: pick(10, 790),
+    y: SHORE + pick(8, 44),
+    sc: pick(0.7, 1.3),
+    kind: Math.floor(r() * 3),
+    tilt: pick(-24, 24),
+  }))
+
   return {
+    waves,
+    gulls,
+    strollers,
+    crabs,
+    shells,
     clouds,
     birds,
     trees,
@@ -426,6 +515,53 @@ const ridges = computed(() => {
         </g>
       </g>
 
+      <!--
+        ⑥'' 나는 갈매기.
+
+        새 떼(birds)는 한 무리가 대열을 지어 지나간다. 갈매기는 그렇게
+        날지 않는다 — 저마다 다른 높이에서 각자 오르내린다.
+        그래서 한 마리씩 다른 궤도와 박자를 준다.
+
+        날개는 갈매기의 전부다. 몸통을 그리지 않고 획 하나로 그린다.
+        멀리서 보는 갈매기는 실제로 그렇게만 보인다.
+      -->
+      <g v-if="stage.beach" class="gulls" fill="none" stroke-linecap="round">
+        <g
+          v-for="g in scene.gulls"
+          :key="`gl${g.i}`"
+          class="gull"
+          :class="{ back: g.back }"
+          :style="{
+            '--dur': `${g.dur}s`,
+            '--delay': `${g.delay}s`,
+            '--rise': `${g.rise}px`,
+          }"
+        >
+          <g :transform="`translate(0 ${g.y}) scale(${g.back ? -g.sc : g.sc} ${g.sc})`">
+            <!--
+              날개는 갈매기의 전부다. 몸통을 그리지 않고 획 하나로 그린다.
+              멀리서 보는 갈매기는 실제로 그렇게만 보인다.
+
+              희게 그린다. 바다색(near)으로 그렸더니 물 위를 날 때
+              바다에 묻혀 한 마리도 안 보였다. 갈매기는 원래 희다.
+            -->
+            <path
+              class="wing"
+              stroke="#fbfcfd"
+              :stroke-width="2.1 / g.sc"
+              d="M-9 0 q4.6 -5.2 9 -0.6 q4.4 -4.6 9 0.6"
+            />
+            <path
+              class="wing tip"
+              :stroke="stage.near"
+              :stroke-width="0.8 / g.sc"
+              opacity="0.5"
+              d="M-9 0 q4.6 -5.2 9 -0.6 q4.4 -4.6 9 0.6"
+            />
+          </g>
+        </g>
+      </g>
+
       <!-- ⑦ 모티프 — 무대마다 하나 -->
       <g
         class="motif"
@@ -612,11 +748,50 @@ const ridges = computed(() => {
         </g>
       </g>
 
+      <!--
+        ⑧' 바다.
+
+        수평선(y 150)에서 물가(y 206)까지 네 겹으로 내려온다.
+        먼 물은 짙고 가까운 물은 옅다 — 얕아질수록 바닥이 비쳐서다.
+        겹마다 윗선을 다르게 굽혀 두면 한 장의 파란 판이 아니라
+        깊이가 다른 물로 읽힌다.
+      -->
+      <g v-if="stage.beach" class="sea">
+        <!-- 먼 물. 수평선 쪽은 하늘빛을 받아 밝다 -->
+        <rect x="0" y="150" width="800" height="58" :fill="stage.near" />
+        <rect x="0" y="150" width="800" height="9" :fill="stage.mid" opacity="0.5" />
+        <!-- 깊은 골. 가운데가 가장 짙다 -->
+        <path fill="#0b3a57" opacity="0.2" d="M0 164 q100 -6 200 2 t200 1 t200 -4 t200 4 v22H0z" />
+        <!-- 얕아지는 물. 바닥이 비쳐 밝아진다 -->
+        <path
+          :fill="stage.mid"
+          opacity="0.78"
+          d="M0 186 q110 7 210 -2 t190 -1 t200 5 t200 -3 v26H0z"
+        />
+        <path
+          :fill="stage.sky"
+          opacity="0.5"
+          d="M0 198 q120 5 220 -1 t180 0 t200 3 t200 -2 v14H0z"
+        />
+      </g>
+
       <!-- ⑧ 원경 언덕 -->
-      <path :fill="stage.far" d="M0 168c118-26 196-22 296 4s176 20 270-10 158-18 234 12v86H0z" />
+      <path
+        v-if="!stage.beach"
+        :fill="stage.far"
+        d="M0 168c118-26 196-22 296 4s176 20 270-10 158-18 234 12v86H0z"
+      />
 
       <!-- ⑨ 안개 띠. 원경과 중경을 갈라 깊이를 만든다 -->
-      <rect x="0" y="150" width="800" height="52" :fill="`url(#mist-${uid})`" class="mist" />
+      <rect
+        v-if="!stage.beach"
+        x="0"
+        y="150"
+        width="800"
+        height="52"
+        :fill="`url(#mist-${uid})`"
+        class="mist"
+      />
 
       <!-- ⑩ 나무. 중경에 흩어진다 -->
       <g v-if="!stage.under" class="trees">
@@ -641,7 +816,25 @@ const ridges = computed(() => {
       </g>
 
       <!-- ⑪ 근경 -->
-      <path :fill="stage.near" d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z" />
+      <path
+        v-if="!stage.beach"
+        :fill="stage.near"
+        d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z"
+      />
+
+      <!--
+        ⑪' 젖은 모래.
+
+        물이 닿았다 간 자리. 마른 모래보다 어둡고 조금 반짝인다.
+        이 띠가 없으면 바다와 모래가 자로 그은 듯 갈려서,
+        물이 밀려온 적 없는 해변이 된다.
+      -->
+      <path
+        v-if="stage.beach"
+        :fill="stage.veg"
+        opacity="0.55"
+        d="M0 206 q110 7 210 1 t190 -2 t200 5 t200 -3 v54H0z"
+      />
 
       <!-- ⑫ 덤불과 꽃 -->
       <g v-if="!stage.under" class="flowers">
@@ -707,8 +900,181 @@ const ridges = computed(() => {
         </g>
       </g>
 
+      <!--
+        ⑫' 파도.
+
+        밀려왔다 빠진다. 다가올수록 굵어지고 진해지다가
+        물가에 닿는 순간 스러진다 — 부서지는 게 아니라 얇아지며 사라진다.
+        저마다 다른 박자라야 바다가 숨 쉬는 것으로 보인다.
+        다 같이 밀려오면 그건 파도가 아니라 줄무늬다.
+      -->
+      <g v-if="stage.beach" class="surf" stroke="#ffffff" fill="none" stroke-linecap="round">
+        <path
+          v-for="w in scene.waves"
+          :key="`sf${w.i}`"
+          :d="`M-20 ${w.y} q100 -4 200 0 t200 0 t200 0 t240 0`"
+          :stroke-width="w.w"
+          :style="{ '--dur': `${w.dur}s`, '--delay': `${w.delay}s`, '--o': w.o }"
+        />
+      </g>
+
       <!-- ⑬ 지면 -->
       <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
+
+      <!--
+        ⑬'' 소라 · 조개 · 불가사리.
+
+        가만히 있는 것들이라 자리만 정해 주면 된다.
+        기울기를 조금씩 달리 두는 게 전부인데, 그것만으로도
+        누가 늘어놓은 게 아니라 파도가 밀어 놓은 것으로 보인다.
+      -->
+      <g v-if="stage.beach" class="shells">
+        <g
+          v-for="(h, i) in scene.shells"
+          :key="`sh${i}`"
+          :transform="`translate(${h.x} ${h.y}) rotate(${h.tilt}) scale(${h.sc})`"
+        >
+          <!-- 소라 -->
+          <template v-if="h.kind === 0">
+            <path
+              :fill="stage.bloom"
+              d="M0 3 C-4.4 3 -5.4 -1.4 -2.6 -3.4 C-0.4 -5 3.2 -4 4.4 -1 C5.2 1 3.2 3 0 3 Z"
+            />
+            <path
+              :stroke="stage.veg"
+              fill="none"
+              stroke-width="0.7"
+              d="M-2.4 2.4 q1.6 -3.6 4.4 -4.6 M-0.4 3 q0.6 -4 3.4 -5"
+            />
+          </template>
+          <!-- 조개 -->
+          <path
+            v-else-if="h.kind === 1"
+            :fill="stage.veg2"
+            :stroke="stage.veg"
+            stroke-width="0.6"
+            d="M-4.6 2.4 A4.6 4.2 0 0 1 4.6 2.4 Z M-2.4 2.4 L-1 -1.6 M0 2.4 L0 -1.9 M2.4 2.4 L1 -1.6"
+          />
+          <!-- 불가사리 -->
+          <path
+            v-else
+            :fill="stage.motifColor"
+            opacity="0.72"
+            d="M0 -4.6 L1.4 -1.4 L4.6 -1.1 L2.1 1.1 L2.8 4.3 L0 2.6 L-2.8 4.3 L-2.1 1.1 L-4.6 -1.1 L-1.4 -1.4 Z"
+          />
+        </g>
+      </g>
+
+      <!--
+        ⑬''' 꽃게.
+
+        옆으로만 걷는다. 앞으로 걷는 꽃게는 꽃게가 아니다.
+        집게발을 번갈아 들었다 놓으면 종종거리는 것으로 보인다.
+      -->
+      <g v-if="stage.beach" class="crabs">
+        <g
+          v-for="c in scene.crabs"
+          :key="`cr${c.i}`"
+          class="crab"
+          :style="{
+            '--dur': `${c.dur}s`,
+            '--delay': `${c.delay}s`,
+            '--span': `${c.span}px`,
+            '--step': `${c.step}s`,
+            '--dir': c.back ? -1 : 1,
+          }"
+        >
+          <g :transform="`translate(${c.x} ${c.y}) scale(${c.sc})`" :fill="stage.motifColor">
+            <!-- 다리 여섯 -->
+            <g :stroke="stage.motifColor" stroke-width="0.85" fill="none" stroke-linecap="round">
+              <path
+                d="M-3.4 1.6 l-2.6 2.4 M-1.2 2.1 l-1.4 2.8 M1.2 2.1 l1.4 2.8 M3.4 1.6 l2.6 2.4"
+              />
+            </g>
+            <!-- 집게발 -->
+            <g class="claw one">
+              <path
+                d="M-4.2 -0.6 q-2.8 -0.6 -3.6 -2.6 q1.6 -0.6 2.8 0.2 q-1.2 -1.4 -0.4 -2.4 q1.8 1 2.4 3z"
+              />
+            </g>
+            <g class="claw two">
+              <path
+                d="M4.2 -0.6 q2.8 -0.6 3.6 -2.6 q-1.6 -0.6 -2.8 0.2 q1.2 -1.4 0.4 -2.4 q-1.8 1 -2.4 3z"
+              />
+            </g>
+            <!-- 등딱지 -->
+            <ellipse cx="0" cy="0" rx="4.6" ry="3" />
+            <circle cx="-1.7" cy="-2.4" r="0.75" fill="#2b2b2f" />
+            <circle cx="1.7" cy="-2.4" r="0.75" fill="#2b2b2f" />
+          </g>
+        </g>
+      </g>
+
+      <!--
+        ⑬''''' 파라솔.
+
+        모티프 자리(⑦)에 두었더니 바다에 잠겼다. 그 자리는 하늘 다음이라
+        뒤에 오는 바다가 기둥을 덮어, 파라솔만 수평선에 떠 있었다.
+        모래를 다 그린 다음에 꽂아야 모래에 꽂힌 것이 된다.
+
+        비스듬히 꽂는다. 곧게 세우면 심어 놓은 것 같다.
+      -->
+      <g v-if="stage.beach" class="parasol">
+        <g transform="rotate(-9 640 214)">
+          <path :stroke="stage.veg" stroke-width="2.6" stroke-linecap="round" d="M640 214 V150" />
+          <path
+            :fill="stage.motifColor"
+            d="M584 154 q14 10 28 0 q14 10 28 0 q14 10 28 0 q14 10 28 0 A56 40 0 0 0 584 154 Z"
+          />
+          <path
+            fill="#fdfaf2"
+            opacity="0.9"
+            d="M612 154 q14 10 28 0 q14 10 28 0 A56 40 0 0 0 640 114 q0 20 0 40 z"
+          />
+          <circle :fill="stage.veg" cx="640" cy="112" r="2.4" />
+        </g>
+      </g>
+
+      <!--
+        ⑬'''' 모래 위를 걷는 갈매기.
+
+        갈매기는 나는 시간보다 서 있는 시간이 길다. 물가를 따라
+        종종거리다 멈춰 서서 모래를 쪼는 게 실제 해변의 모습이다.
+        나는 것만 두면 해변이 아니라 하늘이 된다.
+      -->
+      <g v-if="stage.beach" class="strollers">
+        <g
+          v-for="g in scene.strollers"
+          :key="`st${g.i}`"
+          class="stroller"
+          :style="{
+            '--dur': `${g.dur}s`,
+            '--delay': `${g.delay}s`,
+            '--span': `${g.span}px`,
+            '--step': `${g.step}s`,
+            '--dir': g.back ? -1 : 1,
+          }"
+        >
+          <g :transform="`translate(${g.x} ${g.y}) scale(${g.sc})`">
+            <g class="legs" :stroke="stage.motifColor" stroke-width="0.8" stroke-linecap="round">
+              <path class="leg a" d="M-0.8 3.2 v3" />
+              <path class="leg b" d="M1 3.2 v3" />
+            </g>
+            <path
+              fill="#fdfdfb"
+              d="M-5.4 1.6 C-5.4 -1.6 -2.6 -3.4 0.4 -3.4 C3.6 -3.4 5.6 -1.4 5.6 0.6 C5.6 2.6 3 3.8 0 3.8 C-3 3.8 -5.4 3.2 -5.4 1.6 Z"
+            />
+            <path
+              :fill="stage.veg"
+              opacity="0.5"
+              d="M-5.2 1.4 q3 1.6 6.4 1.2 q-2.6 1.2 -6.4 0.4 z"
+            />
+            <circle cx="3.4" cy="-2.6" r="2.5" fill="#fdfdfb" />
+            <circle cx="4.2" cy="-3.1" r="0.62" fill="#2b2b2f" />
+            <path :fill="stage.bloom" d="M5.6 -2.6 l3 0.8 l-3 0.9z" />
+          </g>
+        </g>
+      </g>
 
       <!-- ⑬' 산호. 지면 다음에 얹는다 — 먼저 그렸더니 바닥에 덮여 하나도 안 보였다 -->
       <g v-if="stage.under" class="corals">
@@ -989,6 +1355,169 @@ const ridges = computed(() => {
   fill: none;
   stroke: currentColor;
   stroke-width: 0.8;
+}
+
+/* ── 바닷가 ───────────────────────────────────────── */
+
+/*
+ * 파도.
+ *
+ * 밀려오면서 굵어지고 진해지다가 물가에서 스러진다.
+ * 부서지는 게 아니라 얇아지며 사라진다 — 실제로 잔파도는 그렇다.
+ * 저마다 다른 박자라야 바다가 숨 쉬는 것으로 보인다.
+ * 다 같이 밀려오면 그건 파도가 아니라 줄무늬다.
+ */
+.surf path {
+  opacity: 0;
+  animation: roll var(--dur) ease-out var(--delay) infinite;
+}
+@keyframes roll {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scaleX(0.96);
+  }
+  18% {
+    opacity: calc(var(--o) * 0.7);
+  }
+  62% {
+    opacity: var(--o);
+    transform: translateY(6px) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(15px) scaleX(1.04);
+  }
+}
+
+/*
+ * 나는 갈매기.
+ * 가로로 지나가면서 오르내리고, 그러면서 날개를 접었다 편다.
+ * 셋이 따로 놀아야 한 마리가 제 뜻대로 나는 것으로 보인다.
+ */
+/*
+ * 방향은 되감기로 뒤집는다.
+ *
+ * 처음에는 시작점과 끝점에 --dir 을 곱했다. 그랬더니 반대로 나는
+ * 갈매기는 +120 에서 시작해 -920 으로 가서, 한 바퀴의 대부분을
+ * 화면 밖에서 보냈다. 넷 중 둘이 사실상 없는 셈이었다.
+ *
+ * 궤도는 하나로 두고 재생만 거꾸로 돌린다. 몸은 scaleX 로 뒤집어
+ * 가는 쪽을 보게 한다.
+ */
+.gull {
+  animation:
+    glide var(--dur) linear var(--delay) infinite,
+    lift calc(var(--dur) / 7) ease-in-out var(--delay) infinite alternate;
+}
+.gull.back {
+  animation-direction: reverse, alternate;
+}
+.gull .wing {
+  animation: flap 1.15s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes glide {
+  from {
+    transform: translateX(-120px);
+  }
+  to {
+    transform: translateX(920px);
+  }
+}
+@keyframes lift {
+  from {
+    translate: 0 calc(var(--rise) * -0.5);
+  }
+  to {
+    translate: 0 calc(var(--rise) * 0.5);
+  }
+}
+@keyframes flap {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.4);
+  }
+}
+
+/*
+ * 모래를 걷는 갈매기와 꽃게.
+ *
+ * 둘 다 좁은 자리를 오간다. 판을 가로지르게 두면 물가를 따라
+ * 산책하는 게 아니라 화면을 건너가는 것이 된다.
+ */
+.stroller,
+.crab {
+  animation: patrol var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes patrol {
+  from {
+    transform: translateX(calc(var(--span) * -0.5 * var(--dir))) scaleX(var(--dir));
+  }
+  to {
+    transform: translateX(calc(var(--span) * 0.5 * var(--dir))) scaleX(var(--dir));
+  }
+}
+
+/* 갈매기 다리는 번갈아. 종종거리는 박자가 몸보다 빨라야 걷는 것으로 보인다 */
+.stroller .leg.a {
+  animation: peg var(--step) ease-in-out infinite;
+}
+.stroller .leg.b {
+  animation: peg var(--step) ease-in-out calc(var(--step) / -2) infinite;
+}
+@keyframes peg {
+  0%,
+  100% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(13deg);
+  }
+}
+.stroller .leg {
+  transform-origin: top center;
+  transform-box: fill-box;
+}
+
+/* 꽃게는 집게발을 번갈아 든다 */
+.crab .claw {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.crab .claw.one {
+  animation: pinch var(--step) ease-in-out infinite;
+}
+.crab .claw.two {
+  animation: pinch var(--step) ease-in-out calc(var(--step) / -2) infinite;
+}
+@keyframes pinch {
+  0%,
+  100% {
+    transform: rotate(-9deg) translateY(0.3px);
+  }
+  50% {
+    transform: rotate(9deg) translateY(-0.4px);
+  }
+}
+
+/* 파라솔은 바람에 아주 조금 흔들린다 */
+.parasol {
+  animation: sunshade 6.5s ease-in-out infinite;
+  transform-origin: 640px 214px;
+  transform-box: view-box;
+}
+@keyframes sunshade {
+  0%,
+  100% {
+    transform: rotate(-0.8deg);
+  }
+  50% {
+    transform: rotate(0.8deg);
+  }
 }
 
 /* ── 물속 ─────────────────────────────────────────── */
