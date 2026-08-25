@@ -9,7 +9,21 @@
  */
 
 // 숫자보다 우리말이 따뜻하게 읽힌다
-const koCount = ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열', '열한', '열두']
+const koCount = [
+  '',
+  '한',
+  '두',
+  '세',
+  '네',
+  '다섯',
+  '여섯',
+  '일곱',
+  '여덟',
+  '아홉',
+  '열',
+  '열한',
+  '열두',
+]
 
 export default {
   // ── 머리말·꼬리말 ──────────────────────────────
@@ -98,6 +112,9 @@ export default {
   'hero.hot': '더움 (25도 이상)',
   'hero.mild': '선선함 (25도 미만)',
   'hero.detail': '상세보기',
+  // 막대에서 시각을 골랐을 때 판정 위에 걸리는 줄
+  'hero.basis': '기준으로 보고 있어요',
+  'hero.basisNow': '지금으로',
   'hero.detailAria': ({ name }) => `${name} 상세보기`,
   'hero.rowDetail': '상세',
 
@@ -159,7 +176,8 @@ export default {
   'city.already': '이미 있음',
   'city.reset': '기본 목록으로 되돌리기',
   'city.removeAria': ({ name }) => `${name} 삭제`,
-  'city.notFound': ({ query }) => `'${query}' 로 찾은 지역이 없습니다. 다른 이름으로 검색해 보세요.`,
+  'city.notFound': ({ query }) =>
+    `'${query}' 로 찾은 지역이 없습니다. 다른 이름으로 검색해 보세요.`,
   'city.searchFail': '지역을 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   'city.added': ({ name }) => `${name} 을(를) 추가했습니다.`,
   'city.exists': ({ name }) => `${name} 은(는) 이미 목록에 있습니다.`,
@@ -193,7 +211,8 @@ export default {
   'detail.wind': '풍속',
   'detail.feelsLike': '체감',
   'detail.byMode': '하는 일별 채비',
-  'detail.byModeHint': '메인에서는 고른 한 가지만 보이지만 여기서는 네 가지를 나란히 볼 수 있습니다.',
+  'detail.byModeHint':
+    '메인에서는 고른 한 가지만 보이지만 여기서는 네 가지를 나란히 볼 수 있습니다.',
   'detail.notInList': '내 지역 목록에 없는 곳입니다.',
   'detail.notInListHint': '전체 지역 화면에서 먼저 추가해 주세요.',
 
@@ -223,7 +242,8 @@ export default {
     `한 번에 ${max}명까지 볼 수 있습니다. 한 명을 지우고 추가해 주세요.`,
   'edit.needWho': '어떻게 부를지 적어 주세요. (예: 정비소, 밭, 출퇴근길)',
   'edit.needCity': '지역을 골라 주세요.',
-  'edit.noResult': ({ query }) => `'${query}' 로 찾은 지역이 없습니다. 가까운 큰 지역으로 검색해 보세요.`,
+  'edit.noResult': ({ query }) =>
+    `'${query}' 로 찾은 지역이 없습니다. 가까운 큰 지역으로 검색해 보세요.`,
   'edit.searchFail': '지역을 검색하지 못했습니다. 잠시 후 다시 시도해 주세요.',
 
   // ── 없는 화면 ────────────────────────────────

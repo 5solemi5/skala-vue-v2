@@ -1,0 +1,100 @@
+<script setup>
+import { computed } from 'vue'
+import PersonFigure from './PersonFigure.vue'
+import { usePersonAct } from './usePersonAct'
+
+/*
+ * 마당을 오가는 사람 하나.
+ *
+ * 사람마다 자기 차례로 걷다 쉬다 해야 해서 한 명을 한 컴포넌트로 뒀다.
+ * 여러 명의 동작을 부모 한 곳에서 관리하려면 타이머 목록을 들고 있어야 하는데,
+ * 사람이 늘고 줄 때마다 그 목록을 맞춰 주는 일이 붙는다.
+ * 컴포넌트로 두면 사라질 때 자기 타이머를 알아서 정리한다.
+ */
+const props = defineProps({
+  person: { type: Object, required: true },
+  variant: { type: String, default: 'sticker' },
+  accent: { type: String, default: '#EAC379' },
+  seed: { type: Number, default: 1 },
+  // 걷는 데 걸리는 시간, 시작 지점, 앞뒤 자리 — 부모가 정해서 넘긴다
+  dur: { type: Number, default: 90 },
+  delay: { type: Number, default: 0 },
+  scale: { type: Number, default: 1 },
+  step: { type: Number, default: 0.86 },
+  back: { type: Number, default: 0 },
+})
+
+const { act } = usePersonAct(props.seed)
+
+const style = computed(() => ({
+  '--dur': `${props.dur}s`,
+  '--delay': `${props.delay}s`,
+  '--scale': String(props.scale),
+  '--back': `${props.back}px`,
+  zIndex: String(40 - props.back),
+}))
+</script>
+
+<template>
+  <div class="walker" :class="{ resting: act !== 'walk' }" :style="style">
+    <PersonFigure
+      :person="person"
+      :variant="variant"
+      :accent="accent"
+      :act="act"
+      :step="step"
+    />
+  </div>
+</template>
+
+<style scoped>
+.walker {
+  position: absolute;
+  /*
+   * 지면은 접혀 있든 펼쳐져 있든 늘 판의 아래쪽이다.
+   * 다만 맨 아래 22px 은 좌하단 라벨과 우하단 서명이 쓰는 자리라 비켜 선다.
+   */
+  bottom: calc(24px + var(--back) * 0.42);
+  left: 0;
+  transform: scale(var(--scale));
+  transform-origin: bottom center;
+  animation: stroll var(--dur) linear var(--delay) infinite alternate;
+}
+
+/*
+ * 걷지 않는 동안에는 자리 이동을 멈춘다.
+ * 그래야 '멈춰 서서 기지개를 켠다' 가 된다.
+ * 팔다리 자세는 PersonFigure 가 맡는다.
+ */
+.walker.resting {
+  animation-play-state: paused;
+}
+
+@keyframes stroll {
+  from {
+    left: 2%;
+  }
+  to {
+    left: 92%;
+  }
+}
+
+.walker :deep(.figure) {
+  width: 30px;
+  height: 35px;
+}
+
+@media (max-width: 560px) {
+  .walker :deep(.figure) {
+    width: 26px;
+    height: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walker {
+    animation: none;
+    left: calc(6% + var(--back) * 2.4%);
+  }
+}
+</style>

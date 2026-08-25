@@ -200,9 +200,56 @@ const filteredWeatherList = computed(() => {
 // 판정 문구를 만들 때 필요한 것들. 언어나 단위가 바뀌면 문구도 따라 바뀐다.
 const adviceOpts = computed(() => ({ lang: configStore.lang, unit: configStore.unit }))
 
+/*
+ * 판정이 어느 시각을 보고 있는가.
+ *
+ * 들어오면 0 — 지금이다. 챙기러 들어온 사람이 제일 먼저 알고 싶은 건
+ * 그 사람이 지금 어떤지지, 저녁 여섯 시가 아니다.
+ *
+ * 막대를 누르면 그 칸으로 옮겨 간다. '비 올 확률이 저녁에 높던데
+ * 그때는 뭐라고 나오지' 를 누르는 것 말고 물어볼 방법이 없었다.
+ */
+const basisIndex = ref(0)
+
+/*
+ * 판정에 넣을 날씨 한 벌.
+ *
+ * 도시 값 위에 그 시각 예보를 덮는다. 통째로 갈아 끼우지 않는 이유는
+ * minTemp 때문이다. 일교차는 하루의 성질이지 한 시각의 성질이 아니라서,
+ * 15시 칸으로 바꾼다고 그날 최저기온까지 15시 값이 되면 안 된다.
+ */
+const basisWeather = computed(() => {
+  const city = selectedCity.value
+  if (!city) return null
+  const row = basisIndex.value > 0 ? hourlyRows.value[basisIndex.value] : null
+  if (!row) return city
+  const { at, temp, humidity, rainProb, wind, clouds, condition } = row
+  return { ...city, at, temp, humidity, rainProb, wind, clouds, condition }
+})
+
+/* 판정 위에 적을 기준 시각. 지금이면 비워 둔다 */
+const basisHour = computed(() => {
+  const row = basisIndex.value > 0 ? hourlyRows.value[basisIndex.value] : null
+  return row ? `${row.at.getHours()}시` : ''
+})
+
+const pickHour = (i) => {
+  basisIndex.value = i
+}
+const resetBasis = () => {
+  basisIndex.value = 0
+}
+
+/*
+ * 보고 있는 곳이 바뀌면 기준도 지금으로 돌아간다.
+ * 전주에서 18시를 보다가 철원으로 옮겼는데 18시가 그대로 남아 있으면,
+ * 고른 적도 없는 시각의 판정을 철원의 첫인상으로 읽게 된다.
+ */
+watch(selectedId, resetBasis)
+
 /* 창에 뜬 지역의 판정. 사람을 고르고 있으면 그 사람 기준이다 */
 const heroAdvice = computed(() =>
-  selectedCity.value ? buildAdvice(selectedCity.value, heroMode.value, adviceOpts.value) : [],
+  basisWeather.value ? buildAdvice(basisWeather.value, heroMode.value, adviceOpts.value) : [],
 )
 
 /*
@@ -212,17 +259,17 @@ const heroAdvice = computed(() =>
  * 빨래를 널지 산책을 갈지는 이 판정이 답한다.
  */
 const lifeAdvice = computed(() =>
-  selectedCity.value
-    ? buildAdvice(selectedCity.value, configStore.currentMode, adviceOpts.value)
+  basisWeather.value
+    ? buildAdvice(basisWeather.value, configStore.currentMode, adviceOpts.value)
     : [],
 )
 
-/* 위 판정이 누구의 무엇인지 — '정비소 · 현장 작업' */
+/* 창의 지역 줄에 얹을 이름, 아래 판정에 붙일 하는 일 */
+const personName = computed(() => selectedPerson.value?.who ?? '')
 const jobLabel = computed(() => {
   const p = selectedPerson.value
   if (!p) return ''
-  const job = configStore.modeList.find((m) => m.id === p.modeId)?.label ?? ''
-  return `${p.who} · ${job}`
+  return configStore.modeList.find((m) => m.id === p.modeId)?.label ?? ''
 })
 
 const adviceMap = computed(() => {
@@ -372,10 +419,15 @@ const handleDetail = (city) => {
         :city="selectedCity"
         :advice-list="heroAdvice"
         :life-advice-list="lifeAdvice"
+        :person-name="personName"
         :job-label="jobLabel"
-        :person="selectedPerson"
         :hourly-rows="hourlyRows"
         :status-text="selectedCityInfo"
+        :basis-hour="basisHour"
+        :basis-index="basisIndex"
+        :basis-weather="basisWeather"
+        @pick-hour="pickHour"
+        @reset-basis="resetBasis"
         @open-detail="handleDetail"
       />
 
@@ -400,7 +452,9 @@ const handleDetail = (city) => {
           </div>
           <div class="meta">
             <CityFilter v-model="searchQuery" />
-            <span v-if="updatedAt" class="tnum">{{ configStore.t('home.asOf', { time: updatedAt }) }}</span>
+            <span v-if="updatedAt" class="tnum">{{
+              configStore.t('home.asOf', { time: updatedAt })
+            }}</span>
             <button type="button" class="refresh" :disabled="isLoading" @click="loadWeather">
               {{ configStore.t(isLoading ? 'home.refreshing' : 'home.refresh') }}
             </button>

@@ -37,11 +37,15 @@ import VerdictMark from './VerdictMark.vue'
  */
 const configStore = useConfigStore()
 
+const emit = defineEmits(['pick'])
+
 const props = defineProps({
   rows: { type: Array, default: () => [] },
   mode: { type: String, required: true },
   modeLabel: { type: String, default: '' },
   compact: { type: Boolean, default: false },
+  // 아래 판정이 기대고 있는 칸. 0 이면 지금
+  basis: { type: Number, default: 0 },
 })
 
 const scored = computed(() =>
@@ -96,21 +100,47 @@ const band = computed(() => {
  * 아무것도 안 골랐으면 첫 칸(지금)을 읽는다.
  * 아침에 열었을 때 아무것도 안 눌러도 지금 값이 보여야 한다.
  */
-const picked = ref(0)
+/*
+ * 고른 칸과 스치는 칸을 갈라 둔다.
+ *
+ * 원래는 하나였다. 마우스가 지나가기만 해도 그 칸이 골라졌다.
+ * 숫자만 바뀔 때는 그래도 됐는데, 이제 이 선택이 아래 판정까지 정하므로
+ * 차트 위를 가로지르는 동안 판정 문구가 열여덟 번 뒤집히게 된다.
+ *
+ *   basis  눌러서 정한 칸. 아래 판정이 이걸 따른다.
+ *   hover  스쳐 지나가는 중인 칸. 제목 줄 숫자만 잠깐 바꾼다.
+ *
+ * 차트에서 마우스가 빠져나가면 hover 를 비워 다시 basis 를 읽는다.
+ * 그러지 않으면 마지막으로 스친 자리에 숫자가 남아,
+ * 판정은 지금 기준인데 숫자는 딴 시각인 채로 굳는다.
+ */
+const hover = ref(null)
+const basis = computed(() => Math.min(props.basis, Math.max(0, scored.value.length - 1)))
 watch(
   () => props.rows.length,
-  (n) => {
-    if (picked.value >= n) picked.value = 0
+  () => {
+    hover.value = null
   },
 )
+const picked = computed(() => hover.value ?? basis.value)
 const readout = computed(() => scored.value[picked.value] ?? null)
 
-// 좌우 화살표로 칸을 옮긴다. 열여덟 개를 탭으로 지나가게 두지 않는다
-const move = (delta) => {
+/*
+ * 칸을 확정한다. 누르거나, 화살표로 옮기거나, 탭으로 들어왔을 때.
+ *
+ * 고른 값을 여기 두지 않고 부모에게 올린다.
+ * 판정을 세우는 것도 '지금으로' 되돌리는 것도 부모 쪽 일이라,
+ * 같은 사실을 두 군데에 두면 둘이 어긋날 자리가 생긴다.
+ */
+const commit = (i) => {
   const n = scored.value.length
   if (!n) return
-  picked.value = Math.min(n - 1, Math.max(0, picked.value + delta))
+  hover.value = null
+  emit('pick', Math.min(n - 1, Math.max(0, i)))
 }
+
+// 좌우 화살표로 칸을 옮긴다. 열여덟 개를 탭으로 지나가게 두지 않는다
+const move = (delta) => commit(basis.value + delta)
 
 // 눈금은 세 시간마다. 열여덟 개를 다 적으면 글자가 서로 붙어 안 읽힌다
 const isTick = (row) => row.index === 0 || row.hour % 3 === 0
@@ -145,8 +175,9 @@ const isTick = (row) => row.index === 0 || row.hour % 3 === 0
       :aria-label="configStore.t('hourly.aria')"
       @keydown.left.prevent="move(-1)"
       @keydown.right.prevent="move(1)"
-      @keydown.home.prevent="picked = 0"
-      @keydown.end.prevent="picked = scored.length - 1"
+      @keydown.home.prevent="commit(0)"
+      @keydown.end.prevent="commit(scored.length - 1)"
+      @mouseleave="hover = null"
     >
       <!--
         이 사이가 낫습니다.
@@ -169,9 +200,12 @@ const isTick = (row) => row.index === 0 || row.hour % 3 === 0
           :key="row.time"
           type="button"
           class="slot"
-          :class="[row.level, { on: row.index === picked, now: row.index === 0 }]"
-          :tabindex="row.index === picked ? 0 : -1"
-          :aria-current="row.index === picked ? 'true' : undefined"
+          :class="[
+            row.level,
+            { on: row.index === picked, pin: row.index === basis, now: row.index === 0 },
+          ]"
+          :tabindex="row.index === basis ? 0 : -1"
+          :aria-current="row.index === basis ? 'true' : undefined"
           :aria-label="
             configStore.t('hourly.slotAria', {
               hour: row.hour,
@@ -179,9 +213,9 @@ const isTick = (row) => row.index === 0 || row.hour % 3 === 0
               rain: row.rainProb,
             })
           "
-          @click="picked = row.index"
-          @mouseenter="picked = row.index"
-          @focus="picked = row.index"
+          @click="commit(row.index)"
+          @mouseenter="hover = row.index"
+          @focus="commit(row.index)"
         >
           <span class="bar" :style="{ height: `${heightOf(row.temp)}%` }"></span>
         </button>
@@ -347,6 +381,31 @@ const isTick = (row) => row.index === 0 || row.hour % 3 === 0
 /* 지금. 첫 칸 왼쪽에 선을 세워 시작점을 못 박는다 */
 .slot.now {
   box-shadow: inset 1.5px 0 0 var(--color-ink-2);
+}
+
+/*
+ * 아래 판정이 기대고 있는 칸.
+ *
+ * 스쳐서 밝아지는 것(.on)과 눌러서 정한 것(.pin)은 서로 다른 말이라
+ * 표시도 달라야 한다. .on 은 잠깐 밝아졌다 돌아가고,
+ * .pin 은 마우스를 치워도 남아 판정이 어느 시각을 보고 있는지 붙잡아 준다.
+ *
+ * 막대 아래에 깃대를 하나 세운다. 칠(판정 색)을 건드리지 않으므로
+ * 초록·주황·빨강을 읽는 데 방해가 되지 않는다.
+ */
+.slot.pin::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  transform: translateX(-50%);
+}
+.slot.pin {
+  position: relative;
 }
 
 /* ── 비 올 확률 ── */

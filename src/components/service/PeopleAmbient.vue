@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 import { STAGE_GROUPS, stageById } from './stages'
 import StageScene from './StageScene.vue'
-import PersonFigure from './PersonFigure.vue'
+import YardWalker from './YardWalker.vue'
 
 /*
  * 마당.
@@ -99,7 +99,6 @@ const walkers = computed(() => {
      */
     const spread = i / total
     const jitter = pick(seed, 7, 100) / 100 / total
-    const delay = -(duration * ((spread + jitter) % 1))
 
     /*
      * 앞뒤 자리.
@@ -110,21 +109,18 @@ const walkers = computed(() => {
 
     return {
       id: person.id,
-      // 생김새(모자·든 것·옷 색)는 PersonFigure 가 사람 id 에서 뽑는다.
-      // 마당에서 밀짚모자를 쓰고 걷던 사람이 창 아래에서도 밀짚모자여야 한다
       person,
-      style: {
-        '--dur': `${duration}s`,
-        '--delay': `${delay}s`,
-        '--scale': String((1.0 - (back / 32) * 0.32).toFixed(2)),
-        // 느리게 걸으니 발도 느리게 놀려야 한다
-        '--step': `${0.62 + pick(seed, 15, 26) / 100}s`,
-        '--back': `${back}px`,
-        zIndex: String(40 - back),
-      },
+      seed,
+      dur: duration,
+      delay: -(duration * ((spread + jitter) % 1)),
+      scale: Number((1.0 - (back / 32) * 0.32).toFixed(2)),
+      // 느리게 걸으니 발도 느리게 놀려야 한다
+      step: 0.62 + pick(seed, 15, 26) / 100,
+      back,
     }
   })
 })
+
 </script>
 
 <template>
@@ -205,13 +201,19 @@ const walkers = computed(() => {
 
       <!-- 걸어다니는 사람들 -->
       <TransitionGroup name="walker" type="transition" tag="div" class="walkers">
-        <div v-for="w in walkers" :key="w.id" class="walker" :style="w.style">
-          <PersonFigure
-            :person="w.person"
-            :variant="isEngraved ? 'line' : 'sticker'"
-            :accent="stage.accent"
-          />
-        </div>
+        <YardWalker
+          v-for="w in walkers"
+          :key="w.id"
+          :person="w.person"
+          :variant="isEngraved ? 'line' : 'sticker'"
+          :accent="stage.accent"
+          :seed="w.seed"
+          :dur="w.dur"
+          :delay="w.delay"
+          :scale="w.scale"
+          :step="w.step"
+          :back="w.back"
+        />
       </TransitionGroup>
 
       <!--
@@ -426,60 +428,6 @@ const walkers = computed(() => {
   inset: 0;
   pointer-events: none;
 }
-.walker {
-  position: absolute;
-  /*
-   * 지면은 접혀 있든 펼쳐져 있든 늘 판의 아래쪽이다.
-   * 다만 맨 아래 22px 은 좌하단 라벨과 우하단 서명이 쓰는 자리라 비켜 선다.
-   */
-  bottom: calc(24px + var(--back) * 0.42);
-  left: 0;
-  transform: scale(var(--scale));
-  transform-origin: bottom center;
-  animation: stroll var(--dur) linear var(--delay) infinite alternate;
-}
-@keyframes stroll {
-  from {
-    left: 2%;
-  }
-  to {
-    left: 94%;
-  }
-}
-
-/*
- * 걸음.
- * 그림이 자식 컴포넌트로 옮겨 가서 scoped 규칙이 그 안까지 닿지 않는다.
- * 움직임은 여기서 정하는 게 맞아서 :deep 으로 넘겨 건다.
- */
-.walker :deep(.figure) {
-  width: 30px;
-  height: 35px;
-}
-.walker :deep(.leg),
-.walker :deep(.arm) {
-  transform-origin: center top;
-  transform-box: fill-box;
-}
-.walker :deep(.leg.one),
-.walker :deep(.arm.two) {
-  animation: stepA var(--step) ease-in-out infinite;
-}
-.walker :deep(.leg.two),
-.walker :deep(.arm.one) {
-  animation: stepB var(--step) ease-in-out infinite;
-}
-@keyframes stepA {
-  50% {
-    transform: translateY(-1.1px) rotate(7deg);
-  }
-}
-@keyframes stepB {
-  50% {
-    transform: translateY(-1.1px) rotate(-7deg);
-  }
-}
-
 /* 사람이 늘고 줄 때 */
 .walker-enter-active,
 .walker-leave-active {
@@ -559,21 +507,12 @@ const walkers = computed(() => {
   .stage {
     height: 116px;
   }
-  .walker :deep(.figure) {
-    width: 26px;
-    height: 30px;
-  }
   .swatches {
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .walker,
-  .walker :deep(.leg),
-  .walker :deep(.arm) {
-    animation: none;
-  }
   .walker {
     left: calc(6% + var(--back) * 2.4%);
   }

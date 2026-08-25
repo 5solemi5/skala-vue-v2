@@ -31,7 +31,7 @@ export default {
 
   // ── where you are ──
   'here.ask': 'My location',
-  'here.askTitle': "See the weather where you are",
+  'here.askTitle': 'See the weather where you are',
   'here.loading': 'Finding',
   'here.goTitle': ({ name }) => `See today's kit for ${name}`,
   'here.denied': 'Location unavailable',
@@ -92,6 +92,9 @@ export default {
   'hero.hot': 'Hot (25°C and above)',
   'hero.mild': 'Mild (below 25°C)',
   'hero.detail': 'See details',
+  // shown above the verdict once an hour is picked on the chart
+  'hero.basis': 'is what this reads for',
+  'hero.basisNow': 'Back to now',
   'hero.detailAria': ({ name }) => `See details for ${name}`,
   'hero.rowDetail': 'Details',
 
@@ -208,8 +211,7 @@ export default {
   'edit.reset': 'Back to the sample list',
   'edit.full': ({ max }) => `That's all ${max}. Remove someone to add another.`,
   'edit.fullShort': ({ max }) => `You can watch ${max} places at a time.`,
-  'edit.fullRemove': ({ max }) =>
-    `You can watch ${max} places at a time. Remove one, then add.`,
+  'edit.fullRemove': ({ max }) => `You can watch ${max} places at a time. Remove one, then add.`,
   'edit.needWho': 'Give them a name. (e.g. the shop, the field, my commute)',
   'edit.needCity': 'Pick a place.',
   'edit.noResult': ({ query }) => `Nothing found for '${query}'. Try a larger city nearby.`,

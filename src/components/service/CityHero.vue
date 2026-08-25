@@ -8,7 +8,6 @@ import HourlyBar from './HourlyBar.vue'
 import SkyCanvas from '../sky/SkyCanvas.vue'
 import SkyPicker from '../sky/SkyPicker.vue'
 import ModeBar from './ModeBar.vue'
-import PersonFigure from './PersonFigure.vue'
 
 const configStore = useConfigStore()
 const skyStore = useSkyStore()
@@ -29,15 +28,45 @@ const props = defineProps({
    * 일상 여섯 가지가 사실상 닿을 수 없는 자리에 있었다.
    */
   lifeAdviceList: { type: Array, default: () => [] },
-  // '정비소 · 현장 작업' — 이 하늘이 누구의 것인지 밝힌다
+  // 창의 지역 줄에 얹을 사람 이름
+  personName: { type: String, default: '' },
+  // 아래 판정이 무슨 일 기준인지 — '현장 작업'
   jobLabel: { type: String, default: '' },
-  // 창 아래 실루엣으로 세울 사람
-  person: { type: Object, default: null },
+  /*
+   * 판정이 보고 있는 시각. 지금이면 빈 문자열.
+   *
+   * 이걸 적어 두지 않으면 화면이 시치미를 뗀다. 막대에서 18시를 눌러 놓고
+   * 다른 데를 보다 돌아오면, 왜 '지금' 이 아닌 소리를 하는지 알 길이 없다.
+   */
+  basisHour: { type: String, default: '' },
+  // 막대에서 고른 칸. 판정과 같은 값을 봐야 표시가 어긋나지 않는다
+  basisIndex: { type: Number, default: 0 },
+  /*
+   * 판정이 기대고 있는 날씨 한 벌.
+   *
+   * 판정 바로 위 숫자 줄이 이걸 읽는다. city 를 읽게 두었더니
+   * 6시를 골라 놓았을 때 근거는 '습도 99%' 인데 그 위 줄은 '습도 62%' 였다.
+   * 붙어 있는 두 줄이 서로 다른 시각을 말하면 어느 쪽도 믿기 어려워진다.
+   */
+  basisWeather: { type: Object, default: null },
 })
 
-defineEmits(['open-detail'])
+defineEmits(['open-detail', 'pick-hour', 'reset-basis'])
 
-const displayTemp = computed(() => (props.city ? configStore.convertTemp(props.city.temp) : 0))
+/*
+ * 창에 크게 적는 기온.
+ *
+ * city.temp 를 읽고 있었다. 그건 어느 시각을 보고 있든 '지금' 관측값이라,
+ * 해질 때를 눌러도 가장 큰 글씨만 낮 기온에 머물렀다.
+ * 바로 아래 '비'·'구름' 도, 옆줄 숫자도 이미 그 시각을 따라가는데
+ * 제일 먼저 읽히는 숫자 하나만 딴 시각을 가리키고 있었던 셈이다.
+ *
+ * 창이 보여 주는 시각의 값을 그대로 읽는다.
+ * '지금' 일 때 reading.temp 는 관측값 그 자체여서 보이는 건 달라지지 않는다.
+ */
+const displayTemp = computed(() =>
+  props.city ? configStore.convertTemp(skyStore.reading.temp) : 0,
+)
 
 // 가장 무거운 판정 하나를 대표로 세운다. 나머지는 아래에 목록으로.
 const order = { stop: 0, warn: 1, info: 2, good: 3 }
@@ -60,6 +89,9 @@ const conditionLabel = computed(() => {
   return configStore.t(`cond.${groupOf(c)}`)
 })
 const rest = computed(() => sorted.value.slice(1))
+
+// 판정 위 숫자 줄이 읽는 값. 시각을 안 골랐으면 지금 값이다
+const said = computed(() => props.basisWeather ?? props.city ?? {})
 
 // 일상 판정도 같은 순서로 세운다
 const lifeSorted = computed(() =>
@@ -111,12 +143,16 @@ const coord = computed(() => {
             <div class="place">
               <!--
                 누구의 하늘인지.
-                지역명 위에 둔다. 읽는 순서가 누구 → 어디 → 언제 로 이어진다.
-                전에는 이 줄이 창 아래 종이 쪽에 있어서
-                하늘을 보는 동안에는 누구 것인지 알 수 없었다.
+                줄을 새로 만들지 않고 지역 줄 앞에 얹는다.
+                처음에는 지역명 위에 한 줄을 따로 뒀는데, 그만큼 아래가 밀려
+                원래 잡아 둔 배치가 흐트러졌다. 이름 하나 때문에 판이 바뀔 일은 아니다.
+                금색으로 두면 회색 지역명 사이에서 저절로 먼저 읽힌다.
               -->
-              <p v-if="jobLabel" class="nameplate engrave">{{ jobLabel }}</p>
-              <p class="region">{{ city.region }}</p>
+              <p class="region">
+                <span v-if="personName" class="mine">{{ personName }}</span>
+                <span v-if="personName" class="sep" aria-hidden="true">·</span>
+                {{ city.region }}
+              </p>
               <h2>{{ city.name }}</h2>
               <p v-if="coord" class="coord engrave">{{ coord }}</p>
               <!--
@@ -146,29 +182,12 @@ const coord = computed(() => {
                 그림이 데이터라는 걸 확인할 수 있어야 창밖이 창밖으로 읽힌다.
               -->
               <p class="figures tnum">
-                <!--
-                  그 시각의 기온.
-                  오른쪽 큰 숫자는 '지금' 기온이라, 밤 하늘을 보면서
-                  한낮 기온이 옆에 떠 있으면 둘이 어긋난다.
-                -->
-                {{ configStore.convertTemp(skyStore.reading.temp) }}{{ configStore.unitSymbol }}
-                <span class="dot" aria-hidden="true">·</span>
                 {{ configStore.t('hero.cloud') }} {{ skyStore.reading.clouds }}%
                 <span class="dot" aria-hidden="true">·</span>
                 {{ configStore.t('hero.rainProb') }} {{ skyStore.reading.rainProb }}%
                 <span class="dot" aria-hidden="true">·</span>
                 {{ skyStore.reading.wind }}m/s
               </p>
-            </div>
-
-            <!--
-              그 사람이 지금 이 하늘 아래 서 있다.
-              마당에서 걸어다니던 그 사람과 같은 모습이라 한눈에 알아본다.
-              하늘을 등지고 서면 옷 색도 얼굴도 안 보이므로 형상만 남긴다.
-            -->
-            <div v-if="person" class="standing">
-              <span class="who-name">{{ person.who }}</span>
-              <PersonFigure :person="person" variant="silhouette" />
             </div>
 
             <div class="temp">
@@ -196,11 +215,11 @@ const coord = computed(() => {
 
     <div class="sheet">
       <p class="reading">
-        {{ configStore.t('hero.humidity') }} <span class="tnum">{{ city.humidity }}%</span>
+        {{ configStore.t('hero.humidity') }} <span class="tnum">{{ said.humidity }}%</span>
         <span class="sep">·</span>
-        {{ configStore.t('hero.rainProb') }} <span class="tnum">{{ city.rainProb }}%</span>
+        {{ configStore.t('hero.rainProb') }} <span class="tnum">{{ said.rainProb }}%</span>
         <span class="sep">·</span>
-        <span class="tnum">{{ city.wind }}m/s</span>
+        <span class="tnum">{{ said.wind }}m/s</span>
       </p>
 
       <!--
@@ -214,8 +233,23 @@ const coord = computed(() => {
         사람을 고르고 있을 때는 감춘다. 그때 판정은 그 사람이 하는 일을 따르므로
         여기서 빨래·산책을 고를 수 있게 두면 위아래가 어긋난다.
       -->
+      <!--
+        판정이 지금이 아닌 시각을 보고 있을 때만 뜬다.
+        평소에는 없는 편이 낫다. 늘 '지금 기준' 이라고 적혀 있으면
+        읽히지 않는 글자가 하나 늘 뿐이다.
+      -->
+      <p v-if="basisHour" class="basis">
+        <span class="bh tnum">{{ basisHour }}</span>
+        <span class="bt">{{ configStore.t('hero.basis') }}</span>
+        <button type="button" class="bnow" @click="$emit('reset-basis')">
+          {{ configStore.t('hero.basisNow') }}
+        </button>
+      </p>
+
       <!-- ① 그 사람이 하는 일. 이 화면에 들어온 이유다 -->
       <section v-if="lead" class="block">
+        <!-- 아래 판정이 무슨 일 기준인지. 누구인지는 창 위에 이미 있다 -->
+        <p v-if="jobLabel" class="who-job">{{ jobLabel }}</p>
         <div class="verdict">
           <VerdictMark :level="lead.level" size="lg" />
           <h3>{{ lead.title }}</h3>
@@ -259,6 +293,8 @@ const coord = computed(() => {
         class="hb"
         :rows="hourlyRows"
         :mode="configStore.currentMode"
+        :basis="basisIndex"
+        @pick="$emit('pick-hour', $event)"
       />
 
       <div class="foot">
@@ -363,44 +399,6 @@ const coord = computed(() => {
   border-top: 1px solid var(--color-line);
 }
 
-/* 창의 문패. 좌표와 같은 금박 각인 결이다 */
-.nameplate {
-  margin: 0 0 6px;
-  color: var(--color-gold-lit);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-}
-
-/*
- * 하늘 아래 선 사람.
- * 지역명과 기온 사이에 세워서 둘 중 어느 쪽도 가리지 않게 한다.
- *
- * 이름을 사람 위에 둔다. 처음에는 아래에 달았더니 이름이 바닥 한 줄을 차지해서
- * 사람의 발이 허공에 뜨고 하늘 한가운데 떠 있는 것처럼 보였다.
- * 서 있으려면 발밑에 아무것도 없어야 한다.
- */
-.standing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: none;
-  align-self: flex-end;
-  margin: 0 auto -2px;
-}
-.standing :deep(.figure) {
-  width: 34px;
-  height: 40px;
-  /* 역광이라 아주 검지는 않다. 하늘빛이 조금 비친다 */
-  opacity: 0.82;
-}
-.who-name {
-  font-size: var(--fs-2xs);
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.86);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
-}
-
 .modes {
   margin: 0 0 4px;
 }
@@ -411,6 +409,69 @@ const coord = computed(() => {
   justify-content: space-between;
   gap: 20px;
 }
+/*
+ * 지역 줄에 얹은 사람 이름.
+ * 줄을 새로 만들지 않는다. 이름 하나 때문에 아래 배치가 밀릴 일은 아니다.
+ * 금색으로 두면 회색 지역명 사이에서 저절로 먼저 읽힌다.
+ */
+.mine {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-gold-lit);
+}
+.region .sep {
+  margin: 0 5px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+/*
+ * 판정이 기대고 있는 시각.
+ * 판정 바로 위, 창 바로 아래. 이 줄 아래로는 전부 이 시각 이야기라는 뜻이다.
+ */
+.basis {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 7px 12px;
+  background: var(--color-gold-wash, rgba(214, 178, 96, 0.12));
+  border-left: 2px solid var(--color-gold-lit);
+  border-radius: 0 var(--r-sm, 6px) var(--r-sm, 6px) 0;
+}
+.bh {
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--color-ink);
+}
+.bt {
+  flex: 1;
+  font-size: var(--fs-xs);
+  color: var(--color-ink-2);
+}
+.bnow {
+  padding: 3px 9px;
+  font-family: inherit;
+  font-size: var(--fs-2xs);
+  color: var(--color-ink-2);
+  background: none;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.bnow:hover {
+  color: var(--color-ink);
+  border-color: var(--color-ink-3);
+}
+
+/* 아래 판정이 무슨 일 기준인지. 누구인지는 창 위에 이미 있다 */
+.who-job {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.12em;
+  color: var(--color-ink-3);
+}
+
 .region {
   margin: 0;
   font-size: var(--fs-2xs);

@@ -20,6 +20,28 @@ const props = defineProps({
   variant: { type: String, default: 'sticker' },
   // 금선으로 그릴 때 쓸 색
   accent: { type: String, default: '#EAC379' },
+  /*
+   * 빛이 들어오는 쪽.
+   *
+   * 해가 왼쪽에 있으면 사람의 왼쪽 테두리가 밝다.
+   * 그 방향을 밖에서 넘겨받는다. 창에서는 실제 해의 자리를 계산해서 주므로
+   * 아침에는 왼쪽, 저녁에는 오른쪽에서 빛이 든다.
+   *
+   * 값은 픽셀이고, 위쪽이 음수다.
+   */
+  lightX: { type: Number, default: -1.6 },
+  lightY: { type: Number, default: -1.6 },
+  // 그 빛의 색. 노을이면 주황이고 한낮이면 흰빛에 가깝다
+  lightColor: { type: String, default: 'rgba(255, 238, 198, 0.7)' },
+  // 둘레로 번지는 빛. 아주 옅어야 한다
+  lightSoft: { type: String, default: 'rgba(255, 226, 168, 0.28)' },
+  /*
+   * 지금 무엇을 하고 있나 — walk / idle / stretch / sit / jump / look
+   * 무엇을 할지는 usePersonAct 가 정하고, 어떻게 보일지는 이 파일이 정한다.
+   */
+  act: { type: String, default: 'walk' },
+  // 걸음 빠르기(초). 사람마다 조금씩 달라야 한 무리로 안 보인다
+  step: { type: Number, default: 0.86 },
 })
 
 /*
@@ -63,6 +85,27 @@ const look = computed(() => {
 })
 
 // 실루엣은 층을 하나만 쓴다. 흰 테두리를 두르면 하늘에서 떠 보인다
+/*
+ * 테두리 빛.
+ *
+ * 그림자를 색만 바꿔 두 겹 얹는다.
+ *   첫 겹  흐림 없이 빛이 오는 쪽으로 조금 밀어 둔다 → 그쪽 테두리만 밝아진다
+ *   둘째 겹 아주 옅게 번지게 → 빛이 닿은 자리가 부드러워진다
+ *
+ * 처음에는 둘째 겹을 5px 로 넓게 퍼뜨렸더니 사람이 빛을 받는 게 아니라
+ * 스스로 발광하는 것처럼 보였다. 스티커의 흰 테두리 위에 흰빛이 겹쳐
+ * 후광이 되어 버렸다. 빛은 닿는 것이지 뿜는 것이 아니다.
+ *
+ * 테두리를 직접 그리지 않는 건, 그림이 도형 여러 개로 되어 있어서
+ * 각 도형마다 선이 생기면 몸 한가운데에도 줄이 그어지기 때문이다.
+ * 그림자는 전체 실루엣을 따라가므로 바깥 테두리에만 생긴다.
+ */
+const rim = computed(() => ({
+  filter:
+    `drop-shadow(${props.lightX}px ${props.lightY}px 0 ${props.lightColor})` +
+    ` drop-shadow(${props.lightX * 1.3}px ${props.lightY * 1.3}px 2.5px ${props.lightSoft})`,
+}))
+
 const layers = computed(() => {
   if (props.variant === 'line') return ['line']
   if (props.variant === 'silhouette') return ['shade']
@@ -73,9 +116,9 @@ const layers = computed(() => {
 <template>
   <svg
     class="figure"
-    :class="variant"
+    :class="[variant, act]"
     viewBox="0 0 24 28"
-    :style="{ '--coat': look.coat, '--accent': accent }"
+    :style="{ '--coat': look.coat, '--accent': accent, '--step': `${step}s`, ...rim }"
     aria-hidden="true"
   >
     <g v-for="layer in layers" :key="layer" :class="layer">
@@ -139,14 +182,179 @@ const layers = computed(() => {
 }
 
 /*
+ * ── 자세 ──────────────────────────────────────────
+ *
+ * 그림이 도형 몇 개로 되어 있어서 부위를 하나씩 돌려 자세를 만든다.
+ * 회전 기준점은 관절 자리다 — 다리와 팔은 위쪽(엉덩이·어깨),
+ * 머리는 목, 몸은 발밑.
+ *
+ * 자세는 여기서만 정한다. 마당이든 창이든 같은 사람이 같은 몸짓을 하게.
+ */
+.figure :is(.leg, .arm) {
+  transform-origin: center top;
+  transform-box: fill-box;
+}
+.figure .head {
+  transform-origin: center bottom;
+  transform-box: fill-box;
+}
+
+/* 걷기 — 팔다리가 번갈아 나간다 */
+.figure.walk .leg.one,
+.figure.walk .arm.two {
+  animation: pfStepA var(--step) ease-in-out infinite;
+}
+.figure.walk .leg.two,
+.figure.walk .arm.one {
+  animation: pfStepB var(--step) ease-in-out infinite;
+}
+@keyframes pfStepA {
+  50% {
+    transform: translateY(-1.1px) rotate(7deg);
+  }
+}
+@keyframes pfStepB {
+  50% {
+    transform: translateY(-1.1px) rotate(-7deg);
+  }
+}
+
+/*
+ * 서 있기 — 숨만 쉰다.
+ * 완전히 멈춰 세우면 그림이 붙어 버린 것처럼 보인다.
+ */
+.figure.idle {
+  animation: pfBreathe 3.4s ease-in-out infinite;
+}
+@keyframes pfBreathe {
+  50% {
+    transform: translateY(-0.6px);
+  }
+}
+
+/* 기지개 — 팔을 위로 벌리고 몸을 살짝 젖힌다 */
+.figure.stretch .arm.one {
+  animation: pfStretchL 2.8s ease-in-out infinite;
+}
+.figure.stretch .arm.two {
+  animation: pfStretchR 2.8s ease-in-out infinite;
+}
+.figure.stretch .head {
+  animation: pfLean 2.8s ease-in-out infinite;
+}
+@keyframes pfStretchL {
+  40%,
+  70% {
+    transform: rotate(155deg) translateY(1px);
+  }
+}
+@keyframes pfStretchR {
+  40%,
+  70% {
+    transform: rotate(-155deg) translateY(1px);
+  }
+}
+@keyframes pfLean {
+  40%,
+  70% {
+    transform: rotate(-8deg) translateY(-0.5px);
+  }
+}
+
+/*
+ * 앉기 — 몸을 내리고 다리를 앞으로 접는다.
+ * 다리만 접으면 키가 그대로라 공중에 앉은 것처럼 보여서 몸도 같이 내린다.
+ */
+.figure.sit {
+  animation: pfSitBody 0.7s ease-out forwards;
+}
+.figure.sit .leg.one {
+  animation: pfSitLegA 0.7s ease-out forwards;
+}
+.figure.sit .leg.two {
+  animation: pfSitLegB 0.7s ease-out forwards;
+}
+.figure.sit .arm.one,
+.figure.sit .arm.two {
+  animation: pfSitArm 0.7s ease-out forwards;
+}
+@keyframes pfSitBody {
+  to {
+    transform: translateY(4.5px);
+  }
+}
+@keyframes pfSitLegA {
+  to {
+    transform: rotate(74deg) translateY(0.5px);
+  }
+}
+@keyframes pfSitLegB {
+  to {
+    transform: rotate(66deg) translateY(0.5px);
+  }
+}
+@keyframes pfSitArm {
+  to {
+    transform: rotate(-10deg);
+  }
+}
+
+/* 폴짝 — 굽혔다 뛰고 착지하며 눌린다 */
+.figure.jump {
+  animation: pfJump 1.1s ease-in-out infinite;
+  transform-origin: center bottom;
+  transform-box: fill-box;
+}
+@keyframes pfJump {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  18% {
+    transform: translateY(1px) scale(1.08, 0.9);
+  }
+  48% {
+    transform: translateY(-9px) scale(0.96, 1.06);
+  }
+  78% {
+    transform: translateY(0.5px) scale(1.06, 0.94);
+  }
+}
+
+/* 두리번 — 고개만 좌우로 */
+.figure.look .head {
+  animation: pfLook 3.6s ease-in-out infinite;
+}
+@keyframes pfLook {
+  25% {
+    transform: rotate(-13deg);
+  }
+  70% {
+    transform: rotate(13deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure,
+  .figure * {
+    animation: none !important;
+  }
+}
+
+/*
  * 스티커 컷아웃.
  * 아래 층은 흰색으로 두껍게 둘러 오려낸 자국을 만들고 위에 진짜 색을 얹는다.
  * 표지에 스티커를 붙인 것처럼 보이는 게 벌룬 라인의 장치다.
  */
+.figure.sticker {
+  /* 흰 테두리가 이미 밝아서 빛까지 세면 덩어리로 뭉친다 */
+  --rim-fade: 0.6;
+}
+
 .cut * {
   fill: #fff;
   stroke: #fff;
-  stroke-width: 4.6;
+  stroke-width: 4.2;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
