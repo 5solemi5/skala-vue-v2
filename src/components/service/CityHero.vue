@@ -8,6 +8,7 @@ import HourlyBar from './HourlyBar.vue'
 import SkyCanvas from '../sky/SkyCanvas.vue'
 import SkyPicker from '../sky/SkyPicker.vue'
 import ModeBar from './ModeBar.vue'
+import PersonFigure from './PersonFigure.vue'
 
 const configStore = useConfigStore()
 const skyStore = useSkyStore()
@@ -28,8 +29,10 @@ const props = defineProps({
    * 일상 여섯 가지가 사실상 닿을 수 없는 자리에 있었다.
    */
   lifeAdviceList: { type: Array, default: () => [] },
-  // '정비소 · 현장 작업' — 위 판정이 누구의 무엇인지 밝힌다
+  // '정비소 · 현장 작업' — 이 하늘이 누구의 것인지 밝힌다
   jobLabel: { type: String, default: '' },
+  // 창 아래 실루엣으로 세울 사람
+  person: { type: Object, default: null },
 })
 
 defineEmits(['open-detail'])
@@ -106,6 +109,13 @@ const coord = computed(() => {
         <div class="pane">
           <div class="sill">
             <div class="place">
+              <!--
+                누구의 하늘인지.
+                지역명 위에 둔다. 읽는 순서가 누구 → 어디 → 언제 로 이어진다.
+                전에는 이 줄이 창 아래 종이 쪽에 있어서
+                하늘을 보는 동안에는 누구 것인지 알 수 없었다.
+              -->
+              <p v-if="jobLabel" class="nameplate engrave">{{ jobLabel }}</p>
               <p class="region">{{ city.region }}</p>
               <h2>{{ city.name }}</h2>
               <p v-if="coord" class="coord engrave">{{ coord }}</p>
@@ -149,6 +159,16 @@ const coord = computed(() => {
                 <span class="dot" aria-hidden="true">·</span>
                 {{ skyStore.reading.wind }}m/s
               </p>
+            </div>
+
+            <!--
+              그 사람이 지금 이 하늘 아래 서 있다.
+              마당에서 걸어다니던 그 사람과 같은 모습이라 한눈에 알아본다.
+              하늘을 등지고 서면 옷 색도 얼굴도 안 보이므로 형상만 남긴다.
+            -->
+            <div v-if="person" class="standing">
+              <span class="who-name">{{ person.who }}</span>
+              <PersonFigure :person="person" variant="silhouette" />
             </div>
 
             <div class="temp">
@@ -196,7 +216,6 @@ const coord = computed(() => {
       -->
       <!-- ① 그 사람이 하는 일. 이 화면에 들어온 이유다 -->
       <section v-if="lead" class="block">
-        <p v-if="jobLabel" class="who-job">{{ jobLabel }}</p>
         <div class="verdict">
           <VerdictMark :level="lead.level" size="lg" />
           <h3>{{ lead.title }}</h3>
@@ -344,13 +363,42 @@ const coord = computed(() => {
   border-top: 1px solid var(--color-line);
 }
 
-/* 위 판정이 누구의 무엇인지 밝힌다 */
-.who-job {
-  margin: 0 0 12px;
-  font-family: var(--font-mono);
+/* 창의 문패. 좌표와 같은 금박 각인 결이다 */
+.nameplate {
+  margin: 0 0 6px;
+  color: var(--color-gold-lit);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/*
+ * 하늘 아래 선 사람.
+ * 지역명과 기온 사이에 세워서 둘 중 어느 쪽도 가리지 않게 한다.
+ *
+ * 이름을 사람 위에 둔다. 처음에는 아래에 달았더니 이름이 바닥 한 줄을 차지해서
+ * 사람의 발이 허공에 뜨고 하늘 한가운데 떠 있는 것처럼 보였다.
+ * 서 있으려면 발밑에 아무것도 없어야 한다.
+ */
+.standing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  align-self: flex-end;
+  margin: 0 auto -2px;
+}
+.standing :deep(.figure) {
+  width: 34px;
+  height: 40px;
+  /* 역광이라 아주 검지는 않다. 하늘빛이 조금 비친다 */
+  opacity: 0.82;
+}
+.who-name {
   font-size: var(--fs-2xs);
-  letter-spacing: 0.12em;
-  color: var(--color-ink-3);
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
 }
 
 .modes {

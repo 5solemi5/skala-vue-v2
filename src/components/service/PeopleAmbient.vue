@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 import { STAGE_GROUPS, stageById } from './stages'
 import StageScene from './StageScene.vue'
+import PersonFigure from './PersonFigure.vue'
 
 /*
  * 마당.
@@ -82,14 +83,6 @@ const hash = (text) => {
 // 걸음 시간이 음수가 되고 사람이 화면 밖에 서 버린다.
 const pick = (seed, shift, range) => (seed >>> shift) % range
 
-/*
- * 옷 색.
- * 벌룬 라인에서 실측된 색들이다 — 페리윙클, 로즈 코럴, 모브,
- * 네버랜드 핑크, 고래 잉크블루, 잎사귀 초록.
- * 판정에 쓰는 빨강·주황·초록과는 겹치지 않는 쪽으로만 골랐다.
- */
-const COATS = ['#849CCB', '#EB7187', '#C69FC0', '#CF89C3', '#464F64', '#5FA98C']
-
 const walkers = computed(() => {
   const total = props.people.length || 1
 
@@ -117,16 +110,15 @@ const walkers = computed(() => {
 
     return {
       id: person.id,
-      hat: pick(seed, 9, 5),
-      hold: pick(seed, 13, 4),
+      // 생김새(모자·든 것·옷 색)는 PersonFigure 가 사람 id 에서 뽑는다.
+      // 마당에서 밀짚모자를 쓰고 걷던 사람이 창 아래에서도 밀짚모자여야 한다
+      person,
       style: {
         '--dur': `${duration}s`,
         '--delay': `${delay}s`,
         '--scale': String((1.0 - (back / 32) * 0.32).toFixed(2)),
         // 느리게 걸으니 발도 느리게 놀려야 한다
         '--step': `${0.62 + pick(seed, 15, 26) / 100}s`,
-        // 순번을 더해 옆 사람과는 늘 다른 색이 되게 한다
-        '--coat': COATS[(i + pick(seed, 19, COATS.length)) % COATS.length],
         '--back': `${back}px`,
         zIndex: String(40 - back),
       },
@@ -214,66 +206,11 @@ const walkers = computed(() => {
       <!-- 걸어다니는 사람들 -->
       <TransitionGroup name="walker" type="transition" tag="div" class="walkers">
         <div v-for="w in walkers" :key="w.id" class="walker" :style="w.style">
-          <svg class="figure" viewBox="0 0 24 28">
-            <!--
-              무대의 언어를 따라간다.
-              일러스트형에서는 아래 층이 흰 테두리를 만들고 위에 색을 얹는다.
-              각인형에서는 그 층을 쓰지 않고 얇은 선으로만 그린다.
-            -->
-            <g
-              v-for="layer in isEngraved ? ['line'] : ['cut', 'ink']"
-              :key="layer"
-              :class="layer"
-              :style="isEngraved ? { '--accent': stage.accent } : undefined"
-            >
-              <!-- 팔은 몸 뒤에 둔다. 앞에 두면 몸을 가로질러 지저분해진다 -->
-              <rect class="arm one" x="4.4" y="13.4" width="2.8" height="6.4" rx="1.4" />
-              <rect class="arm two" x="16.8" y="13.4" width="2.8" height="6.4" rx="1.4" />
-
-              <!-- 손에 든 것 -->
-              <g v-if="w.hold === 1" class="gear">
-                <path d="M18.2 13.6v-6" />
-                <path d="M14.2 8.4a4 3.4 0 0 1 8 0z" />
-              </g>
-              <g v-else-if="w.hold === 2" class="gear">
-                <circle cx="18.2" cy="18.6" r="2.4" />
-              </g>
-              <g v-else-if="w.hold === 3" class="gear">
-                <path d="M18.2 14.2v5.6" />
-                <path d="M16.2 19.8h4" />
-              </g>
-
-              <rect class="body" x="6.6" y="12.6" width="10.8" height="9" rx="4.2" />
-
-              <!-- 머리를 몸보다 크게 잡으면 귀엽게 읽힌다 -->
-              <circle class="head" cx="12" cy="7" r="6.6" />
-
-              <!-- 쓴 것 다섯 가지. 같은 사람은 늘 같은 걸 쓴다 -->
-              <g v-if="w.hat === 1" class="gear">
-                <path d="M5.6 5.4a6.6 6.6 0 0 1 12.8 0z" />
-                <circle cx="12" cy="0.6" r="1.35" />
-              </g>
-              <g v-else-if="w.hat === 2" class="gear">
-                <path d="M5.8 6.1a6.4 6.4 0 0 1 12.4 0z" />
-                <rect x="2.6" y="5.8" width="10.6" height="2" rx="1" />
-              </g>
-              <g v-else-if="w.hat === 3" class="gear">
-                <circle cx="7.6" cy="3" r="2.2" />
-                <circle cx="12" cy="1.7" r="2.5" />
-                <circle cx="16.4" cy="3" r="2.2" />
-              </g>
-              <g v-else-if="w.hat === 4" class="gear">
-                <path d="M5.4 4.8h13.2" />
-                <path d="M8 4.8c0-3 8-3 8 0" />
-              </g>
-
-              <circle class="eye" cx="9.6" cy="7.6" r="1.1" />
-              <circle class="eye" cx="14.4" cy="7.6" r="1.1" />
-
-              <rect class="leg one" x="7.8" y="21" width="3.2" height="5.6" rx="1.6" />
-              <rect class="leg two" x="13" y="21" width="3.2" height="5.6" rx="1.6" />
-            </g>
-          </svg>
+          <PersonFigure
+            :person="w.person"
+            :variant="isEngraved ? 'line' : 'sticker'"
+            :accent="stage.accent"
+          />
         </div>
       </TransitionGroup>
 
@@ -510,66 +447,26 @@ const walkers = computed(() => {
   }
 }
 
-.figure {
+/*
+ * 걸음.
+ * 그림이 자식 컴포넌트로 옮겨 가서 scoped 규칙이 그 안까지 닿지 않는다.
+ * 움직임은 여기서 정하는 게 맞아서 :deep 으로 넘겨 건다.
+ */
+.walker :deep(.figure) {
   width: 30px;
   height: 35px;
-  display: block;
-  overflow: visible;
 }
-
-/*
- * 스티커 컷아웃 — 일러스트형 무대.
- * 아래 층은 흰색으로 두껍게 둘러 오려낸 자국을 만들고 위에 진짜 색을 얹는다.
- */
-.cut * {
-  fill: #fff;
-  stroke: #fff;
-  stroke-width: 4.6;
-  stroke-linejoin: round;
-  stroke-linecap: round;
+.walker :deep(.leg),
+.walker :deep(.arm) {
+  transform-origin: center top;
+  transform-box: fill-box;
 }
-.ink .body,
-.ink .arm,
-.ink .leg {
-  fill: var(--coat);
-}
-.ink .head {
-  fill: #f6e7d8;
-}
-.ink .eye {
-  fill: #2b2b2f;
-}
-.ink .gear {
-  fill: color-mix(in srgb, var(--coat) 72%, #1a1a1e);
-  stroke: color-mix(in srgb, var(--coat) 72%, #1a1a1e);
-  stroke-width: 1.3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/*
- * 금선 드로잉 — 각인형 무대.
- * 면을 칠하지 않고 윤곽선만 남긴다. 무대의 모티프와 같은 굵기, 같은 색이다.
- */
-.line * {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.3;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-.line .eye {
-  fill: var(--accent);
-  stroke: none;
-}
-
-/* 걸음. 다리만 번갈아 움직인다 */
-.leg.one,
-.arm.two {
+.walker :deep(.leg.one),
+.walker :deep(.arm.two) {
   animation: stepA var(--step) ease-in-out infinite;
 }
-.leg.two,
-.arm.one {
+.walker :deep(.leg.two),
+.walker :deep(.arm.one) {
   animation: stepB var(--step) ease-in-out infinite;
 }
 @keyframes stepA {
@@ -581,11 +478,6 @@ const walkers = computed(() => {
   50% {
     transform: translateY(-1.1px) rotate(-7deg);
   }
-}
-.leg,
-.arm {
-  transform-origin: center top;
-  transform-box: fill-box;
 }
 
 /* 사람이 늘고 줄 때 */
@@ -667,7 +559,7 @@ const walkers = computed(() => {
   .stage {
     height: 116px;
   }
-  .figure {
+  .walker :deep(.figure) {
     width: 26px;
     height: 30px;
   }
@@ -678,8 +570,8 @@ const walkers = computed(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .walker,
-  .leg,
-  .arm {
+  .walker :deep(.leg),
+  .walker :deep(.arm) {
     animation: none;
   }
   .walker {

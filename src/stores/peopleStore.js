@@ -50,7 +50,7 @@ const DEFAULT_PEOPLE = [
   {
     id: 'p_commute',
     who: '출퇴근길',
-    modeId: 'bike',
+    modeId: 'commute',
     city: { id: 'geo_37.567_126.978', name: '서울', region: '수도권', lat: 37.5665, lon: 126.978 },
   },
   {
@@ -68,6 +68,24 @@ const DEFAULT_PEOPLE = [
 ]
 
 export const usePeopleStore = defineStore('people', () => {
+/*
+ * 저장된 사람의 '하는 일' 을 지금 목록으로 옮긴다.
+ *
+ * 하는 일을 일(직업·취미)과 일상 둘로 가르면서 목록이 갈렸다.
+ * 예전에 저장된 사람은 '자전거' 나 '자동차 정비소' 를 하는 일로 갖고 있는데,
+ * 자전거는 이제 일상 쪽이라 사람의 직업 자리에 있으면 안 된다.
+ *
+ * 그냥 버리면 등록해 둔 사람의 하는 일이 사라지므로 가까운 쪽으로 옮긴다.
+ * 자전거로 다니는 사람은 대개 그걸로 출퇴근한다.
+ */
+const WORK_MODES = ['site', 'farm', 'commute', 'school', 'baseball', 'hike']
+const MOVED = { repair: 'site', bike: 'commute', walk: 'commute', workout: 'hike' }
+
+const fixJob = (person) => {
+  if (WORK_MODES.includes(person.modeId)) return person
+  return { ...person, modeId: MOVED[person.modeId] ?? 'site' }
+}
+
   const load = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -78,7 +96,7 @@ export const usePeopleStore = defineStore('people', () => {
         Array.isArray(parsed) &&
         parsed.every((p) => p?.id && p?.who && p?.modeId && p?.city?.lat !== undefined)
       // 예전에 저장한 목록이 지금 상한보다 길 수도 있어서 잘라 둔다
-      return ok ? parsed.slice(0, MAX_PEOPLE) : structuredClone(DEFAULT_PEOPLE)
+      return ok ? parsed.slice(0, MAX_PEOPLE).map(fixJob) : structuredClone(DEFAULT_PEOPLE)
     } catch {
       return structuredClone(DEFAULT_PEOPLE)
     }

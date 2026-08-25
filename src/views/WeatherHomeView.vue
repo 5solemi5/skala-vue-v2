@@ -373,6 +373,7 @@ const handleDetail = (city) => {
         :advice-list="heroAdvice"
         :life-advice-list="lifeAdvice"
         :job-label="jobLabel"
+        :person="selectedPerson"
         :hourly-rows="hourlyRows"
         :status-text="selectedCityInfo"
         @open-detail="handleDetail"
