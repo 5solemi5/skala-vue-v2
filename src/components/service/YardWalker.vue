@@ -44,7 +44,7 @@ const props = defineProps({
   depth: { type: Number, default: 30 },
 })
 
-const { act } = usePersonAct(props.seed, props.under ? 'sea' : 'land')
+const { act } = usePersonAct(props.seed, () => (props.under ? 'sea' : 'land'))
 
 // 밖에서 시킨 게 있으면 그게 먼저다
 const shown = computed(() => props.forced || act.value)

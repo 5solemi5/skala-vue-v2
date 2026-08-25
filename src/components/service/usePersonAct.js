@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 /*
  * 사람이 지금 무엇을 하고 있나.
@@ -114,8 +114,19 @@ const spec = (set, id) => set.acts.find((a) => a.id === id) ?? set.acts[0]
 /**
  * @param seed  사람마다 다른 수. 같은 사람은 늘 같은 차례로 움직인다
  */
+/**
+ * @param seed   사람마다 다른 수. 같은 사람은 늘 같은 차례로 움직인다
+ * @param world  'land' | 'sea', 또는 그것을 돌려주는 함수.
+ *
+ * 함수로 받는 이유가 있다.
+ * 처음에는 문자열 하나로 받아 setup 때 한 번만 읽었다. 그런데 사람은
+ * id 로 키가 잡혀 있어서 무대를 바꿔도 컴포넌트가 다시 만들어지지 않는다.
+ * 들판에서 심해로 넘어가면 자리와 자세는 물속으로 바뀌는데
+ * 동작 기계는 뭍의 것이 그대로 돌아, 바닷속을 걸어다녔다.
+ */
 export const usePersonAct = (seed = 1, world = 'land') => {
-  const set = SETS[world] ?? SETS.land
+  const worldOf = () => (typeof world === 'function' ? world() : world)
+  let set = SETS[worldOf()] ?? SETS.land
   const act = ref(set.first)
 
   // 사람마다 다른 차례가 나오도록 씨앗에서 뽑는다
@@ -142,6 +153,22 @@ export const usePersonAct = (seed = 1, world = 'land') => {
 
   // 다 같이 걷기 시작하면 줄 맞춰 행진하는 것처럼 보인다. 시작을 흩어 놓는다
   timer = setTimeout(step, rand() * 6000)
+
+  /*
+   * 세계가 바뀌면 기계를 갈아 끼운다.
+   *
+   * 기다리던 타이머부터 끊는다. 안 끊으면 뭍의 차례가 한 번 더 돌아
+   * 물속에서 '앉기' 가 한 번 나오고 그다음부터 헤엄친다.
+   */
+  watch(
+    () => worldOf(),
+    (w) => {
+      clearTimeout(timer)
+      set = SETS[w] ?? SETS.land
+      act.value = set.first
+      step()
+    },
+  )
 
   onUnmounted(() => clearTimeout(timer))
 
