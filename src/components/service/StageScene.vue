@@ -153,7 +153,24 @@ const ridges = computed(() => {
 </script>
 
 <template>
-  <svg class="scene" viewBox="0 0 800 260" :class="[stage.lang, { open }]" aria-hidden="true">
+  <!--
+    접혀 있을 때와 펼쳤을 때 그림을 다루는 방식이 다르다.
+
+    slice  가로를 꽉 채우고 넘치는 위쪽을 잘라낸다.
+           지면 쪽 띠만 보이고 하늘과 모티프는 화면 밖에 있다.
+    meet   전체가 다 들어오게 맞춘다. 그제야 모티프가 드러난다.
+
+    이걸 빼먹으면 기본값(meet)이 접힌 상태에서도 전체를 높이에 맞춰 줄여서,
+    860px 폭 판에 그림이 471px 만 그려지고 좌우에 193px 씩 빈칸이 생긴다.
+    실제로 한 번 그렇게 됐다.
+  -->
+  <svg
+    class="scene"
+    viewBox="0 0 800 260"
+    :preserveAspectRatio="open ? 'xMidYMid meet' : 'xMidYMax slice'"
+    :class="[stage.lang, { open }]"
+    aria-hidden="true"
+  >
     <defs>
       <linearGradient :id="`sky-${uid}`" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" :stop-color="stage.sky" />
