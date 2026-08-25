@@ -42,8 +42,7 @@ export const buildAdvice = (item, mode, opts = {}) => {
   const deg = (celsius) =>
     unit === 'fahrenheit' ? `${Math.round((celsius * 9) / 5 + 32)}℉` : `${celsius}℃`
   // 차이(일교차·체감 낙폭)는 눈금 폭이라 화씨에서는 1.8배가 된다
-  const gap = (celsius) =>
-    unit === 'fahrenheit' ? `${Math.round(celsius * 1.8)}℉` : `${celsius}℃`
+  const gap = (celsius) => (unit === 'fahrenheit' ? `${Math.round(celsius * 1.8)}℉` : `${celsius}℃`)
 
   const say = (level, key, values = {}) => {
     list.push({
@@ -54,8 +53,35 @@ export const buildAdvice = (item, mode, opts = {}) => {
     })
   }
 
+  /*
+   * 강수확률과 최저기온은 없을 수 있다.
+   *
+   * 예보를 주는 쪽이 막히면 관측만 들어온다. 그때 이 둘은 null 이다.
+   * 없는 값을 0 으로 보면 '비 올 일 없음' · '밤에 안 춥다' 라고
+   * 잘못 말하게 된다 — 그것도 아주 확신에 찬 목소리로.
+   *
+   * 그래서 모를 때는 비를 따지는 규칙 자체를 건너뛴다.
+   * 말할 수 있는 것만 말하고, 아무 규칙도 걸리지 않으면 맨 아래의
+   * .plain 이 받아 준다.
+   */
+  const rainKnown = typeof item.rainProb === 'number'
+  const rainAtLeast = (n) => rainKnown && item.rainProb >= n
+  const rainUnder = (n) => rainKnown && item.rainProb < n
+  const rainAtMost = (n) => rainKnown && item.rainProb <= n
+
+  /*
+   * 최저기온도 마찬가지다. 오히려 더 위험하다 —
+   * null <= 0 은 참이라, 모르는 채로 '얼어붙어요' 라고 말해 버린다.
+   */
+  const lowKnown = typeof item.minTemp === 'number'
+  const lowAtMost = (n) => lowKnown && item.minTemp <= n
+  const lowOver = (n) => lowKnown && item.minTemp > n
+
   const wind = item.wind ?? 0
-  const swing = Math.round((item.temp ?? 0) - (item.minTemp ?? 0))
+  // 일교차. 최저기온을 모르면 따질 수 없다 — 0 으로 두면 33도 차이가 된다
+  const swing = lowKnown ? Math.round((item.temp ?? 0) - item.minTemp) : null
+  const swingAtLeast = (n) => swing !== null && swing >= n
+  const swingUnder = (n) => swing !== null && swing < n
   /*
    * 바람이 부는 만큼 실제보다 춥게 느껴진다.
    * 정식 체감온도 식은 10도 아래에서만 쓰라고 되어 있어서,
@@ -104,15 +130,15 @@ export const buildAdvice = (item, mode, opts = {}) => {
     else if (wind >= 7) say('warn', 'site.windWarn', v)
 
     if (wet) say('stop', 'site.precipStop', v)
-    else if (item.rainProb >= 60) say('warn', 'site.rainWarn', v)
+    else if (rainAtLeast(60)) say('warn', 'site.rainWarn', v)
 
     // 33도는 폭염주의보 기준. 고용노동부는 이때 시간당 10~15분 휴식을 권한다
     if (item.temp >= 35) say('stop', 'site.heatStop', v)
     else if (item.temp >= 33) say('warn', 'site.heatWarn', v)
     else if (item.temp >= 31) say('info', 'site.heatCare', v)
 
-    if (item.minTemp <= -10) say('stop', 'site.coldStop', v)
-    else if (item.minTemp <= 0) say('warn', 'site.freeze', v)
+    if (lowAtMost(-10)) say('stop', 'site.coldStop', v)
+    else if (lowAtMost(0)) say('warn', 'site.freeze', v)
 
     /*
      * 마감 품질.
@@ -125,8 +151,12 @@ export const buildAdvice = (item, mode, opts = {}) => {
     if (foggy) say('warn', 'site.fog', v)
 
     if (
-      !wet && wind < 7 && item.temp >= 5 && item.temp < 31 &&
-      item.humidity < 70 && item.rainProb < 40
+      !wet &&
+      wind < 7 &&
+      item.temp >= 5 &&
+      item.temp < 31 &&
+      item.humidity < 70 &&
+      rainUnder(40)
     ) {
       say('good', 'site.good', v)
     }
@@ -139,11 +169,11 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'farm') {
     // 서리는 기상관측 높이(1.5m)보다 지면이 더 차서 3도에도 내린다
-    if (item.minTemp <= 0) say('stop', 'farm.frostHard', v)
-    else if (item.minTemp <= 3) say('stop', 'farm.frost', v)
+    if (lowAtMost(0)) say('stop', 'farm.frostHard', v)
+    else if (lowAtMost(3)) say('stop', 'farm.frost', v)
 
     // 약을 친 뒤 비가 오면 씻겨 내려가 약효가 없다
-    if (item.rainProb >= 50 || wet) say('stop', 'farm.sprayStop', v)
+    if (rainAtLeast(50) || wet) say('stop', 'farm.sprayStop', v)
     // 방제는 바람 3m/s 를 넘으면 약제가 옆 밭으로 날아간다
     else if (wind >= 4) say('warn', 'farm.sprayDrift', v)
 
@@ -153,13 +183,10 @@ export const buildAdvice = (item, mode, opts = {}) => {
     else if (item.temp >= 31) say('warn', 'farm.heat', v)
 
     if (wind >= 9) say('warn', 'farm.windDamage', v)
-    if (item.rainProb <= 20 && item.humidity < 60 && !wet) say('info', 'farm.water', v)
+    if (rainAtMost(20) && item.humidity < 60 && !wet) say('info', 'farm.water', v)
     if (wet) say('info', 'farm.harvest', v)
 
-    if (
-      !wet && item.minTemp > 5 && item.temp < 31 &&
-      wind < 4 && item.rainProb < 30 && item.humidity < 80
-    ) {
+    if (!wet && lowOver(5) && item.temp < 31 && wind < 4 && rainUnder(30) && item.humidity < 80) {
       say('good', 'farm.good', v)
     }
   }
@@ -170,23 +197,23 @@ export const buildAdvice = (item, mode, opts = {}) => {
    * 결빙은 길이 막히는 게 아니라 사고가 나는 문제라 가장 무겁게 본다.
    */
   if (mode === 'commute') {
-    if (snowing || (item.minTemp <= 0 && (wet || item.rainProb >= 40))) {
+    if (snowing || (lowAtMost(0) && (wet || rainAtLeast(40)))) {
       say('stop', 'commute.iceStop', v)
-    } else if (item.minTemp <= 0 && item.humidity >= 80) {
+    } else if (lowAtMost(0) && item.humidity >= 80) {
       say('warn', 'commute.blackIce', v)
     }
 
     if (wet) say('warn', 'commute.rainNow', v)
-    else if (item.rainProb >= 60) say('warn', 'commute.rainLikely', v)
-    else if (item.rainProb >= 30) say('info', 'commute.umbrella', v)
+    else if (rainAtLeast(60)) say('warn', 'commute.rainLikely', v)
+    else if (rainAtLeast(30)) say('info', 'commute.umbrella', v)
 
     if (foggy) say('warn', 'commute.fog', v)
     if (wind >= 9) say('info', 'commute.wind', v)
     if (item.temp >= 33) say('info', 'commute.heat', v)
-    if (item.minTemp <= -8) say('warn', 'commute.cold', v)
-    if (swing >= 10) say('info', 'commute.swing', v)
+    if (lowAtMost(-8)) say('warn', 'commute.cold', v)
+    if (swingAtLeast(10)) say('info', 'commute.swing', v)
 
-    if (!wet && item.rainProb < 30 && wind < 7 && item.minTemp > 0 && item.temp < 31) {
+    if (!wet && rainUnder(30) && wind < 7 && lowOver(0) && item.temp < 31) {
       say('good', 'commute.good', v)
     }
   }
@@ -197,25 +224,22 @@ export const buildAdvice = (item, mode, opts = {}) => {
    * 그래서 아침에 무엇을 들려 보낼지에 집중한다.
    */
   if (mode === 'school') {
-    if (snowing || item.minTemp <= 0) say('warn', 'school.slip', v)
+    if (snowing || lowAtMost(0)) say('warn', 'school.slip', v)
 
     if (wet) say('warn', 'school.rainNow', v)
-    else if (item.rainProb >= 50) say('warn', 'school.rainLikely', v)
+    else if (rainAtLeast(50)) say('warn', 'school.rainLikely', v)
 
     // 등교할 때 춥고 하교할 때 더우면 겉옷이 없으면 하루 종일 불편하다
-    if (swing >= 10) say('warn', 'school.swing', v)
+    if (swingAtLeast(10)) say('warn', 'school.swing', v)
 
     if (item.temp >= 33) say('warn', 'school.heat', v)
     else if (item.temp >= 31) say('info', 'school.water', v)
 
-    if (item.minTemp <= -5) say('warn', 'school.cold', v)
+    if (lowAtMost(-5)) say('warn', 'school.cold', v)
     if (foggy) say('info', 'school.fog', v)
     if (wind >= 9) say('info', 'school.wind', v)
 
-    if (
-      !wet && item.rainProb < 30 && swing < 10 &&
-      item.minTemp > 0 && item.temp < 31 && wind < 7
-    ) {
+    if (!wet && rainUnder(30) && swingUnder(10) && lowOver(0) && item.temp < 31 && wind < 7) {
       say('good', 'school.good', v)
     }
   }
@@ -226,16 +250,16 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'baseball') {
     if (wet) say('stop', 'baseball.precipStop', v)
-    else if (item.rainProb >= 60) say('stop', 'baseball.rainHigh', v)
-    else if (item.rainProb >= 30) say('warn', 'baseball.rainMid', v)
+    else if (rainAtLeast(60)) say('stop', 'baseball.rainHigh', v)
+    else if (rainAtLeast(30)) say('warn', 'baseball.rainMid', v)
 
     if (item.temp >= 33) say('warn', 'baseball.hot', v)
     // 낮 경기와 밤 경기의 기온 차가 커서 저녁에 갑자기 춥다
-    if (item.minTemp <= 10) say('info', 'baseball.night', v)
+    if (lowAtMost(10)) say('info', 'baseball.night', v)
     if (wind >= 7) say('info', 'baseball.wind', v)
     if (foggy) say('info', 'baseball.fog', v)
 
-    if (item.rainProb < 30 && item.temp >= 15 && item.temp <= 28 && wind < 7) {
+    if (rainUnder(30) && item.temp >= 15 && item.temp <= 28 && wind < 7) {
       say('good', 'baseball.good', v)
     }
   }
@@ -247,7 +271,7 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'hike') {
     if (wet) say('stop', 'hike.precipStop', v)
-    else if (item.rainProb >= 50) say('warn', 'hike.rainWarn', v)
+    else if (rainAtLeast(50)) say('warn', 'hike.rainWarn', v)
 
     // 능선은 아래보다 두 배쯤 바람이 세다
     if (wind >= 9) say('stop', 'hike.ridgeWind', v)
@@ -260,12 +284,9 @@ export const buildAdvice = (item, mode, opts = {}) => {
     else if (summit <= 8) say('info', 'hike.summitCold', v)
 
     if (item.temp >= 31) say('warn', 'hike.heat', v)
-    if (item.minTemp <= 0) say('info', 'hike.iceTrail', v)
+    if (lowAtMost(0)) say('info', 'hike.iceTrail', v)
 
-    if (
-      !wet && item.rainProb < 30 && wind < 6 &&
-      summit > 3 && item.temp <= 28
-    ) {
+    if (!wet && rainUnder(30) && wind < 6 && summit > 3 && item.temp <= 28) {
       say('good', 'hike.good', v)
     }
   }
@@ -281,22 +302,22 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'laundry') {
     if (wet) say('stop', 'laundry.precipStop', v)
-    else if (item.rainProb >= 50) say('stop', 'laundry.rainStop', v)
-    else if (item.rainProb >= 30) say('warn', 'laundry.rainWarn', v)
+    else if (rainAtLeast(50)) say('stop', 'laundry.rainStop', v)
+    else if (rainAtLeast(30)) say('warn', 'laundry.rainWarn', v)
 
     // 습도 80% 가 넘으면 널어 두어도 물이 증발할 자리가 없다
     if (item.humidity >= 80) say('stop', 'laundry.humidStop', v)
     else if (item.humidity >= 65) say('warn', 'laundry.humidWarn', v)
 
     if (item.humidity >= 80) say('warn', 'laundry.ventStop', v)
-    else if (item.humidity < 60 && item.rainProb < 30) say('good', 'laundry.ventGood', v)
+    else if (item.humidity < 60 && rainUnder(30)) say('good', 'laundry.ventGood', v)
 
     if (wind >= 8) say('warn', 'laundry.windy', v)
     if (item.temp <= 5) say('info', 'laundry.coldAir', v)
-    if (item.minTemp <= 0) say('info', 'laundry.freeze', v)
+    if (lowAtMost(0)) say('info', 'laundry.freeze', v)
 
     // 바람이 적당히 있고 건조하면 두꺼운 것까지 마른다
-    if (item.humidity < 55 && item.rainProb < 30 && item.temp >= 10 && wind >= 3 && wind < 8) {
+    if (item.humidity < 55 && rainUnder(30) && item.temp >= 10 && wind >= 3 && wind < 8) {
       say('good', 'laundry.bedding', v)
     }
   }
@@ -311,7 +332,7 @@ export const buildAdvice = (item, mode, opts = {}) => {
     else if (item.temp >= 31) say('warn', 'walk.heatWarn', v)
 
     if (wet) say('warn', 'walk.rainNow', v)
-    else if (item.rainProb >= 60) say('warn', 'walk.rainLikely', v)
+    else if (rainAtLeast(60)) say('warn', 'walk.rainLikely', v)
 
     // 바람이 세면 실제 기온보다 훨씬 춥게 느껴진다
     if (chill <= -5) say('stop', 'walk.chillStop', v)
@@ -325,14 +346,11 @@ export const buildAdvice = (item, mode, opts = {}) => {
      */
     if (wind >= 9) say('warn', 'walk.wind', v)
 
-    if (item.minTemp <= 0) say('info', 'walk.icyPath', v)
+    if (lowAtMost(0)) say('info', 'walk.icyPath', v)
     if (foggy) say('info', 'walk.fog', v)
-    if (swing >= 10) say('info', 'walk.swing', v)
+    if (swingAtLeast(10)) say('info', 'walk.swing', v)
 
-    if (
-      item.temp >= 12 && item.temp <= 25 &&
-      item.rainProb < 30 && wind < 5 && !wet
-    ) {
+    if (item.temp >= 12 && item.temp <= 25 && rainUnder(30) && wind < 5 && !wet) {
       say('good', 'walk.good', v)
     }
   }
@@ -344,24 +362,24 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'bike') {
     if (wet) say('stop', 'bike.precipStop', v)
-    else if (item.rainProb >= 60) say('stop', 'bike.rainStop', v)
-    else if (item.rainProb >= 30) say('warn', 'bike.rainWarn', v)
+    else if (rainAtLeast(60)) say('stop', 'bike.rainStop', v)
+    else if (rainAtLeast(30)) say('warn', 'bike.rainWarn', v)
 
     if (wind >= 7) say('stop', 'bike.windStop', v)
     else if (wind >= 4) say('warn', 'bike.windWarn', v)
 
-    if (item.minTemp <= 0) say('warn', 'bike.blackIce', v)
+    if (lowAtMost(0)) say('warn', 'bike.blackIce', v)
 
     if (item.temp >= 33) say('stop', 'bike.heatStop', v)
     else if (item.temp >= 31) say('warn', 'bike.heat', v)
 
     // 달리면 맞바람이 더해져서 서 있을 때보다 훨씬 춥다
     if (chill <= 3) say('warn', 'bike.chill', v)
-    else if (item.minTemp <= 5) say('info', 'bike.gloves', v)
+    else if (lowAtMost(5)) say('info', 'bike.gloves', v)
 
     if (foggy) say('warn', 'bike.fog', v)
 
-    if (item.temp >= 12 && item.temp <= 26 && item.rainProb < 30 && wind < 4) {
+    if (item.temp >= 12 && item.temp <= 26 && rainUnder(30) && wind < 4) {
       say('good', 'bike.good', v)
     }
   }
@@ -378,7 +396,7 @@ export const buildAdvice = (item, mode, opts = {}) => {
     else if (item.temp >= 30) say('warn', 'workout.heatWarn', v)
 
     if (wet) say('warn', 'workout.rainNow', v)
-    else if (item.rainProb >= 60) say('info', 'workout.indoor', v)
+    else if (rainAtLeast(60)) say('info', 'workout.indoor', v)
 
     // 추우면 근육과 심장에 부담이 커서 준비운동을 길게 해야 한다
     if (chill <= -5) say('warn', 'workout.coldStop', v)
@@ -387,10 +405,7 @@ export const buildAdvice = (item, mode, opts = {}) => {
     if (wind >= 9) say('warn', 'workout.wind', v)
     if (foggy) say('info', 'workout.fog', v)
 
-    if (
-      item.temp >= 13 && item.temp <= 24 &&
-      item.humidity < 70 && item.rainProb < 30 && wind < 6
-    ) {
+    if (item.temp >= 13 && item.temp <= 24 && item.humidity < 70 && rainUnder(30) && wind < 6) {
       say('good', 'workout.good', v)
     }
   }
@@ -402,22 +417,20 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'wash') {
     if (wet) say('stop', 'wash.precipStop', v)
-    else if (item.rainProb >= 50) say('stop', 'wash.rainStop', v)
-    else if (item.rainProb >= 30) say('warn', 'wash.rainWarn', v)
+    else if (rainAtLeast(50)) say('stop', 'wash.rainStop', v)
+    else if (rainAtLeast(30)) say('warn', 'wash.rainWarn', v)
 
     // 물이 얼면 문틈과 도어락이 얼어붙는다
     if (item.temp <= 0) say('stop', 'wash.freezeStop', v)
-    else if (item.minTemp <= -3) say('warn', 'wash.freezeWarn', v)
+    else if (lowAtMost(-3)) say('warn', 'wash.freezeWarn', v)
     // 눈길을 달린 뒤에는 하부에 염화칼슘이 남아 부식된다
-    else if (item.minTemp <= 0) say('info', 'wash.saltRust', v)
+    else if (lowAtMost(0)) say('info', 'wash.saltRust', v)
 
     // 볕이 강하면 물이 마르면서 얼룩이 남는다
     if (item.temp >= 30 && clear) say('warn', 'wash.spot', v)
     if (wind >= 7) say('warn', 'wash.dust', v)
 
-    if (
-      item.rainProb < 20 && !wet && item.temp > 5 && item.temp < 30 && wind < 7
-    ) {
+    if (rainUnder(20) && !wet && item.temp > 5 && item.temp < 30 && wind < 7) {
       say('good', 'wash.good', v)
     }
   }
@@ -429,24 +442,28 @@ export const buildAdvice = (item, mode, opts = {}) => {
    */
   if (mode === 'outing') {
     if (wet) say('warn', 'outing.rainNow', v)
-    else if (item.rainProb >= 60) say('warn', 'outing.rainLikely', v)
-    else if (item.rainProb >= 30) say('info', 'outing.umbrella', v)
+    else if (rainAtLeast(60)) say('warn', 'outing.rainLikely', v)
+    else if (rainAtLeast(30)) say('info', 'outing.umbrella', v)
 
     if (item.temp >= 33) say('warn', 'outing.heat', v)
     if (chill <= -3) say('warn', 'outing.cold', v)
     // 아침저녁으로 기온이 크게 떨어지면 겉옷 하나로 하루가 달라진다
-    if (swing >= 10) say('warn', 'outing.swing', v)
+    if (swingAtLeast(10)) say('warn', 'outing.swing', v)
 
     if (wind >= 9) say('warn', 'outing.wind', v)
     // 전망을 보러 가는 나들이라면 안개가 하루를 정한다
     if (foggy) say('warn', 'outing.fog', v)
 
     if (
-      clear && item.temp >= 15 && item.temp <= 26 &&
-      item.rainProb < 20 && wind < 6 && swing < 10
+      clear &&
+      item.temp >= 15 &&
+      item.temp <= 26 &&
+      rainUnder(20) &&
+      wind < 6 &&
+      swingUnder(10)
     ) {
       say('good', 'outing.perfect', v)
-    } else if (!wet && item.rainProb < 30 && item.temp >= 12 && item.temp <= 28) {
+    } else if (!wet && rainUnder(30) && item.temp >= 12 && item.temp <= 28) {
       say('good', 'outing.good', v)
     }
   }

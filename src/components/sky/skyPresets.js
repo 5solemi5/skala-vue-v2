@@ -30,7 +30,13 @@ export const hexToRgb = (hex) => {
 }
 
 const toHex = (rgb) =>
-  `#${rgb.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('')}`
+  `#${rgb
+    .map((v) =>
+      Math.round(Math.min(1, Math.max(0, v)) * 255)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`
 
 const mixHex = (a, b, t) => {
   const A = hexToRgb(a)
@@ -131,7 +137,12 @@ const weatherAt = (instant, rows, current, isNow) => {
    */
   if (isNow) {
     const near = rows?.length ? nearestRow(instant, rows) : null
-    return { ...current, rainProb: near?.rainProb ?? current?.rainProb ?? 0 }
+    /*
+     * 예보가 아예 없으면 강수확률은 모르는 값으로 둔다.
+     * ?? 0 으로 받아 두었더니, 예보가 막힌 날 화면이 '강수확률 0%' 라고
+     * 딱 잘라 말했다. 모르는 것과 0 은 다르다.
+     */
+    return { ...current, rainProb: near?.rainProb ?? current?.rainProb ?? null }
   }
   if (!rows?.length) return current ?? {}
   const best = nearestRow(instant, rows)

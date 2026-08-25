@@ -121,8 +121,26 @@ const fetchDaily = async (city) => {
 
 /** 두 API 를 합쳐 화면이 쓰는 형태로 만든다 */
 export const fetchCityWeather = async (city, lang = 'ko') => {
-  // 서로 의존하지 않는 요청이라 순차 대기하지 않고 동시에 보낸다
-  const [current, daily] = await Promise.all([fetchCurrent(city, lang), fetchDaily(city)])
+  /*
+   * 두 곳에서 받는다. 서로 의존하지 않는 요청이라 동시에 보낸다.
+   *
+   *   OpenWeatherMap  지금 관측된 값 — 기온·바람·습도·하늘 상태
+   *   Open-Meteo      오늘의 최저기온과 강수확률
+   *
+   * 예보가 실패해도 관측은 살린다.
+   *
+   * Promise.all 로 묶어 두었더니 예보 한 곳이 막히는 순간 관측까지
+   * 통째로 버려졌다. 실제로 Open-Meteo 가 429 를 돌려주자 도시가 전부
+   * 실패로 처리되어, 관측은 멀쩡히 200 으로 받아 놓고도 화면이
+   * '불러오는 중' 에서 멈췄다. 하나가 막혔다고 아는 것까지 버릴 이유는 없다.
+   *
+   * 예보를 못 받으면 minTemp 와 rainProb 는 null 이다. 0 이 아니다 —
+   * 모르는 것을 0 으로 적으면 '비 올 일 없음' 이라고 잘못 말하게 된다.
+   */
+  const [c, d] = await Promise.allSettled([fetchCurrent(city, lang), fetchDaily(city)])
+  if (c.status === 'rejected') throw c.reason
+  const current = c.value
+  const daily = d.status === 'fulfilled' ? d.value : { minTemp: null, rainProb: null }
   return {
     id: city.id,
     name: city.name,

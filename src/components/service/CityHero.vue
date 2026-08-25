@@ -90,6 +90,13 @@ const conditionLabel = computed(() => {
 })
 const rest = computed(() => sorted.value.slice(1))
 
+/*
+ * 백분율 한 칸.
+ * 예보를 못 받은 날에는 강수확률이 없다. 그때 0% 라고 적으면
+ * 모르는 것을 '비 올 일 없음' 이라고 잘라 말하는 것이 된다.
+ */
+const pct = (v) => (typeof v === 'number' ? `${v}%` : '—')
+
 // 판정 위 숫자 줄이 읽는 값. 시각을 안 골랐으면 지금 값이다
 const said = computed(() => props.basisWeather ?? props.city ?? {})
 
@@ -184,7 +191,7 @@ const coord = computed(() => {
               <p class="figures tnum">
                 {{ configStore.t('hero.cloud') }} {{ skyStore.reading.clouds }}%
                 <span class="dot" aria-hidden="true">·</span>
-                {{ configStore.t('hero.rainProb') }} {{ skyStore.reading.rainProb }}%
+                {{ configStore.t('hero.rainProb') }} {{ pct(skyStore.reading.rainProb) }}
                 <span class="dot" aria-hidden="true">·</span>
                 {{ skyStore.reading.wind }}m/s
               </p>
@@ -217,7 +224,8 @@ const coord = computed(() => {
       <p class="reading">
         {{ configStore.t('hero.humidity') }} <span class="tnum">{{ said.humidity }}%</span>
         <span class="sep">·</span>
-        {{ configStore.t('hero.rainProb') }} <span class="tnum">{{ said.rainProb }}%</span>
+        {{ configStore.t('hero.rainProb') }}
+        <span class="tnum">{{ pct(said.rainProb) }}</span>
         <span class="sep">·</span>
         <span class="tnum">{{ said.wind }}m/s</span>
       </p>
