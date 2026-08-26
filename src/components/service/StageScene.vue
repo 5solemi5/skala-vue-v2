@@ -441,6 +441,34 @@ const scene = computed(() => {
    */
   const nest = s.eggs ? { x: pick(120, 660), y: pick(238, 248), sc: pick(0.9, 1.2) } : null
 
+  /*
+   * 다른 공룡들.
+   *
+   * 식물을 아무리 여러 종 심어도 숲은 숲일 뿐이라, 이 판이
+   * 공룡 판이라는 말은 공룡이 해야 한다.
+   * 종을 셋으로 나눈다 — 실루엣이 서로 확실히 다른 것들로.
+   *
+   *   0  등에 판이 늘어선 것
+   *   1  머리에 뿔과 목도리를 두른 것
+   *   2  두 발로 서서 꼬리를 곧게 뻗은 것
+   *
+   * 주인공 무리보다 작고 뒤에 선다. 걷지 않고 제자리에서
+   * 고개만 움직인다 — 걸어다니는 것이 여럿이면 눈이 갈 곳을 잃는다.
+   */
+  const others = Array.from({ length: s.others ?? 0 }, (_, i) => {
+    const x = pick(60, 740)
+    return {
+      i,
+      kind: i % 3,
+      x,
+      y: soilAt(x) + pick(4, 12),
+      sc: pick(0.5, 0.78),
+      back: r() > 0.5,
+      bob: pick(3.4, 6),
+      delay: pick(0, 5),
+    }
+  })
+
   // 아기 공룡. 알 근처를 종종거린다
   const hatchlings = Array.from({ length: s.hatchlings ?? 0 }, (_, i) => ({
     i,
@@ -502,6 +530,7 @@ const scene = computed(() => {
   }))
 
   return {
+    others,
     volcanoes,
     cycads,
     treeferns,
@@ -896,6 +925,87 @@ const ridges = computed(() => {
       <path :fill="stage.sky" opacity="0.5" d="M0 198 q120 5 220 -1 t180 0 t200 3 t200 -2 v14H0z" />
     </g>
 
+    <!--
+      ④' 먼 화산.
+
+      먼 산 자리(④)에 둔다. 처음에는 구름 다음에 두었는데, 편집을 거치며
+      식물보다 뒤로 밀려서 화산이 앞에 있고 나무가 그 뒤에 가렸다.
+      먼 것은 먼저 그려야 멀어 보인다.
+
+      공룡 판을 공룡 판으로 만드는 건 화산이다. 산 두 개를 세우고
+      꼭대기에서 연기가 천천히 오른다. 터지지는 않는다 —
+      터지면 사건이 되고, 사건이 있으면 판이 아니라 장면이 된다.
+    -->
+    <g v-if="stage.dinoland" class="volcanoes">
+      <g v-for="v in scene.volcanoes" :key="`vc${v.i}`">
+        <path
+          :fill="stage.far"
+          :d="`M${v.x - v.w / 2} ${v.base} L${v.x - v.w * 0.16} ${v.base - v.h}
+               q${v.w * 0.16} ${-6} ${v.w * 0.32} 0 L${v.x + v.w / 2} ${v.base} Z`"
+        />
+        <!--
+          분화구.
+
+          두 번 고쳤다. 산 위에 시안 호를 그었더니 산에 얹힌 띠였고,
+          정상 폭만큼 넓은 그릇을 그렸더니 산 위에 접시를 올려 둔 꼴이었다.
+
+          분화구는 정상에 난 구멍이라 정상보다 훨씬 좁다.
+          좁게 파고 그 안이 달아오르게 한다.
+        -->
+        <ellipse :fill="stage.near" :cx="v.x" :cy="v.base - v.h + 1" :rx="v.w * 0.115" ry="3.4" />
+        <ellipse
+          class="ember"
+          :fill="stage.accent"
+          :cx="v.x"
+          :cy="v.base - v.h + 0.5"
+          :rx="v.w * 0.06"
+          ry="1.6"
+          :style="{ '--dur': `${v.dur * 0.4}s`, '--delay': `${v.delay}s` }"
+        />
+
+        <!--
+          연기.
+
+          자리는 바깥 묶음이 잡고 움직임은 안쪽 묶음이 맡는다.
+          한 묶음에 둘 다 두었더니 CSS transform 이 SVG transform 속성을
+          덮어써서, 연기가 화산 꼭대기가 아니라 화폭 왼쪽 끝에 피어올랐다.
+        -->
+        <g :transform="`translate(${v.x} ${v.base - v.h - 4})`">
+          <g class="fume" :style="{ '--dur': `${v.dur}s`, '--delay': `${v.delay}s` }">
+            <circle :fill="stage.haze" cx="0" cy="0" r="7" opacity="0.75" />
+            <circle :fill="stage.haze" cx="5" cy="-11" r="9" opacity="0.6" />
+            <circle :fill="stage.haze" cx="-3" cy="-24" r="11" opacity="0.44" />
+            <circle :fill="stage.haze" cx="6" cy="-38" r="13" opacity="0.3" />
+          </g>
+
+          <!--
+            분출. 한 바퀴의 대부분은 아무 일도 없다.
+
+            터질 때는 세 가지가 한꺼번에 일어난다 —
+            분화구가 밝아지고, 용암이 튀어 오르고, 재가 크게 부푼다.
+            셋이 조금씩 어긋난 박자로 와야 터지는 것으로 보인다.
+            동시에 나타났다 사라지면 그건 깜빡임이다.
+          -->
+          <g class="blast" :style="{ '--dur': `${v.blastDur}s`, '--delay': `${v.blastDelay}s` }">
+            <g class="ash">
+              <circle :fill="stage.haze" cx="0" cy="-6" r="13" opacity="0.7" />
+              <circle :fill="stage.haze" cx="11" cy="-20" r="15" opacity="0.55" />
+              <circle :fill="stage.haze" cx="-9" cy="-34" r="17" opacity="0.4" />
+            </g>
+            <g class="lava" :fill="stage.ember">
+              <circle
+                v-for="(l, k) in v.lava"
+                :key="`lv${k}`"
+                :r="l.r"
+                :style="{ '--dx': `${l.dx}px`, '--dy': `${l.dy}px`, '--ld': l.d }"
+              />
+            </g>
+            <ellipse class="flare" :fill="stage.ember" cx="0" cy="2" :rx="v.w * 0.16" ry="4" />
+          </g>
+        </g>
+      </g>
+    </g>
+
     <!-- ⑧ 원경 언덕 -->
     <path
       v-if="!stage.beach"
@@ -1174,6 +1284,117 @@ const ridges = computed(() => {
       가는 줄기가 곧게 오르고 꼭대기에서만 잎이 우산처럼 펼쳐진다.
       뒤쪽에 몇 그루만 둔다 — 큰 것이 많으면 숲이 아니라 벽이 된다.
     -->
+    <!--
+      다른 공룡들.
+
+      식물을 아무리 여러 종 심어도 숲은 숲일 뿐이라, 이 판이 공룡 판이라는
+      말은 공룡이 해야 한다. 실루엣이 서로 확실히 다른 셋을 세운다.
+
+      주인공 무리보다 작고 뒤에 선다. 걷지 않고 고개만 움직인다 —
+      걸어다니는 것이 여럿이면 눈이 갈 곳을 잃는다.
+
+      어미와 같은 두 겹으로 그려 실루엣에만 선이 남게 한다.
+    -->
+    <g v-if="stage.dinoland" class="others">
+      <g
+        v-for="o in scene.others"
+        :key="`ot${o.i}`"
+        class="other"
+        :style="{ '--bob': `${o.bob}s`, '--delay': `${o.delay}s`, '--ink': stage.ink }"
+        :transform="`translate(${o.x} ${o.y}) scale(${o.back ? -o.sc : o.sc} ${o.sc})`"
+      >
+        <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
+          <!-- 0 · 등에 판이 늘어선 것 -->
+          <template v-if="o.kind === 0">
+            <path
+              :fill="stage.motifColor"
+              d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z"
+            />
+            <path class="leg a" :fill="stage.veg" d="M-11 -4 h5 v10 h-5 z" />
+            <path class="leg b" :fill="stage.veg" d="M8 -4 h5 v10 h-5 z" />
+            <path
+              :fill="stage.motifColor"
+              d="M-18 -6 C-18 -18 -8 -24 2 -24 C13 -24 20 -18 20 -8 C20 -1 12 2 1 2 C-10 2 -18 0 -18 -6 Z"
+            />
+            <g class="head">
+              <path
+                :fill="stage.motifColor"
+                d="M17 -18 C22 -24 30 -25 34 -21 C37 -18 35 -13 30 -12 C24 -11 19 -14 17 -18 Z"
+              />
+              <g class="face">
+                <circle fill="#ffffff" cx="28" cy="-19" r="2.4" />
+                <circle :fill="stage.ink" cx="28.8" cy="-18.6" r="1.2" />
+              </g>
+            </g>
+            <g class="plates" :fill="stage.veg2" :stroke="stage.accent" stroke-width="1.2">
+              <path d="M-12 -20 l3 -8 l4 7 z" />
+              <path d="M-3 -23 l3 -9 l4 8 z" />
+              <path d="M6 -23 l3 -8 l4 7 z" />
+            </g>
+          </template>
+
+          <!-- 1 · 머리에 뿔과 목도리를 두른 것 -->
+          <template v-else-if="o.kind === 1">
+            <path
+              :fill="stage.motifColor"
+              d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z"
+            />
+            <path class="leg a" :fill="stage.veg" d="M-10 -4 h5.5 v10 h-5.5 z" />
+            <path class="leg b" :fill="stage.veg" d="M7 -4 h5.5 v10 h-5.5 z" />
+            <path
+              :fill="stage.motifColor"
+              d="M-17 -6 C-17 -17 -8 -22 2 -22 C13 -22 19 -17 19 -8 C19 -1 12 2 1 2 C-10 2 -17 0 -17 -6 Z"
+            />
+            <g class="head">
+              <!-- 목도리 -->
+              <path
+                :fill="stage.veg2"
+                :stroke="stage.accent"
+                stroke-width="1.2"
+                d="M16 -22 C24 -30 34 -28 36 -18 C37 -10 29 -6 21 -9 Z"
+              />
+              <path
+                :fill="stage.motifColor"
+                d="M24 -20 C31 -24 38 -22 40 -16 C41 -11 36 -8 30 -9 C26 -10 24 -15 24 -20 Z"
+              />
+              <!-- 뿔 둘 -->
+              <path :fill="stage.veg2" d="M34 -22 l7 -8 l-2 9 z" />
+              <path :fill="stage.veg2" d="M39 -16 l9 -3 l-8 5 z" />
+              <g class="face">
+                <circle fill="#ffffff" cx="33" cy="-16" r="2.2" />
+                <circle :fill="stage.ink" cx="33.8" cy="-15.6" r="1.1" />
+              </g>
+            </g>
+          </template>
+
+          <!-- 2 · 두 발로 서서 꼬리를 곧게 뻗은 것 -->
+          <template v-else>
+            <path
+              :fill="stage.motifColor"
+              d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z"
+            />
+            <path class="leg a" :fill="stage.veg" d="M-4 -8 C0 -8 2 -4 1 2 l-1 6 h-6 l2 -8 z" />
+            <path class="leg b" :fill="stage.veg" d="M4 -8 C8 -8 10 -4 9 2 l-1 6 h-6 l2 -8 z" />
+            <path
+              :fill="stage.motifColor"
+              d="M-9 -12 C-9 -22 -2 -27 6 -27 C14 -27 18 -22 18 -15 C18 -9 12 -6 3 -6 C-5 -6 -9 -8 -9 -12 Z"
+            />
+            <g class="head">
+              <path
+                :fill="stage.motifColor"
+                d="M14 -26 C16 -34 24 -37 30 -33 C35 -30 34 -24 28 -22 C22 -20 16 -22 14 -26 Z"
+              />
+              <g class="face">
+                <circle fill="#ffffff" cx="24" cy="-30" r="2.2" />
+                <circle :fill="stage.ink" cx="24.8" cy="-29.6" r="1.1" />
+                <circle :fill="stage.ink" cx="30" cy="-28.5" r="0.7" />
+              </g>
+            </g>
+          </template>
+        </g>
+      </g>
+    </g>
+
     <g v-if="stage.dinoland" class="treeferns">
       <g
         v-for="t in scene.treeferns"
@@ -1782,83 +2003,6 @@ const ridges = computed(() => {
     </g>
 
     <!--
-      ⑥'''' 먼 화산.
-
-      공룡 판을 공룡 판으로 만드는 건 화산이다. 산 두 개를 세우고
-      꼭대기에서 연기가 천천히 오른다. 터지지는 않는다 —
-      터지면 사건이 되고, 사건이 있으면 판이 아니라 장면이 된다.
-    -->
-    <g v-if="stage.dinoland" class="volcanoes">
-      <g v-for="v in scene.volcanoes" :key="`vc${v.i}`">
-        <path
-          :fill="stage.far"
-          :d="`M${v.x - v.w / 2} ${v.base} L${v.x - v.w * 0.16} ${v.base - v.h}
-               q${v.w * 0.16} ${-6} ${v.w * 0.32} 0 L${v.x + v.w / 2} ${v.base} Z`"
-        />
-        <!--
-          분화구.
-
-          두 번 고쳤다. 산 위에 시안 호를 그었더니 산에 얹힌 띠였고,
-          정상 폭만큼 넓은 그릇을 그렸더니 산 위에 접시를 올려 둔 꼴이었다.
-
-          분화구는 정상에 난 구멍이라 정상보다 훨씬 좁다.
-          좁게 파고 그 안이 달아오르게 한다.
-        -->
-        <ellipse :fill="stage.near" :cx="v.x" :cy="v.base - v.h + 1" :rx="v.w * 0.115" ry="3.4" />
-        <ellipse
-          class="ember"
-          :fill="stage.ember"
-          :cx="v.x"
-          :cy="v.base - v.h + 0.5"
-          :rx="v.w * 0.06"
-          ry="1.6"
-          :style="{ '--dur': `${v.dur * 0.4}s`, '--delay': `${v.delay}s` }"
-        />
-
-        <!--
-          연기.
-
-          자리는 바깥 묶음이 잡고 움직임은 안쪽 묶음이 맡는다.
-          한 묶음에 둘 다 두었더니 CSS transform 이 SVG transform 속성을
-          덮어써서, 연기가 화산 꼭대기가 아니라 화폭 왼쪽 끝에 피어올랐다.
-        -->
-        <g :transform="`translate(${v.x} ${v.base - v.h - 4})`">
-          <g class="fume" :style="{ '--dur': `${v.dur}s`, '--delay': `${v.delay}s` }">
-            <circle :fill="stage.haze" cx="0" cy="0" r="7" opacity="0.75" />
-            <circle :fill="stage.haze" cx="5" cy="-11" r="9" opacity="0.6" />
-            <circle :fill="stage.haze" cx="-3" cy="-24" r="11" opacity="0.44" />
-            <circle :fill="stage.haze" cx="6" cy="-38" r="13" opacity="0.3" />
-          </g>
-
-          <!--
-            분출. 한 바퀴의 대부분은 아무 일도 없다.
-
-            터질 때는 세 가지가 한꺼번에 일어난다 —
-            분화구가 밝아지고, 용암이 튀어 오르고, 재가 크게 부푼다.
-            셋이 조금씩 어긋난 박자로 와야 터지는 것으로 보인다.
-            동시에 나타났다 사라지면 그건 깜빡임이다.
-          -->
-          <g class="blast" :style="{ '--dur': `${v.blastDur}s`, '--delay': `${v.blastDelay}s` }">
-            <g class="ash">
-              <circle :fill="stage.haze" cx="0" cy="-6" r="13" opacity="0.7" />
-              <circle :fill="stage.haze" cx="11" cy="-20" r="15" opacity="0.55" />
-              <circle :fill="stage.haze" cx="-9" cy="-34" r="17" opacity="0.4" />
-            </g>
-            <g class="lava" :fill="stage.ember">
-              <circle
-                v-for="(l, k) in v.lava"
-                :key="`lv${k}`"
-                :r="l.r"
-                :style="{ '--dx': `${l.dx}px`, '--dy': `${l.dy}px`, '--ld': l.d }"
-              />
-            </g>
-            <ellipse class="flare" :fill="stage.ember" cx="0" cy="2" :rx="v.w * 0.16" ry="4" />
-          </g>
-        </g>
-      </g>
-    </g>
-
-    <!--
       ⑥''''' 익룡.
 
       새와 다르게 그린다. 날개가 몸보다 훨씬 길고, 끝이 뾰족하고,
@@ -2065,10 +2209,30 @@ const ridges = computed(() => {
                   <path d="M-4.4 -7.4 l2 -3.8 l2 3.8 z" />
                   <path d="M0.6 -9.4 l2 -3.8 l2 3.8 z" />
                 </g>
+                <!--
+                  얼굴.
+
+                  전에는 흰자 반지름이 2.6 이었다. 아기가 0.74~0.9 로 줄어
+                  화면에서는 2px 도 안 됐고, 코와 입은 아예 없었다.
+                  머리가 있는데 얼굴이 없으니 초록 덩어리로 보였다.
+
+                  머리(x 16~30) 안에서 최대한 키운다. 어미보다 눈이 크고
+                  얼굴에서 차지하는 자리가 넓어야 아기로 보인다.
+                -->
                 <g class="face">
-                  <circle fill="#ffffff" cx="23" cy="-19" r="2.6" />
-                  <circle :fill="stage.ink" cx="23.8" cy="-18.6" r="1.3" />
-                  <circle :fill="stage.ink" cx="28.5" cy="-17.5" r="0.7" />
+                  <circle fill="#ffffff" cx="23.2" cy="-19.4" r="3.6" />
+                  <circle :fill="stage.ink" cx="24.2" cy="-19" r="1.9" />
+                  <circle fill="#ffffff" cx="25" cy="-20.2" r="0.7" />
+                  <!-- 코. 주둥이 끝 안쪽 -->
+                  <circle :fill="stage.ink" cx="29.2" cy="-18.4" r="0.85" />
+                  <!-- 입 -->
+                  <path
+                    :stroke="stage.ink"
+                    stroke-width="0.9"
+                    fill="none"
+                    stroke-linecap="round"
+                    d="M29.6 -15.6 C27.6 -13.8 24.6 -13.6 22.6 -14.6"
+                  />
                 </g>
               </g>
             </g>
@@ -2504,18 +2668,29 @@ const ridges = computed(() => {
  * 늘 조금씩 밝아졌다 사그라든다. 터지지 않는 동안에도 아래에서
  * 무언가 끓고 있다는 표시라, 이게 있어야 산이 살아 있는 산이 된다.
  */
+/*
+ * 분화구가 달아오르는 것.
+ *
+ * scaleY 로 부풀렸더니 원반이 분화구를 벗어나 위아래로 떠다녔다.
+ * SVG 요소의 transform-box 기본값이 view-box 라, 축이 제 도형이 아니라
+ * 화폭 한가운데(400, 130)였다. 화폭 중심 기준으로 세로를 늘리니
+ * 산꼭대기에 있던 것이 아래로 밀려난 것이다.
+ *
+ * 크기는 건드리지 않고 밝기만 오르내리게 한다. 분화구 안의 불은
+ * 커졌다 작아지는 것이 아니라 밝아졌다 어두워지는 것이다.
+ */
 .ember {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: simmer var(--dur) ease-in-out var(--delay) infinite;
 }
 @keyframes simmer {
   0%,
   100% {
-    opacity: 0.25;
-    transform: scaleY(0.7);
+    opacity: 0.3;
   }
   50% {
-    opacity: 0.75;
-    transform: scaleY(1.15);
+    opacity: 0.85;
   }
 }
 
@@ -2763,6 +2938,40 @@ const ridges = computed(() => {
   stroke-width: 2.6;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+/*
+ * 다른 공룡들.
+ * 걷지 않는다. 고개만 아주 느리게 들었다 내린다 —
+ * 풀을 뜯다가 한 번씩 주위를 살피는 몸짓이다.
+ */
+.other .edge :is(path, circle) {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.other .edge .face {
+  display: none;
+}
+.other .head {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: graze var(--bob) ease-in-out var(--delay) infinite;
+}
+@keyframes graze {
+  0%,
+  46%,
+  100% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: 11deg;
+  }
+  70% {
+    rotate: -5deg;
+  }
 }
 
 /*

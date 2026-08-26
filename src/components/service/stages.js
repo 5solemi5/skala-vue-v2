@@ -334,12 +334,21 @@ const EDITIONS = [
      * 크기도 층으로 나눈다. 큰 것은 뒤에 몇 그루, 작은 것은 앞에 많이.
      * 그래야 숲에 깊이가 생긴다.
      */
-    cycads: 4,
-    treeferns: 3,
-    ginkgos: 3,
-    horsetails: 7,
-    shrubs: 6,
-    ferns: 16,
+    /*
+     * 식물은 종을 다섯으로 늘리되 수는 줄인다.
+     *
+     * 다섯 종을 넉넉히 흩어 놓았더니 앞이 빽빽해서 공룡 무리가 묻혔다.
+     * 종이 여럿이면 몇 그루만 있어도 숲으로 읽힌다 —
+     * 다채로움은 개수가 아니라 종류에서 나온다.
+     */
+    cycads: 3,
+    treeferns: 2,
+    ginkgos: 2,
+    horsetails: 3,
+    shrubs: 3,
+    ferns: 8,
+    // 다른 공룡들. 배경에 서서 풀을 뜯거나 두리번거린다
+    others: 3,
     eggs: 1,
     // 둘은 어미를 따라가고, 하나만 둥지 곁에 남는다
     hatchlings: 1,
