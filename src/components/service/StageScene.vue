@@ -499,16 +499,17 @@ const scene = computed(() => {
       bob: pick(3.4, 6),
       delay: pick(0, 5),
       /*
-       * 오가는 폭. 아주 좁다.
+       * 이 공룡들은 걷지 않는다.
        *
-       * 판을 가로지르는 건 주인공 무리 하나로 족하다. 여럿이 건너다니면
-       * 눈이 무엇을 따라가야 할지 모른다. 이쪽은 제자리에서 몇 걸음
-       * 옮기는 정도만 — 서 있는 것과 걷는 것 사이다.
+       * 좁게 오가게 해 봤는데, 좌우로 왕복하면서 몸은 뒤집히지 않으니
+       * 절반은 뒤로 걷는 꼴이었다. 방향을 뒤집으면 무리처럼 부산해지고,
+       * 안 뒤집으면 뒷걸음이다.
+       *
+       * 서서 할 수 있는 것만 시킨다 — 풀을 뜯고, 꼬리를 흔들고,
+       * 이따금 고개를 들어 둘러본다. 배경에 있는 것은 그걸로 족하다.
        */
-      span: pick(26, 70),
-      walk: pick(26, 46),
-      wdelay: pick(-40, 0),
-      step: pick(0.6, 0.9),
+      tail: pick(2.6, 4.4),
+      breath: pick(3.6, 5.8),
     }
   })
 
@@ -1347,18 +1348,19 @@ const ridges = computed(() => {
           '--bob': `${o.bob}s`,
           '--delay': `${o.delay}s`,
           '--ink': stage.ink,
-          '--span': `${o.span}px`,
-          '--walk': `${o.walk}s`,
-          '--wdelay': `${o.wdelay}s`,
-          '--step': `${o.step}s`,
-          '--dir': o.back ? -1 : 1,
+          '--tail': `${o.tail}s`,
+          '--breath': `${o.breath}s`,
         }"
       >
         <g :transform="`translate(${o.x} ${o.y}) scale(${o.back ? -o.sc : o.sc} ${o.sc})`">
           <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
             <!-- 0 · 등에 판이 늘어선 것 -->
             <template v-if="o.kind === 0">
-              <path :fill="o.coat" d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z" />
+              <path
+                class="tail"
+                :fill="o.coat"
+                d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z"
+              />
               <path class="leg a" :fill="o.limb" d="M-11 -4 h5 v10 h-5 z" />
               <path class="leg b" :fill="o.limb" d="M8 -4 h5 v10 h-5 z" />
               <path
@@ -1384,7 +1386,11 @@ const ridges = computed(() => {
 
             <!-- 1 · 머리에 뿔과 목도리를 두른 것 -->
             <template v-else-if="o.kind === 1">
-              <path :fill="o.coat" d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z" />
+              <path
+                class="tail"
+                :fill="o.coat"
+                d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z"
+              />
               <path class="leg a" :fill="o.limb" d="M-10 -4 h5.5 v10 h-5.5 z" />
               <path class="leg b" :fill="o.limb" d="M7 -4 h5.5 v10 h-5.5 z" />
               <path
@@ -1415,7 +1421,11 @@ const ridges = computed(() => {
 
             <!-- 2 · 두 발로 서서 꼬리를 곧게 뻗은 것 -->
             <template v-else>
-              <path :fill="o.coat" d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z" />
+              <path
+                class="tail"
+                :fill="o.coat"
+                d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z"
+              />
               <path class="leg a" :fill="o.limb" d="M-4 -8 C0 -8 2 -4 1 2 l-1 6 h-6 l2 -8 z" />
               <path class="leg b" :fill="o.limb" d="M4 -8 C8 -8 10 -4 9 2 l-1 6 h-6 l2 -8 z" />
               <path
@@ -3017,53 +3027,69 @@ const ridges = computed(() => {
   display: none;
 }
 /*
- * 오가기.
+ * 다른 공룡들은 서 있는다.
  *
- * 판을 가로지르는 건 주인공 무리 하나로 족하다. 여럿이 건너다니면
- * 눈이 무엇을 따라가야 할지 모른다.
- * 이쪽은 제자리에서 몇 걸음 옮기는 정도만 — 서 있는 것과 걷는 것 사이다.
+ * 좁게 오가게 해 봤는데, 좌우로 왕복하면서 몸은 뒤집히지 않으니
+ * 절반은 뒤로 걷는 꼴이었다. 방향을 뒤집으면 무리처럼 부산해지고,
+ * 안 뒤집으면 뒷걸음이다. 걷는 것은 주인공 무리 하나로 족하다.
  *
- * 자리 옮김은 바깥 묶음이 translate 로 맡고, 좌우 뒤집기와 크기는
- * 안쪽 묶음이 transform 속성으로 맡는다. 한 요소에 둘 다 두면
- * CSS 가 속성을 덮어써서 공룡이 화폭 왼쪽 끝으로 날아간다.
+ * 서서 할 수 있는 것만 시킨다.
+ *   풀 뜯기   고개를 깊이 내려 한참 머물다 든다. 내리는 시간이 길어야
+ *             먹고 있는 것으로 보인다 — 까딱거리면 조는 것이다
+ *   꼬리      느리게 좌우로. 살아 있다는 표시다
+ *   숨        몸이 아주 조금 부풀었다 꺼진다
+ *
+ * 셋의 주기를 다 다르게 둔다. 한 박자로 움직이면 인형 셋이 된다.
  */
-.other {
-  animation: mill var(--walk) ease-in-out var(--wdelay) infinite alternate;
-}
-@keyframes mill {
-  from {
-    translate: calc(var(--span) * -0.5) 0;
-  }
-  to {
-    translate: calc(var(--span) * 0.5) 0;
-  }
-}
-.other .leg {
-  transform-box: fill-box;
-  transform-origin: top center;
-}
-.other .leg.a {
-  animation: stride var(--step) ease-in-out infinite;
-}
-.other .leg.b {
-  animation: stride var(--step) ease-in-out calc(var(--step) / -2) infinite;
-}
 .other .head {
   transform-box: fill-box;
   transform-origin: left bottom;
   animation: graze var(--bob) ease-in-out var(--delay) infinite;
 }
+.other .tail {
+  transform-box: fill-box;
+  transform-origin: right center;
+  animation: swish var(--tail) ease-in-out infinite;
+}
+.other {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: breathe2 var(--breath) ease-in-out infinite;
+}
 @keyframes graze {
   0%,
-  46%,
   100% {
     rotate: 0deg;
   }
-  20% {
-    rotate: 11deg;
+  14% {
+    rotate: 26deg;
   }
-  70% {
+  54% {
+    rotate: 26deg;
+  }
+  68% {
+    rotate: -6deg;
+  }
+  82% {
+    rotate: -2deg;
+  }
+}
+@keyframes swish {
+  0%,
+  100% {
     rotate: -5deg;
+  }
+  50% {
+    rotate: 5deg;
+  }
+}
+@keyframes breathe2 {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  50% {
+    scale: 1.012 0.99;
   }
 }
 
