@@ -498,6 +498,17 @@ const scene = computed(() => {
       back: r() > 0.5,
       bob: pick(3.4, 6),
       delay: pick(0, 5),
+      /*
+       * 오가는 폭. 아주 좁다.
+       *
+       * 판을 가로지르는 건 주인공 무리 하나로 족하다. 여럿이 건너다니면
+       * 눈이 무엇을 따라가야 할지 모른다. 이쪽은 제자리에서 몇 걸음
+       * 옮기는 정도만 — 서 있는 것과 걷는 것 사이다.
+       */
+      span: pick(26, 70),
+      walk: pick(26, 46),
+      wdelay: pick(-40, 0),
+      step: pick(0.6, 0.9),
     }
   })
 
@@ -1332,88 +1343,98 @@ const ridges = computed(() => {
         v-for="o in scene.others"
         :key="`ot${o.i}`"
         class="other"
-        :style="{ '--bob': `${o.bob}s`, '--delay': `${o.delay}s`, '--ink': stage.ink }"
-        :transform="`translate(${o.x} ${o.y}) scale(${o.back ? -o.sc : o.sc} ${o.sc})`"
+        :style="{
+          '--bob': `${o.bob}s`,
+          '--delay': `${o.delay}s`,
+          '--ink': stage.ink,
+          '--span': `${o.span}px`,
+          '--walk': `${o.walk}s`,
+          '--wdelay': `${o.wdelay}s`,
+          '--step': `${o.step}s`,
+          '--dir': o.back ? -1 : 1,
+        }"
       >
-        <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
-          <!-- 0 · 등에 판이 늘어선 것 -->
-          <template v-if="o.kind === 0">
-            <path :fill="o.coat" d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z" />
-            <path class="leg a" :fill="o.limb" d="M-11 -4 h5 v10 h-5 z" />
-            <path class="leg b" :fill="o.limb" d="M8 -4 h5 v10 h-5 z" />
-            <path
-              :fill="o.coat"
-              d="M-18 -6 C-18 -18 -8 -24 2 -24 C13 -24 20 -18 20 -8 C20 -1 12 2 1 2 C-10 2 -18 0 -18 -6 Z"
-            />
-            <g class="head">
+        <g :transform="`translate(${o.x} ${o.y}) scale(${o.back ? -o.sc : o.sc} ${o.sc})`">
+          <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
+            <!-- 0 · 등에 판이 늘어선 것 -->
+            <template v-if="o.kind === 0">
+              <path :fill="o.coat" d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z" />
+              <path class="leg a" :fill="o.limb" d="M-11 -4 h5 v10 h-5 z" />
+              <path class="leg b" :fill="o.limb" d="M8 -4 h5 v10 h-5 z" />
               <path
                 :fill="o.coat"
-                d="M17 -18 C22 -24 30 -25 34 -21 C37 -18 35 -13 30 -12 C24 -11 19 -14 17 -18 Z"
+                d="M-18 -6 C-18 -18 -8 -24 2 -24 C13 -24 20 -18 20 -8 C20 -1 12 2 1 2 C-10 2 -18 0 -18 -6 Z"
               />
-              <g class="face">
-                <circle fill="#ffffff" cx="28" cy="-19" r="2.4" />
-                <circle :fill="stage.ink" cx="28.8" cy="-18.6" r="1.2" />
+              <g class="head">
+                <path
+                  :fill="o.coat"
+                  d="M17 -18 C22 -24 30 -25 34 -21 C37 -18 35 -13 30 -12 C24 -11 19 -14 17 -18 Z"
+                />
+                <g class="face">
+                  <circle fill="#ffffff" cx="28" cy="-19" r="2.4" />
+                  <circle :fill="stage.ink" cx="28.8" cy="-18.6" r="1.2" />
+                </g>
               </g>
-            </g>
-            <g class="plates" :fill="o.trim" :stroke="stage.accent" stroke-width="1.2">
-              <path d="M-12 -20 l3 -8 l4 7 z" />
-              <path d="M-3 -23 l3 -9 l4 8 z" />
-              <path d="M6 -23 l3 -8 l4 7 z" />
-            </g>
-          </template>
+              <g class="plates" :fill="o.trim" :stroke="stage.accent" stroke-width="1.2">
+                <path d="M-12 -20 l3 -8 l4 7 z" />
+                <path d="M-3 -23 l3 -9 l4 8 z" />
+                <path d="M6 -23 l3 -8 l4 7 z" />
+              </g>
+            </template>
 
-          <!-- 1 · 머리에 뿔과 목도리를 두른 것 -->
-          <template v-else-if="o.kind === 1">
-            <path :fill="o.coat" d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z" />
-            <path class="leg a" :fill="o.limb" d="M-10 -4 h5.5 v10 h-5.5 z" />
-            <path class="leg b" :fill="o.limb" d="M7 -4 h5.5 v10 h-5.5 z" />
-            <path
-              :fill="o.coat"
-              d="M-17 -6 C-17 -17 -8 -22 2 -22 C13 -22 19 -17 19 -8 C19 -1 12 2 1 2 C-10 2 -17 0 -17 -6 Z"
-            />
-            <g class="head">
-              <!-- 목도리 -->
-              <path
-                :fill="o.trim"
-                :stroke="stage.accent"
-                stroke-width="1.2"
-                d="M16 -22 C24 -30 34 -28 36 -18 C37 -10 29 -6 21 -9 Z"
-              />
+            <!-- 1 · 머리에 뿔과 목도리를 두른 것 -->
+            <template v-else-if="o.kind === 1">
+              <path :fill="o.coat" d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z" />
+              <path class="leg a" :fill="o.limb" d="M-10 -4 h5.5 v10 h-5.5 z" />
+              <path class="leg b" :fill="o.limb" d="M7 -4 h5.5 v10 h-5.5 z" />
               <path
                 :fill="o.coat"
-                d="M24 -20 C31 -24 38 -22 40 -16 C41 -11 36 -8 30 -9 C26 -10 24 -15 24 -20 Z"
+                d="M-17 -6 C-17 -17 -8 -22 2 -22 C13 -22 19 -17 19 -8 C19 -1 12 2 1 2 C-10 2 -17 0 -17 -6 Z"
               />
-              <!-- 뿔 둘 -->
-              <path :fill="o.trim" d="M34 -22 l7 -8 l-2 9 z" />
-              <path :fill="o.trim" d="M39 -16 l9 -3 l-8 5 z" />
-              <g class="face">
-                <circle fill="#ffffff" cx="33" cy="-16" r="2.2" />
-                <circle :fill="stage.ink" cx="33.8" cy="-15.6" r="1.1" />
+              <g class="head">
+                <!-- 목도리 -->
+                <path
+                  :fill="o.trim"
+                  :stroke="stage.accent"
+                  stroke-width="1.2"
+                  d="M16 -22 C24 -30 34 -28 36 -18 C37 -10 29 -6 21 -9 Z"
+                />
+                <path
+                  :fill="o.coat"
+                  d="M24 -20 C31 -24 38 -22 40 -16 C41 -11 36 -8 30 -9 C26 -10 24 -15 24 -20 Z"
+                />
+                <!-- 뿔 둘 -->
+                <path :fill="o.trim" d="M34 -22 l7 -8 l-2 9 z" />
+                <path :fill="o.trim" d="M39 -16 l9 -3 l-8 5 z" />
+                <g class="face">
+                  <circle fill="#ffffff" cx="33" cy="-16" r="2.2" />
+                  <circle :fill="stage.ink" cx="33.8" cy="-15.6" r="1.1" />
+                </g>
               </g>
-            </g>
-          </template>
+            </template>
 
-          <!-- 2 · 두 발로 서서 꼬리를 곧게 뻗은 것 -->
-          <template v-else>
-            <path :fill="o.coat" d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z" />
-            <path class="leg a" :fill="o.limb" d="M-4 -8 C0 -8 2 -4 1 2 l-1 6 h-6 l2 -8 z" />
-            <path class="leg b" :fill="o.limb" d="M4 -8 C8 -8 10 -4 9 2 l-1 6 h-6 l2 -8 z" />
-            <path
-              :fill="o.coat"
-              d="M-9 -12 C-9 -22 -2 -27 6 -27 C14 -27 18 -22 18 -15 C18 -9 12 -6 3 -6 C-5 -6 -9 -8 -9 -12 Z"
-            />
-            <g class="head">
+            <!-- 2 · 두 발로 서서 꼬리를 곧게 뻗은 것 -->
+            <template v-else>
+              <path :fill="o.coat" d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z" />
+              <path class="leg a" :fill="o.limb" d="M-4 -8 C0 -8 2 -4 1 2 l-1 6 h-6 l2 -8 z" />
+              <path class="leg b" :fill="o.limb" d="M4 -8 C8 -8 10 -4 9 2 l-1 6 h-6 l2 -8 z" />
               <path
                 :fill="o.coat"
-                d="M14 -26 C16 -34 24 -37 30 -33 C35 -30 34 -24 28 -22 C22 -20 16 -22 14 -26 Z"
+                d="M-9 -12 C-9 -22 -2 -27 6 -27 C14 -27 18 -22 18 -15 C18 -9 12 -6 3 -6 C-5 -6 -9 -8 -9 -12 Z"
               />
-              <g class="face">
-                <circle fill="#ffffff" cx="24" cy="-30" r="2.2" />
-                <circle :fill="stage.ink" cx="24.8" cy="-29.6" r="1.1" />
-                <circle :fill="stage.ink" cx="30" cy="-28.5" r="0.7" />
+              <g class="head">
+                <path
+                  :fill="o.coat"
+                  d="M14 -26 C16 -34 24 -37 30 -33 C35 -30 34 -24 28 -22 C22 -20 16 -22 14 -26 Z"
+                />
+                <g class="face">
+                  <circle fill="#ffffff" cx="24" cy="-30" r="2.2" />
+                  <circle :fill="stage.ink" cx="24.8" cy="-29.6" r="1.1" />
+                  <circle :fill="stage.ink" cx="30" cy="-28.5" r="0.7" />
+                </g>
               </g>
-            </g>
-          </template>
+            </template>
+          </g>
         </g>
       </g>
     </g>
@@ -1565,6 +1586,14 @@ const ridges = computed(() => {
       알 근처를 종종거린다. 어른 공룡은 판 가운데의 모티프 하나로 족하고,
       바닥에는 작은 것들만 둔다 — 큰 것이 여럿이면 눈이 갈 곳을 잃는다.
     -->
+    <!--
+      ⑬''''''''' 둥지 곁의 아기.
+
+      어미를 따라가는 아기(tot)와 같은 그림을 쓴다.
+      전에는 이쪽만 옛 그림이 남아서, 흰자 없이 까만 점 하나에
+      코도 입도 없었다. 같은 종인데 하나만 얼굴이 없으면
+      그건 다른 것이거나 덜 그린 것이다.
+    -->
     <g v-if="stage.dinoland" class="hatchlings">
       <g
         v-for="h in scene.hatchlings"
@@ -1576,35 +1605,44 @@ const ridges = computed(() => {
           '--span': `${h.span}px`,
           '--step': `${h.step}s`,
           '--dir': h.back ? -1 : 1,
+          '--ink': stage.ink,
         }"
       >
         <g :transform="`translate(${h.x} ${h.y}) scale(${h.sc})`">
-          <g class="legs" :stroke="stage.ink" stroke-width="1.5" stroke-linecap="round">
-            <path class="leg a" d="M-1.6 3.4 v3.4" />
-            <path class="leg b" d="M1.8 3.4 v3.4" />
+          <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
+            <path :fill="stage.motifColor" d="M-7 0 C-12 -1 -16 -4 -19 -8 C-14 -7 -10 -5 -7 -3 Z" />
+            <path class="leg a" :fill="stage.veg" d="M-3.4 1 h3.2 v7.4 h-3.2 z" />
+            <path class="leg b" :fill="stage.veg" d="M2 1 h3.2 v7.4 h-3.2 z" />
+            <path
+              :fill="stage.motifColor"
+              d="M-8 -1 C-8 -7 -3 -10 3 -10 C9.5 -10 12.5 -6.5 12.5 -2 C12.5 3 8.5 5.5 2 5.5 C-4 5.5 -8 3.5 -8 -1 Z"
+            />
+            <path
+              :fill="stage.motifColor"
+              d="M8 -6 C9 -12 12 -16 16 -17.5 L21 -13 C17.5 -11 14 -8 12.5 -4 Z"
+            />
+            <path
+              :fill="stage.motifColor"
+              d="M16 -19 C18 -24 24 -25 27.5 -22 C30.5 -19.5 30 -15 26.5 -13.5 C23 -12 18.5 -13.5 17 -16 Z"
+            />
+            <g class="plates" :fill="stage.veg2" :stroke="stage.accent" stroke-width="0.8">
+              <path d="M-4.4 -7.4 l2 -3.8 l2 3.8 z" />
+              <path d="M0.6 -9.4 l2 -3.8 l2 3.8 z" />
+            </g>
+            <g class="face">
+              <circle fill="#ffffff" cx="23.2" cy="-19.4" r="3.6" />
+              <circle :fill="stage.ink" cx="24.2" cy="-19" r="1.9" />
+              <circle fill="#ffffff" cx="25" cy="-20.2" r="0.7" />
+              <circle :fill="stage.ink" cx="29.2" cy="-18.4" r="0.85" />
+              <path
+                :stroke="stage.ink"
+                stroke-width="0.9"
+                fill="none"
+                stroke-linecap="round"
+                d="M29.6 -15.6 C27.6 -13.8 24.6 -13.6 22.6 -14.6"
+              />
+            </g>
           </g>
-          <!-- 꼬리 -->
-          <path
-            :fill="stage.motifColor"
-            :stroke="stage.ink"
-            stroke-width="0.9"
-            d="M-4.6 1.6 q-6 0 -9 -4 q5 -0.6 9 1.4 z"
-          />
-          <!-- 몸과 머리를 한 덩이로. 아기는 목이 짧다 -->
-          <path
-            :fill="stage.motifColor"
-            :stroke="stage.ink"
-            stroke-width="0.9"
-            d="M-5 1.6 q-1 -6 4 -8 q2 -5 7 -4 q4 1 4 5 q3 1 3 4 q0 4 -6 4 q-8 1 -12 -1 z"
-          />
-          <!-- 등의 골판 -->
-          <path
-            :fill="stage.veg2"
-            :stroke="stage.ink"
-            stroke-width="0.6"
-            d="M-3.4 -4 l1.6 -3 l1.6 3 z M0.4 -6 l1.6 -3 l1.6 3 z"
-          />
-          <circle :fill="stage.ink" cx="7.4" cy="-4.6" r="0.9" />
         </g>
       </g>
     </g>
@@ -2978,6 +3016,38 @@ const ridges = computed(() => {
 .other .edge .face {
   display: none;
 }
+/*
+ * 오가기.
+ *
+ * 판을 가로지르는 건 주인공 무리 하나로 족하다. 여럿이 건너다니면
+ * 눈이 무엇을 따라가야 할지 모른다.
+ * 이쪽은 제자리에서 몇 걸음 옮기는 정도만 — 서 있는 것과 걷는 것 사이다.
+ *
+ * 자리 옮김은 바깥 묶음이 translate 로 맡고, 좌우 뒤집기와 크기는
+ * 안쪽 묶음이 transform 속성으로 맡는다. 한 요소에 둘 다 두면
+ * CSS 가 속성을 덮어써서 공룡이 화폭 왼쪽 끝으로 날아간다.
+ */
+.other {
+  animation: mill var(--walk) ease-in-out var(--wdelay) infinite alternate;
+}
+@keyframes mill {
+  from {
+    translate: calc(var(--span) * -0.5) 0;
+  }
+  to {
+    translate: calc(var(--span) * 0.5) 0;
+  }
+}
+.other .leg {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.other .leg.a {
+  animation: stride var(--step) ease-in-out infinite;
+}
+.other .leg.b {
+  animation: stride var(--step) ease-in-out calc(var(--step) / -2) infinite;
+}
 .other .head {
   transform-box: fill-box;
   transform-origin: left bottom;
@@ -3093,6 +3163,16 @@ const ridges = computed(() => {
 /* 아기 공룡. 좁은 자리를 종종거린다 */
 .hatchling {
   animation: patrol var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+.hatchling .edge :is(path, circle) {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.hatchling .edge .face {
+  display: none;
 }
 .hatchling .leg {
   transform-origin: top center;
