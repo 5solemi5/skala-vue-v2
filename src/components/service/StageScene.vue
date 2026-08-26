@@ -1685,58 +1685,97 @@ const ridges = computed(() => {
             굵은 외곽선이 있고, 눈이 있고, 웃는다.
             열세 장 중 유일하게 '귀여운' 표지라고 적힌 이유가 그것이다.
           -->
-            <g class="bigdino" :stroke="stage.ink" stroke-width="2.6">
-              <!-- 꼬리. 걸을 때 반대로 흔들려 균형을 잡는다 -->
-              <path
-                class="tail"
-                :fill="stage.motifColor"
-                d="M-30 -32 C-54 -32 -78 -22 -98 -6 C-74 -12 -50 -14 -30 -14 Z"
-              />
-              <path
-                class="leg back"
-                :fill="stage.veg"
-                d="M-16 -28 q12 0 14 14 l-1 16 h-16 l1 -16 z"
-              />
-              <path
-                :fill="stage.motifColor"
-                d="M-36 -22 q-6 -28 20 -38 q22 -8 40 2 q14 8 14 22 q0 16 -18 20 q-30 6 -56 -6 z"
-              />
-              <path
-                class="leg fore"
-                :fill="stage.veg2"
-                d="M18 -26 q12 0 13 13 l-1 15 h-15 l1 -15 z"
-              />
-              <path :fill="stage.veg2" d="M-30 -24 q26 10 54 4 q-24 10 -54 -4 z" />
-              <g class="neck">
+            <!--
+              어미.
+
+              부위마다 선을 두르니 조립한 것처럼 보였다. 목과 몸 사이,
+              다리와 배 사이에 선이 그어져서 한 마리가 아니라
+              여러 조각을 붙여 놓은 그림이 됐다.
+
+              그래서 두 번 그린다.
+                edge  모든 부위를 외곽색으로 채우고 굵게 두른다.
+                      겹친 자리가 하나로 뭉쳐 실루엣이 된다
+                fill  같은 부위를 제 색으로 다시 덮는다. 선은 없다
+
+              바깥에는 선이 남고 안쪽에는 남지 않는다.
+              캐릭터의 흰 테두리와 같은 방식이다.
+
+              얼굴선과 골판의 시안선은 fill 겹에만 있다.
+              그 둘은 조립선이 아니라 그리려던 무늬다.
+            -->
+            <g class="bigdino" :style="{ '--ink': stage.ink }">
+              <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
+                <!-- 꼬리. 몸 뒤로 눕고 끝으로 갈수록 가늘어진다 -->
+                <path
+                  class="tail"
+                  :fill="stage.motifColor"
+                  d="M-30 -32 C-54 -32 -78 -22 -98 -6 C-74 -12 -50 -14 -30 -14 Z"
+                />
+                <!-- 뒷다리. 몸에 가려 반만 보이지만 있어야 걷는 것으로 보인다 -->
+                <path
+                  class="leg back"
+                  :fill="stage.veg"
+                  d="M-16 -28 q12 0 14 14 l-1 16 h-16 l1 -16 z"
+                />
                 <path
                   :fill="stage.motifColor"
-                  d="M24 -52 q6 -30 26 -44 q16 -11 30 -2 q12 8 8 22 q-4 13 -20 15 q-14 2 -20 14 z"
+                  d="M-36 -22 q-6 -28 20 -38 q22 -8 40 2 q14 8 14 22 q0 16 -18 20 q-30 6 -56 -6 z"
                 />
+                <!-- 앞다리. 뒷다리보다 조금 앞이고 조금 짧다 -->
                 <path
-                  :fill="stage.motifColor"
-                  d="M54 -96 q-4 -14 10 -20 q16 -6 26 4 q9 8 4 18 q-6 11 -20 11 q-16 0 -20 -13 z"
+                  class="leg fore"
+                  :fill="stage.veg"
+                  d="M18 -26 q12 0 13 13 l-1 15 h-15 l1 -15 z"
                 />
-                <circle :fill="stage.sky" :stroke="stage.ink" cx="72" cy="-92" r="7" />
-                <circle :fill="stage.ink" stroke="none" cx="74" cy="-92" r="3.4" />
-                <circle fill="#ffffff" stroke="none" cx="76" cy="-94" r="1.2" />
-                <path
-                  :stroke="stage.ink"
-                  stroke-width="2.2"
-                  fill="none"
-                  stroke-linecap="round"
-                  d="M86 -84 q-8 6 -16 2"
-                />
-                <circle :fill="stage.ink" stroke="none" cx="88" cy="-96" r="1.6" />
-              </g>
-              <!-- 등의 골판. 이 판의 보색이 여기서 한 번 더 나온다 -->
-              <g :fill="stage.veg2" :stroke="stage.accent" stroke-width="2">
-                <path d="M-18 -58 l6 -16 l9 14 z" />
-                <path d="M2 -64 l6 -17 l9 15 z" />
-                <path d="M22 -64 l5 -15 l9 13 z" />
+                <!--
+                  배. 아래쪽에 붙인다.
+                  가운데에 두었더니 몸을 가로지르는 밝은 얼룩이 됐다.
+                  배는 배가 있을 자리에 있어야 배로 보인다.
+                -->
+                <path :fill="stage.veg2" d="M-30 -14 q28 10 54 0 q-26 10 -54 0 z" />
+                <g class="neck">
+                  <path
+                    :fill="stage.motifColor"
+                    d="M24 -52 q6 -30 26 -44 q16 -11 30 -2 q12 8 8 22 q-4 13 -20 15 q-14 2 -20 14 z"
+                  />
+                  <path
+                    :fill="stage.motifColor"
+                    d="M54 -96 q-4 -14 10 -20 q16 -6 26 4 q9 8 4 18 q-6 11 -20 11 q-16 0 -20 -13 z"
+                  />
+                  <!-- 얼굴. edge 겹에서는 실루엣에 묻히고 fill 겹에서만 드러난다 -->
+                  <g class="face">
+                    <!--
+                      눈. 흰자를 키우고 눈동자를 가운데로 옮겼다.
+                      전에는 눈동자가 흰자를 거의 덮어서, 남은 흰자가
+                      한쪽에 초승달로 걸려 눈을 감은 것처럼 보였다.
+                    -->
+                    <circle fill="#ffffff" cx="72" cy="-92.5" r="8.4" />
+                    <circle :fill="stage.ink" cx="73" cy="-92" r="4.2" />
+                    <circle fill="#ffffff" cx="75" cy="-94.5" r="1.6" />
+                    <path
+                      :stroke="stage.ink"
+                      stroke-width="2.2"
+                      fill="none"
+                      stroke-linecap="round"
+                      d="M86 -84 q-8 6 -16 2"
+                    />
+                    <circle :fill="stage.ink" cx="88" cy="-96" r="1.6" />
+                  </g>
+                </g>
+                <!-- 등의 골판. 이 판의 보색이 여기서 한 번 더 나온다 -->
+                <g class="plates" :fill="stage.veg2" :stroke="stage.accent" stroke-width="2">
+                  <path d="M-18 -58 l6 -16 l9 14 z" />
+                  <path d="M2 -64 l6 -17 l9 15 z" />
+                  <path d="M22 -64 l5 -15 l9 13 z" />
+                </g>
               </g>
             </g>
 
             <!-- 따라가는 아기 둘. 어미보다 반 박자 빠르게 종종거린다 -->
+            <!--
+            따라가는 아기 둘. 어미와 같은 방식으로 실루엣에만 선을 두른다.
+            어미만 매끈하고 아기는 조각조각이면 같은 종으로 안 보인다.
+          -->
             <g
               v-for="t in [
                 { x: -104, y: 4, sc: 0.9, step: 0.5 },
@@ -1744,32 +1783,28 @@ const ridges = computed(() => {
               ]"
               :key="`tot${t.x}`"
               class="tot"
-              :style="{ '--step': `${t.step}s` }"
+              :style="{ '--step': `${t.step}s`, '--ink': stage.ink }"
               :transform="`translate(${t.x} ${t.y}) scale(${t.sc})`"
             >
-              <g class="legs" :stroke="stage.ink" stroke-width="1.6" stroke-linecap="round">
-                <path class="leg a" d="M-2 4 v4.4" />
-                <path class="leg b" d="M2.4 4 v4.4" />
+              <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
+                <g class="legs" :stroke="stage.ink" stroke-width="1.6" stroke-linecap="round">
+                  <path class="leg a" d="M-2 4 v4.4" />
+                  <path class="leg b" d="M2.4 4 v4.4" />
+                </g>
+                <path :fill="stage.motifColor" d="M-6 2 q-8 0 -12 -5 q7 -1 12 2 z" />
+                <path
+                  :fill="stage.motifColor"
+                  d="M-6.5 2 q-1.4 -8 5 -10.6 q2.6 -6.4 9 -5 q5 1.2 5 6.4 q4 1.4 4 5.2 q0 5 -8 5.2 q-10.4 1.2 -15 -1.2 z"
+                />
+                <g class="plates" :fill="stage.veg2" :stroke="stage.accent" stroke-width="0.8">
+                  <path d="M-4.4 -5.4 l2 -3.8 l2 3.8 z" />
+                  <path d="M0.6 -8 l2 -3.8 l2 3.8 z" />
+                </g>
+                <g class="face">
+                  <circle fill="#ffffff" cx="9.2" cy="-6" r="2.2" />
+                  <circle :fill="stage.ink" cx="9.8" cy="-5.8" r="1.1" />
+                </g>
               </g>
-              <path
-                :fill="stage.motifColor"
-                :stroke="stage.ink"
-                stroke-width="1"
-                d="M-6 2 q-8 0 -12 -5 q7 -1 12 2 z"
-              />
-              <path
-                :fill="stage.motifColor"
-                :stroke="stage.ink"
-                stroke-width="1"
-                d="M-6.5 2 q-1.4 -8 5 -10.6 q2.6 -6.4 9 -5 q5 1.2 5 6.4 q4 1.4 4 5.2 q0 5 -8 5.2 q-10.4 1.2 -15 -1.2 z"
-              />
-              <path
-                :fill="stage.veg2"
-                :stroke="stage.ink"
-                stroke-width="0.7"
-                d="M-4.4 -5.4 l2 -3.8 l2 3.8 z M0.6 -8 l2 -3.8 l2 3.8 z"
-              />
-              <circle :fill="stage.ink" cx="9.6" cy="-6" r="1.1" />
             </g>
           </g>
         </g>
@@ -2401,6 +2436,39 @@ const ridges = computed(() => {
   to {
     transform: translateX(990px);
   }
+}
+
+/*
+ * 실루엣에만 선을 두른다.
+ *
+ * edge 겹은 모든 부위를 외곽색으로 채우고 굵게 두른다. 부위끼리
+ * 겹친 자리가 하나로 뭉쳐 한 덩이 실루엣이 된다.
+ * fill 겹은 같은 부위를 제 색으로 덮는다. 선은 없다.
+ * 그러면 바깥에는 선이 남고 안쪽에는 남지 않는다.
+ *
+ * 두 겹은 같은 클래스를 달고 있어서 걸음 애니메이션도 똑같이 받는다.
+ * 따로 맞출 필요가 없다.
+ */
+.bigdino .edge :is(path, circle, ellipse) {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 5.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* 얼굴은 실루엣에 아무것도 더하지 않는다. edge 에서는 없는 셈 친다 */
+.bigdino .edge .face,
+.tot .edge .face {
+  display: none;
+}
+
+/* 아기도 같은 방식. 몸이 작으니 테두리도 얇다 */
+.tot .edge :is(path, circle) {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 /*
