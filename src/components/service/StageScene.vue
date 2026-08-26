@@ -455,11 +455,43 @@ const scene = computed(() => {
    * 주인공 무리보다 작고 뒤에 선다. 걷지 않고 제자리에서
    * 고개만 움직인다 — 걸어다니는 것이 여럿이면 눈이 갈 곳을 잃는다.
    */
+  /*
+   * 다른 공룡들의 색.
+   *
+   * 셋 다 어미와 같은 초록이었더니 종만 다르고 다 한 무리로 보였다.
+   * 그렇다고 아무 색이나 쓸 수는 없다 — 이 판은 파스텔 모브 위에
+   * 시안 하나를 얹은 판이라, 채도 높은 색을 들이면 그 규칙이 깨진다.
+   *
+   * 모브와 부딪히지 않는 쪽으로 셋을 고른다.
+   *   청록  시안 쪽으로 기운 초록. 어미의 초록과 이 판의 시안 사이에 선다
+   *   황토  모브의 보색 쪽. 분홍 바탕에서 가장 또렷하게 떨어진다
+   *   코럴  용암과 같은 계열의 흐린 주홍. 따뜻한 쪽을 하나 남겨 둔다
+   *
+   * 종마다 몸 · 다리 · 등판 세 단을 함께 준다. 몸만 바꾸면
+   * 다리가 어미 색으로 남아 몸에서 떨어져 보인다.
+   */
+  const OTHER_COATS = [
+    { coat: '#6FAEA0', limb: '#568F83', trim: '#9BCDC3' },
+    { coat: '#C9AC5A', limb: '#A78F44', trim: '#E2CA8B' },
+    { coat: '#CF8874', limb: '#AC6B59', trim: '#E9AE9C' },
+  ]
+
+  /*
+   * 색은 한 번만 돌린다.
+   *
+   * 마리마다 따로 뽑았더니 셋 중 둘이 같은 색으로 나왔다.
+   * 시작 자리 하나만 뽑고 거기서부터 차례로 나눠 주면 세 색이
+   * 반드시 서로 다르다. 어느 종이 어느 색인지는 무대마다 바뀐다.
+   */
+  const coatShift = Math.floor(r() * 3)
+
   const others = Array.from({ length: s.others ?? 0 }, (_, i) => {
     const x = pick(60, 740)
     return {
       i,
       kind: i % 3,
+      // 종과 색을 따로 돌린다. 같은 종이 늘 같은 색이면 셋이 한 벌처럼 보인다
+      ...OTHER_COATS[(i + coatShift) % 3],
       x,
       y: soilAt(x) + pick(4, 12),
       sc: pick(0.5, 0.78),
@@ -1306,19 +1338,16 @@ const ridges = computed(() => {
         <g v-for="pass in ['edge', 'fill']" :key="pass" :class="pass">
           <!-- 0 · 등에 판이 늘어선 것 -->
           <template v-if="o.kind === 0">
+            <path :fill="o.coat" d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z" />
+            <path class="leg a" :fill="o.limb" d="M-11 -4 h5 v10 h-5 z" />
+            <path class="leg b" :fill="o.limb" d="M8 -4 h5 v10 h-5 z" />
             <path
-              :fill="stage.motifColor"
-              d="M-16 -8 C-26 -9 -34 -6 -40 0 C-32 -2 -24 -3 -16 -3 Z"
-            />
-            <path class="leg a" :fill="stage.veg" d="M-11 -4 h5 v10 h-5 z" />
-            <path class="leg b" :fill="stage.veg" d="M8 -4 h5 v10 h-5 z" />
-            <path
-              :fill="stage.motifColor"
+              :fill="o.coat"
               d="M-18 -6 C-18 -18 -8 -24 2 -24 C13 -24 20 -18 20 -8 C20 -1 12 2 1 2 C-10 2 -18 0 -18 -6 Z"
             />
             <g class="head">
               <path
-                :fill="stage.motifColor"
+                :fill="o.coat"
                 d="M17 -18 C22 -24 30 -25 34 -21 C37 -18 35 -13 30 -12 C24 -11 19 -14 17 -18 Z"
               />
               <g class="face">
@@ -1326,7 +1355,7 @@ const ridges = computed(() => {
                 <circle :fill="stage.ink" cx="28.8" cy="-18.6" r="1.2" />
               </g>
             </g>
-            <g class="plates" :fill="stage.veg2" :stroke="stage.accent" stroke-width="1.2">
+            <g class="plates" :fill="o.trim" :stroke="stage.accent" stroke-width="1.2">
               <path d="M-12 -20 l3 -8 l4 7 z" />
               <path d="M-3 -23 l3 -9 l4 8 z" />
               <path d="M6 -23 l3 -8 l4 7 z" />
@@ -1335,31 +1364,28 @@ const ridges = computed(() => {
 
           <!-- 1 · 머리에 뿔과 목도리를 두른 것 -->
           <template v-else-if="o.kind === 1">
+            <path :fill="o.coat" d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z" />
+            <path class="leg a" :fill="o.limb" d="M-10 -4 h5.5 v10 h-5.5 z" />
+            <path class="leg b" :fill="o.limb" d="M7 -4 h5.5 v10 h-5.5 z" />
             <path
-              :fill="stage.motifColor"
-              d="M-16 -8 C-24 -8 -30 -5 -34 0 C-27 -2 -21 -3 -16 -3 Z"
-            />
-            <path class="leg a" :fill="stage.veg" d="M-10 -4 h5.5 v10 h-5.5 z" />
-            <path class="leg b" :fill="stage.veg" d="M7 -4 h5.5 v10 h-5.5 z" />
-            <path
-              :fill="stage.motifColor"
+              :fill="o.coat"
               d="M-17 -6 C-17 -17 -8 -22 2 -22 C13 -22 19 -17 19 -8 C19 -1 12 2 1 2 C-10 2 -17 0 -17 -6 Z"
             />
             <g class="head">
               <!-- 목도리 -->
               <path
-                :fill="stage.veg2"
+                :fill="o.trim"
                 :stroke="stage.accent"
                 stroke-width="1.2"
                 d="M16 -22 C24 -30 34 -28 36 -18 C37 -10 29 -6 21 -9 Z"
               />
               <path
-                :fill="stage.motifColor"
+                :fill="o.coat"
                 d="M24 -20 C31 -24 38 -22 40 -16 C41 -11 36 -8 30 -9 C26 -10 24 -15 24 -20 Z"
               />
               <!-- 뿔 둘 -->
-              <path :fill="stage.veg2" d="M34 -22 l7 -8 l-2 9 z" />
-              <path :fill="stage.veg2" d="M39 -16 l9 -3 l-8 5 z" />
+              <path :fill="o.trim" d="M34 -22 l7 -8 l-2 9 z" />
+              <path :fill="o.trim" d="M39 -16 l9 -3 l-8 5 z" />
               <g class="face">
                 <circle fill="#ffffff" cx="33" cy="-16" r="2.2" />
                 <circle :fill="stage.ink" cx="33.8" cy="-15.6" r="1.1" />
@@ -1369,19 +1395,16 @@ const ridges = computed(() => {
 
           <!-- 2 · 두 발로 서서 꼬리를 곧게 뻗은 것 -->
           <template v-else>
+            <path :fill="o.coat" d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z" />
+            <path class="leg a" :fill="o.limb" d="M-4 -8 C0 -8 2 -4 1 2 l-1 6 h-6 l2 -8 z" />
+            <path class="leg b" :fill="o.limb" d="M4 -8 C8 -8 10 -4 9 2 l-1 6 h-6 l2 -8 z" />
             <path
-              :fill="stage.motifColor"
-              d="M-8 -14 C-20 -13 -32 -9 -42 -2 C-30 -6 -18 -8 -8 -9 Z"
-            />
-            <path class="leg a" :fill="stage.veg" d="M-4 -8 C0 -8 2 -4 1 2 l-1 6 h-6 l2 -8 z" />
-            <path class="leg b" :fill="stage.veg" d="M4 -8 C8 -8 10 -4 9 2 l-1 6 h-6 l2 -8 z" />
-            <path
-              :fill="stage.motifColor"
+              :fill="o.coat"
               d="M-9 -12 C-9 -22 -2 -27 6 -27 C14 -27 18 -22 18 -15 C18 -9 12 -6 3 -6 C-5 -6 -9 -8 -9 -12 Z"
             />
             <g class="head">
               <path
-                :fill="stage.motifColor"
+                :fill="o.coat"
                 d="M14 -26 C16 -34 24 -37 30 -33 C35 -30 34 -24 28 -22 C22 -20 16 -22 14 -26 Z"
               />
               <g class="face">
