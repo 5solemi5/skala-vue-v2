@@ -296,6 +296,79 @@ const scene = computed(() => {
     back: r() > 0.5,
   }))
 
+  /*
+   * ── 공룡 판 ─────────────────────────────────────
+   *
+   * 이 무대만 어린이 스티커북처럼 그린다. 그래서 모든 것에 굵은 외곽선을
+   * 두르고, 판 전체가 파스텔 모브인데 테두리만 시안이다.
+   * 참조한 표지에서 시안은 0.5% 밖에 안 쓰였는데, 그 0.5% 가 이 표지를
+   * 나머지 열둘과 갈라 놓는다.
+   */
+
+  // 먼 화산. 연기가 오래 피어오른다
+  const volcanoes = Array.from({ length: s.volcanoes ?? 0 }, (_, i) => ({
+    i,
+    x: 150 + i * 380 + pick(-50, 50),
+    base: 176 - i * 6,
+    w: pick(120, 190),
+    h: pick(48, 78),
+    dur: pick(16, 26),
+    delay: pick(-20, 0),
+  }))
+
+  // 소철. 굵은 줄기에 잎이 부챗살처럼 퍼진다
+  const cycads = Array.from({ length: s.cycads ?? 0 }, (_, i) => ({
+    i,
+    x: pick(20, 780),
+    y: pick(196, 214),
+    sc: pick(0.7, 1.25),
+    fronds: 6 + Math.floor(r() * 3),
+    sway: pick(5, 9),
+    delay: pick(0, 5),
+  }))
+
+  // 고사리. 전경에 낮게 깔린다
+  const ferns = Array.from({ length: s.ferns ?? 0 }, () => ({
+    x: pick(-10, 810),
+    y: pick(226, 252),
+    sc: pick(0.6, 1.2),
+    lean: pick(-1, 1) > 0 ? 1 : -1,
+    sway: pick(3.4, 6),
+    delay: pick(0, 4),
+  }))
+
+  /*
+   * 알 둥지.
+   * 하나만 둔다. 여럿 두면 알 가게가 된다.
+   * 가운데 알만 아주 가끔 흔들린다 — 안에 무언가 있다는 뜻이다.
+   */
+  const nest = s.eggs ? { x: pick(120, 660), y: pick(238, 248), sc: pick(0.9, 1.2) } : null
+
+  // 아기 공룡. 알 근처를 종종거린다
+  const hatchlings = Array.from({ length: s.hatchlings ?? 0 }, (_, i) => ({
+    i,
+    x: pick(60, 720),
+    y: pick(232, 250),
+    sc: pick(0.95, 1.4),
+    dur: pick(16, 30),
+    delay: pick(-26, 0),
+    span: pick(50, 130),
+    step: pick(0.42, 0.66),
+    back: r() > 0.5,
+  }))
+
+  // 익룡. 하늘을 가로지른다
+  const pterosaurs = Array.from({ length: s.pterosaurs ?? 0 }, (_, i) => ({
+    i,
+    y: pick(40, 132),
+    sc: pick(0.55, 1),
+    dur: pick(34, 62),
+    delay: pick(-58, 0),
+    rise: pick(10, 26),
+    flap: pick(1.6, 2.6),
+    back: r() > 0.5,
+  }))
+
   // 모래 위를 걷는 갈매기. 물가를 따라 종종거린다
   const strollers = Array.from({ length: s.walkers ?? 0 }, (_, i) => ({
     i,
@@ -332,6 +405,12 @@ const scene = computed(() => {
   }))
 
   return {
+    volcanoes,
+    cycads,
+    ferns,
+    nest,
+    hatchlings,
+    pterosaurs,
     waves,
     gulls,
     dolphins,
@@ -554,12 +633,6 @@ const ridges = computed(() => {
         </g>
         <ellipse cx="600" cy="88" rx="40" ry="34" :stroke="stage.accent" stroke-width="2.6" />
         <ellipse cx="600" cy="88" rx="19" ry="16" :stroke="stage.accent" stroke-width="1.6" />
-      </g>
-      <g v-else-if="stage.motif === 'dino'">
-        <path
-          d="M540 168c-4-30 10-52 34-60c6-22 26-32 46-24c18 7 24 26 18 42c14 8 20 22 16 36c-4 10-14 8-18 0c-4 12-16 14-22 4c-8 10-22 8-26-2c-10 12-26 12-30 4c-8 6-16 4-18 0z"
-        />
-        <circle cx="616" cy="96" r="3.2" fill="#1c1c20" stroke="none" />
       </g>
       <g v-else-if="stage.motif === 'vine'" class="gloss">
         <path d="M470 176c40-6 60-28 66-58c4-22 20-34 40-30" />
@@ -989,6 +1062,161 @@ const ridges = computed(() => {
     <rect x="0" y="228" width="800" height="32" :fill="stage.ground" />
 
     <!--
+      ⑬''''''' 소철.
+
+      공룡이 살던 때의 식물은 꽃이 아니라 잎이다. 굵은 줄기 하나에
+      잎이 부챗살처럼 퍼진다. 잎마다 각도를 조금씩 어긋뜨려야
+      한 그루로 보인다 — 고르게 두면 우산이 된다.
+    -->
+    <g v-if="stage.dinoland" class="cycads">
+      <g
+        v-for="c in scene.cycads"
+        :key="`cy${c.i}`"
+        class="cycad"
+        :style="{ '--sway': `${c.sway}s`, '--delay': `${c.delay}s` }"
+        :transform="`translate(${c.x} ${c.y}) scale(${c.sc})`"
+      >
+        <!-- 줄기. 야자보다 짧고 굵다. 소철은 키가 크지 않다 -->
+        <path :stroke="stage.veg" stroke-width="4.2" stroke-linecap="round" d="M0 0 v-11" />
+        <path
+          v-for="k in c.fronds"
+          :key="`fr${k}`"
+          :fill="stage.veg2"
+          :stroke="stage.ink"
+          stroke-width="0.6"
+          :transform="`rotate(${(k - (c.fronds + 1) / 2) * 30} 0 -12)`"
+          d="M0 -14 q-5 -6 -3.4 -15 q1.6 3 3.4 6 q1.8 -3 3.4 -6 q1.6 9 -3.4 15 z"
+        />
+      </g>
+    </g>
+
+    <!--
+      ⑬'''''''' 알 둥지.
+
+      하나만 둔다. 여럿 두면 알 가게가 된다.
+      가운데 알만 아주 가끔 흔들린다 — 안에 무언가 있다는 뜻이다.
+    -->
+    <g v-if="stage.dinoland && scene.nest" class="nest">
+      <g :transform="`translate(${scene.nest.x} ${scene.nest.y}) scale(${scene.nest.sc})`">
+        <path
+          :fill="stage.veg"
+          :stroke="stage.ink"
+          stroke-width="0.8"
+          d="M-14 2 q4 -6 14 -6 q10 0 14 6 q-6 3 -14 3 q-8 0 -14 -3 z"
+        />
+        <ellipse
+          :fill="stage.sky"
+          :stroke="stage.ink"
+          stroke-width="0.9"
+          cx="-6.5"
+          cy="-3"
+          rx="3.6"
+          ry="4.6"
+        />
+        <ellipse
+          :fill="stage.sky"
+          :stroke="stage.ink"
+          stroke-width="0.9"
+          cx="6.5"
+          cy="-3"
+          rx="3.6"
+          ry="4.6"
+        />
+        <ellipse
+          class="hatching"
+          :fill="stage.sky"
+          :stroke="stage.ink"
+          stroke-width="0.9"
+          cx="0"
+          cy="-5"
+          rx="4"
+          ry="5.2"
+        />
+      </g>
+    </g>
+
+    <!--
+      ⑬''''''''' 아기 공룡.
+
+      알 근처를 종종거린다. 어른 공룡은 판 가운데의 모티프 하나로 족하고,
+      바닥에는 작은 것들만 둔다 — 큰 것이 여럿이면 눈이 갈 곳을 잃는다.
+    -->
+    <g v-if="stage.dinoland" class="hatchlings">
+      <g
+        v-for="h in scene.hatchlings"
+        :key="`ht${h.i}`"
+        class="hatchling"
+        :style="{
+          '--dur': `${h.dur}s`,
+          '--delay': `${h.delay}s`,
+          '--span': `${h.span}px`,
+          '--step': `${h.step}s`,
+          '--dir': h.back ? -1 : 1,
+        }"
+      >
+        <g :transform="`translate(${h.x} ${h.y}) scale(${h.sc})`">
+          <g class="legs" :stroke="stage.ink" stroke-width="1.5" stroke-linecap="round">
+            <path class="leg a" d="M-1.6 3.4 v3.4" />
+            <path class="leg b" d="M1.8 3.4 v3.4" />
+          </g>
+          <!-- 꼬리 -->
+          <path
+            :fill="stage.motifColor"
+            :stroke="stage.ink"
+            stroke-width="0.9"
+            d="M-4.6 1.6 q-6 0 -9 -4 q5 -0.6 9 1.4 z"
+          />
+          <!-- 몸과 머리를 한 덩이로. 아기는 목이 짧다 -->
+          <path
+            :fill="stage.motifColor"
+            :stroke="stage.ink"
+            stroke-width="0.9"
+            d="M-5 1.6 q-1 -6 4 -8 q2 -5 7 -4 q4 1 4 5 q3 1 3 4 q0 4 -6 4 q-8 1 -12 -1 z"
+          />
+          <!-- 등의 골판 -->
+          <path
+            :fill="stage.veg2"
+            :stroke="stage.ink"
+            stroke-width="0.6"
+            d="M-3.4 -4 l1.6 -3 l1.6 3 z M0.4 -6 l1.6 -3 l1.6 3 z"
+          />
+          <circle :fill="stage.ink" cx="7.4" cy="-4.6" r="0.9" />
+        </g>
+      </g>
+    </g>
+
+    <!--
+      ⑭'' 전경 고사리.
+
+      풀 대신 고사리다. 잎이 한쪽으로만 갈라져 나가는 깃 모양이라
+      풀보다 낮고 넓게 깔린다.
+    -->
+    <g v-if="stage.dinoland" class="ferns">
+      <g
+        v-for="(f, i) in scene.ferns"
+        :key="`fn${i}`"
+        class="fern"
+        :style="{ '--sway': `${f.sway}s`, '--delay': `${f.delay}s` }"
+        :transform="`translate(${f.x} ${f.y}) scale(${f.lean * f.sc} ${f.sc})`"
+      >
+        <path
+          :stroke="stage.veg"
+          stroke-width="1.5"
+          fill="none"
+          stroke-linecap="round"
+          d="M0 0 q2 -8 8 -13"
+        />
+        <path
+          :stroke="stage.veg2"
+          stroke-width="1.1"
+          fill="none"
+          stroke-linecap="round"
+          d="M1.4 -4 l-3.6 -2.6 M3 -7 l-3.4 -3 M5 -9.6 l-3 -3.4 M7 -11.6 l-2.4 -3.6"
+        />
+      </g>
+    </g>
+
+    <!--
         ⑬'' 소라 · 조개 · 불가사리.
 
         가만히 있는 것들이라 자리만 정해 주면 된다.
@@ -1300,6 +1528,66 @@ const ridges = computed(() => {
       </g>
     </g>
 
+    <!--
+      ⑥'''' 먼 화산.
+
+      공룡 판을 공룡 판으로 만드는 건 화산이다. 산 두 개를 세우고
+      꼭대기에서 연기가 천천히 오른다. 터지지는 않는다 —
+      터지면 사건이 되고, 사건이 있으면 판이 아니라 장면이 된다.
+    -->
+    <g v-if="stage.dinoland" class="volcanoes">
+      <g v-for="v in scene.volcanoes" :key="`vc${v.i}`">
+        <path
+          :fill="stage.far"
+          :d="`M${v.x - v.w / 2} ${v.base} L${v.x - v.w * 0.16} ${v.base - v.h}
+               q${v.w * 0.16} ${-6} ${v.w * 0.32} 0 L${v.x + v.w / 2} ${v.base} Z`"
+        />
+        <!-- 분화구 안쪽. 시안 한 줄이 이 판의 보색이다 -->
+        <path
+          :stroke="stage.accent"
+          stroke-width="1.6"
+          fill="none"
+          stroke-linecap="round"
+          opacity="0.75"
+          :d="`M${v.x - v.w * 0.16} ${v.base - v.h} q${v.w * 0.16} ${-6} ${v.w * 0.32} 0`"
+        />
+        <g
+          class="fume"
+          :style="{ '--dur': `${v.dur}s`, '--delay': `${v.delay}s` }"
+          :transform="`translate(${v.x} ${v.base - v.h - 4})`"
+        >
+          <circle :fill="stage.haze" cx="0" cy="0" r="7" opacity="0.55" />
+          <circle :fill="stage.haze" cx="5" cy="-11" r="9" opacity="0.42" />
+          <circle :fill="stage.haze" cx="-3" cy="-24" r="11" opacity="0.3" />
+          <circle :fill="stage.haze" cx="6" cy="-38" r="13" opacity="0.2" />
+        </g>
+      </g>
+    </g>
+
+    <!--
+      ⑥''''' 익룡.
+
+      새와 다르게 그린다. 날개가 몸보다 훨씬 길고, 끝이 뾰족하고,
+      뒤통수에 볏이 하나 솟는다. 그 볏 하나가 새와 익룡을 가른다.
+    -->
+    <g v-if="stage.dinoland" class="pteros">
+      <g
+        v-for="p in scene.pterosaurs"
+        :key="`pt${p.i}`"
+        class="ptero"
+        :class="{ back: p.back }"
+        :style="{ '--dur': `${p.dur}s`, '--delay': `${p.delay}s`, '--rise': `${p.rise}px` }"
+      >
+        <g :transform="`translate(0 ${p.y}) scale(${p.back ? -p.sc : p.sc} ${p.sc})`">
+          <g class="wings" :fill="stage.near" :stroke="stage.ink" stroke-width="0.9">
+            <path d="M0 0 C-6 -5 -14 -7 -21 -5 C-14 -1 -7 1 0 1 Z" />
+            <path d="M0 0 C6 -5 14 -7 21 -5 C14 -1 7 1 0 1 Z" />
+          </g>
+          <path :fill="stage.ink" d="M-2 -1 q2 -3 5 -3 q3 0 4 2 l4 -1 l-4 3 q-4 2 -9 1 z" />
+        </g>
+      </g>
+    </g>
+
     <!-- ⑦ 모티프 — 무대마다 하나 -->
     <g
       class="motif"
@@ -1315,6 +1603,103 @@ const ridges = computed(() => {
         <path
           d="M520 96c22-30 44-34 62-12c18-22 40-18 62 12c-24-10-44-4-62 12c-18-16-38-22-62-12z"
         />
+      </g>
+
+      <!--
+        주인공 공룡.
+
+        전에는 덩어리 하나에 점 하나였고, 모티프 자리(⑦)에 있었다.
+        그 자리는 하늘 다음이라 뒤에 오는 언덕과 지면이 몸통을 덮어서,
+        머리와 목만 하늘에 떠 있었다. 파라솔 때와 같은 실수다.
+        땅을 딛는 것은 땅을 다 그린 뒤에 세워야 한다.
+
+        전에는 덩어리 하나에 점 하나였다. 참조한 표지의 공룡은 그런 게
+        아니라 만화체 캐릭터다 — 굵은 외곽선이 있고, 눈이 있고, 웃는다.
+        열세 장 중 유일하게 '귀여운' 표지라고 적힌 이유가 그것이다.
+
+        그래서 여기서는 실루엣을 그리지 않고 얼굴을 그린다.
+        목이 길고 등에 골판이 서고 배가 밝은 초식 공룡 한 마리.
+        선은 stroke 로 두르지 않고 색을 채워 넣는다 — 굵은 선은
+        모티프 묶음이 물려주는 색과 싸우기 때문이다.
+      -->
+      <g
+        v-if="stage.dinoland"
+        class="bigdino"
+        transform="translate(0 18)"
+        :stroke="stage.ink"
+        stroke-width="2.6"
+      >
+        <!-- 꼬리. 몸에서 길게 빠져 바닥까지 닿는다 -->
+        <path :fill="stage.motifColor" d="M566 186 q-34 4 -52 -14 q26 -6 52 2 z" />
+        <!-- 뒷다리 -->
+        <path :fill="stage.veg" d="M590 176 q10 0 12 12 l-2 12 h-14 l2 -12 z" />
+        <!-- 몸 -->
+        <path
+          :fill="stage.motifColor"
+          d="M564 178 q-6 -28 20 -38 q22 -8 40 2 q14 8 14 22 q0 16 -18 20 q-30 6 -56 -6 z"
+        />
+        <!-- 앞다리 -->
+        <path :fill="stage.veg" d="M622 178 q9 0 11 11 l-2 11 h-13 l2 -11 z" />
+        <!-- 배. 등보다 밝다 -->
+        <path :fill="stage.veg2" d="M570 176 q26 10 54 4 q-24 10 -54 -4 z" />
+        <!-- 목과 머리 -->
+        <path
+          :fill="stage.motifColor"
+          d="M624 148 q6 -30 26 -44 q16 -11 30 -2 q12 8 8 22 q-4 13 -20 15 q-14 2 -20 14 z"
+        />
+        <path
+          :fill="stage.motifColor"
+          d="M654 104 q-4 -14 10 -20 q16 -6 26 4 q9 8 4 18 q-6 11 -20 11 q-16 0 -20 -13 z"
+        />
+        <!-- 등의 골판. 시안으로 두른다. 이 판의 보색이 여기서 한 번 더 나온다 -->
+        <g :fill="stage.veg2" :stroke="stage.accent" stroke-width="2">
+          <path d="M582 142 l6 -16 l9 14 z" />
+          <path d="M602 136 l6 -17 l9 15 z" />
+          <path d="M622 136 l5 -15 l9 13 z" />
+        </g>
+        <!-- 얼굴 -->
+        <circle :fill="stage.sky" :stroke="stage.ink" cx="672" cy="108" r="7" />
+        <circle :fill="stage.ink" stroke="none" cx="674" cy="108" r="3.4" />
+        <circle fill="#ffffff" stroke="none" cx="676" cy="106" r="1.2" />
+        <path
+          :stroke="stage.ink"
+          stroke-width="2.2"
+          fill="none"
+          stroke-linecap="round"
+          d="M686 116 q-8 6 -16 2"
+        />
+        <circle :fill="stage.ink" stroke="none" cx="688" cy="104" r="1.6" />
+      </g>
+
+      <!--
+      ⑮''' 토성.
+
+      참조한 표지 우하단에 작은 토성 아이콘이 하나 있다.
+      공룡과 아무 상관이 없는데 거기 있고, 그 뜬금없음이 이 표지를
+      어린이 스티커북처럼 보이게 하는 데 한몫한다. 그대로 둔다.
+
+      좌하단 라벨과 우하단 서명이 쓰는 자리를 피해 조금 위에 앉힌다.
+    -->
+      <g v-if="stage.saturn" class="saturn">
+        <circle
+          :fill="stage.accent"
+          :stroke="stage.ink"
+          stroke-width="1.6"
+          cx="742"
+          cy="52"
+          r="11"
+        />
+        <ellipse
+          :stroke="stage.ink"
+          stroke-width="1.6"
+          fill="none"
+          cx="742"
+          cy="52"
+          rx="19"
+          ry="5.4"
+          transform="rotate(-18 742 52)"
+        />
+        <circle :fill="stage.sky" stroke="none" cx="738" cy="48" r="2.6" opacity="0.7" />
       </g>
 
       <!-- ⑯ 비네트 -->
@@ -1686,6 +2071,138 @@ const ridges = computed(() => {
     opacity: 0;
     scale: 1.3 1.2;
     translate: 22px 0;
+  }
+}
+
+/* ── 공룡 판 ─────────────────────────────────────── */
+
+/* 화산 연기. 오르면서 퍼지고 옅어진다 */
+.fume {
+  animation: fume var(--dur) linear var(--delay) infinite;
+}
+@keyframes fume {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.7);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-46px) scale(1.5);
+  }
+}
+
+/*
+ * 익룡.
+ * 갈매기보다 훨씬 느리게 난다. 날개가 길어서 한 번 젓는 데도 오래 걸린다.
+ */
+.ptero {
+  animation:
+    soar var(--dur) linear var(--delay) infinite,
+    lift calc(var(--dur) / 6) ease-in-out var(--delay) infinite alternate;
+}
+.ptero.back {
+  animation-direction: reverse, alternate;
+}
+.ptero .wings {
+  animation: beat 2.1s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes soar {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(940px);
+  }
+}
+@keyframes beat {
+  0%,
+  100% {
+    transform: scaleY(1) translateY(0);
+  }
+  50% {
+    transform: scaleY(0.35) translateY(1.5px);
+  }
+}
+
+/* 소철과 고사리. 바람에 아주 천천히 눕는다 */
+.cycad,
+.fern {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: frond var(--sway) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes frond {
+  from {
+    rotate: -2.5deg;
+  }
+  to {
+    rotate: 2.5deg;
+  }
+}
+
+/*
+ * 알 하나만 아주 가끔 흔들린다.
+ * 한 바퀴의 대부분은 가만히 있다. 계속 흔들리면 안에 있는 것이
+ * 나오려는 게 아니라 그냥 흔들리는 알이 된다.
+ */
+.nest .hatching {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: stir 9s ease-in-out infinite;
+}
+@keyframes stir {
+  0%,
+  72%,
+  100% {
+    rotate: 0deg;
+  }
+  76% {
+    rotate: -7deg;
+  }
+  80% {
+    rotate: 6deg;
+  }
+  84% {
+    rotate: -4deg;
+  }
+  88% {
+    rotate: 2deg;
+  }
+}
+
+/* 아기 공룡. 좁은 자리를 종종거린다 */
+.hatchling {
+  animation: patrol var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+.hatchling .leg {
+  transform-origin: top center;
+  transform-box: fill-box;
+}
+.hatchling .leg.a {
+  animation: peg var(--step) ease-in-out infinite;
+}
+.hatchling .leg.b {
+  animation: peg var(--step) ease-in-out calc(var(--step) / -2) infinite;
+}
+
+/* 토성은 아주 느리게 기운다. 아이콘이 살아 있다는 표시만 */
+.saturn {
+  transform-box: view-box;
+  transform-origin: 742px 52px;
+  animation: tilt 14s ease-in-out infinite;
+}
+@keyframes tilt {
+  0%,
+  100% {
+    rotate: -3deg;
+  }
+  50% {
+    rotate: 3deg;
   }
 }
 

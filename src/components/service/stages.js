@@ -285,32 +285,66 @@ const EDITIONS = [
     ink: '#242327',
   },
   {
+    /*
+     * 공룡.
+     *
+     * 표지 열세 장 중 이 한 장만 결이 다르다.
+     *
+     *   보색     열두 시즌 중 유일하게 보색 대비를 쓴다.
+     *            파스텔 모브 핑크 판에 시안 블루 테두리 하나.
+     *            시안은 0.5% 밖에 안 쓰였는데 그 0.5% 가 이 표지를 만든다.
+     *   만화체   모티프가 실루엣이 아니라 표정 있는 캐릭터다.
+     *            굵은 외곽선에 눈이 있고 웃는다.
+     *   토성     우하단에 작은 토성 아이콘 하나.
+     *
+     * 이 라인에서 유일하게 '귀여운' 표지이고 어린이 스티커북 같은
+     * 인상이라고 적혀 있다. 다른 무대의 절제를 여기서는 풀어도 된다.
+     */
     id: 'dinosaur',
-    motifColor: '#7A5C74',
-    haze: '#DDB8D4',
-    veg: '#9A7F8E',
-    veg2: '#B295A4',
+    dinoland: true,
+    motifColor: '#8FBF6B',
+    haze: '#E4C6DD',
+    veg: '#8AA86A',
+    veg2: '#A6C285',
     bloom: '#4598C6',
-    mountains: 2,
-    clouds: 3,
-    birds: 1,
-    trees: 3,
-    grass: 1,
-    flowers: 1,
-    motes: 'pollen',
+    // 뭍의 기본 겹은 쓰지 않는다. 이 판만의 겹으로 다시 세운다
+    mountains: 0,
+    clouds: 4,
+    birds: 0,
+    trees: 0,
+    grass: 0,
+    flowers: 0,
     rays: 1,
+    motes: 'pollen',
+    // 공룡 판에만 있는 겹
+    volcanoes: 2,
+    cycads: 5,
+    ferns: 16,
+    eggs: 1,
+    hatchlings: 3,
+    pterosaurs: 3,
+    saturn: 1,
     no: '002',
     en: 'DINOSAUR',
     ko: '공룡',
     lang: 'illustrated',
     motif: 'dino',
-    // 열두 시즌 중 유일하게 보색 대비를 쓴다
-    sky: '#E0BCD8',
+    /*
+     * 실측된 다섯 색.
+     *   #C69FC0 74%  파스텔 모브 (본색)
+     *   #D6A5C3 19%  밝은 핑크
+     *   #A48794  3%  그림자
+     *   #484A45  3%  외곽 어두운 톤
+     *   #4598C6 0.5% 시안 블루
+     */
+    sky: '#E8D0E2',
     mid: '#D6A5C3',
     far: '#C69FC0',
     near: '#A48794',
-    ground: '#8A6F7C',
+    ground: '#BE9BB2',
     accent: '#4598C6',
+    // 굵은 외곽선에 쓰는 색. 이 무대에만 있다
+    ink: '#484A45',
   },
   {
     id: 'love',
