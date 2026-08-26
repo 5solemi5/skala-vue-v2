@@ -373,13 +373,23 @@ const scene = computed(() => {
       y: soilAt(x) + pick(2, 8),
       h: pick(38, 62),
       sc: pick(0.85, 1.2),
-      fronds: 7,
+      // 위쪽 반원을 채우려면 7 로는 성기다. 사이가 뜨면 우산이 아니라 별이 된다
+      fronds: 9,
       sway: pick(6, 10),
       delay: pick(0, 6),
     }
   })
 
   // 은행. 잎이 부채꼴이고 가지가 성기다
+  /*
+   * 은행은 멀리 세우지 않는다.
+   *
+   * 은행만 줄기가 가는 맨 가지다(2.6). 뒤쪽 언덕 위에 작게 세웠더니
+   * 화면에서 줄기가 2px 남짓이 되고 뒤 언덕과 색이 붙어 사라져서,
+   * 잎 세 장만 화산 옆 공중에 뜬 그림이 됐다.
+   * 지면이 앞쪽인 자리(y 200 아래)에만 남긴다. 남는 수가 줄어도
+   * 좋다 — 서 있을 자리가 없으면 없는 편이 낫다.
+   */
   const ginkgos = Array.from({ length: s.ginkgos ?? 0 }, (_, i) => {
     const x = pick(40, 760)
     return {
@@ -391,7 +401,7 @@ const scene = computed(() => {
       sway: pick(5.5, 9),
       delay: pick(0, 5),
     }
-  })
+  }).filter((g) => g.y >= 200)
 
   // 속새. 마디로 이어진 대롱이 곧게 선다. 무리 지어 난다
   const horsetails = Array.from({ length: s.horsetails ?? 0 }, (_, i) => {
@@ -407,7 +417,22 @@ const scene = computed(() => {
     }
   })
 
-  // 덤불. 잎 몇 장이 뭉쳐 낮게 퍼진다
+  /*
+   * 덤불. 잎 몇 장이 뭉쳐 낮게 퍼진다.
+   *
+   * 이 판에서 줄기가 아예 없는 것은 덤불뿐이다. 잎 대여섯 장이
+   * 한 점에서 위로 벌어질 뿐이라, 땅에 붙어 있다는 표시가
+   * 뿌리 그림자(opacity 0.3) 하나밖에 없다.
+   *
+   * 그래서 지면선에 가까이 서면 안 된다. 지면선 바로 아래에 두었더니
+   * 오른쪽 화산 옆에서 잎 여섯 장만 공중에 뜬 것으로 보였다 —
+   * 뒤 언덕과 앞 땅의 경계가 그 자리를 지나서, 뿌리 그림자가
+   * 경계선에 먹혔기 때문이다.
+   *
+   * 지면선에서 26 아래로 내려온 자리에만 남긴다. 그만큼 내려오면
+   * 앞 땅 한가운데라 밑에 땅이 깔리고, 줄기가 없어도 놓인 것으로 읽힌다.
+   * 남는 수가 줄어도 좋다 — 뜬 것을 하나 두느니 둘만 두는 편이 낫다.
+   */
   const shrubs = Array.from({ length: s.shrubs ?? 0 }, (_, i) => {
     const x = pick(-10, 810)
     return {
@@ -419,7 +444,7 @@ const scene = computed(() => {
       sway: pick(4.5, 8),
       delay: pick(0, 5),
     }
-  })
+  }).filter((b) => b.y - soilAt(b.x) >= 26)
 
   // 고사리. 전경에 낮게 깔린다
   const ferns = Array.from({ length: s.ferns ?? 0 }, () => {
@@ -512,6 +537,34 @@ const scene = computed(() => {
       breath: pick(3.6, 5.8),
     }
   })
+  /*
+   * 겹친 것만 푼다.
+   *
+   * 셋 중 둘이 거의 같은 자리에 서서 두 마리가 아니라 겹쳐 그린
+   * 한 마리로 보였다. 배경에 세 종을 세운 이유가 실루엣이 서로
+   * 다르다는 것인데, 포개지면 그 이유가 없어진다.
+   *
+   * 그렇다고 고르게 흩으면 안 된다. 판을 삼등분해 한 마리씩 세워
+   * 봤더니, 뭉쳐 선 둘이 판 양끝으로 갈라져서 같이 있던 둘이
+   * 남남이 됐다. 붙어 선 것은 붙어 선 채로 두는 게 맞다.
+   *
+   * 그래서 자리는 그대로 두고, 너무 가까운 짝만 몸 하나 너비에
+   * 조금 못 미치는 거리(0.9)까지 밀어낸다. 그만큼이면 뒤엣것의
+   * 앞자락이 앞엣것에 살짝 물린다 — 겹쳐 그린 하나가 아니라
+   * 나란히 선 둘로 보이는 최소한의 거리다.
+   */
+  // 꼬리 끝에서 주둥이 끝까지, scale 1 기준. 몸통이 아니라 실루엣 너비다
+  const BODY = 88
+  others
+    .slice()
+    .sort((a, b) => a.x - b.x)
+    .forEach((o, i, sorted) => {
+      if (i === 0) return
+      const prev = sorted[i - 1]
+      // 딱 붙는 거리가 BODY * 평균 배율. 그 0.82 면 한 뼘쯤만 물린다
+      const gap = BODY * ((prev.sc + o.sc) / 2) * 0.82
+      if (o.x - prev.x < gap) o.x = prev.x + gap
+    })
 
   // 아기 공룡. 알 근처를 종종거린다
   const hatchlings = Array.from({ length: s.hatchlings ?? 0 }, (_, i) => ({
@@ -1328,8 +1381,172 @@ const ridges = computed(() => {
       가는 줄기가 곧게 오르고 꼭대기에서만 잎이 우산처럼 펼쳐진다.
       뒤쪽에 몇 그루만 둔다 — 큰 것이 많으면 숲이 아니라 벽이 된다.
     -->
+    <g v-if="stage.dinoland" class="treeferns">
+      <g
+        v-for="t in scene.treeferns"
+        :key="`tf${t.i}`"
+        class="plant"
+        :style="{
+          '--sway': `${t.sway}s`,
+          '--delay': `${t.delay}s`,
+          '--ox': `${t.x}px`,
+          '--oy': `${t.y}px`,
+        }"
+        :transform="`translate(${t.x} ${t.y}) scale(${t.sc})`"
+      >
+        <ellipse class="root" :fill="stage.near" cx="0" cy="0" rx="7" ry="2" opacity="0.35" />
+        <!--
+          줄기. 야자보다 굵다. 나무고사리의 줄기는 목재가 아니라
+          해묵은 잎자루가 쌓여 굳은 것이라 통통하고 거칠다.
+          떨어져 나간 잎자루 자국을 몇 개 남긴다 —
+          매끈한 야자 줄기와 갈라지는 자리가 여기다.
+        -->
+        <path
+          :stroke="stage.veg"
+          stroke-width="4.6"
+          fill="none"
+          stroke-linecap="round"
+          :d="`M0 0 q-2 ${-t.h * 0.5} 0 ${-t.h}`"
+        />
+        <path
+          :stroke="stage.ink"
+          stroke-width="0.7"
+          fill="none"
+          opacity="0.4"
+          stroke-linecap="round"
+          :d="`M-1.7 ${-t.h * 0.36} l3.4 -1.1 M-1.8 ${-t.h * 0.54} l3.4 -1.1 M-1.6 ${-t.h * 0.72} l3.4 -1.1`"
+        />
+        <!--
+          잎.
+
+          전에는 -90°~+90°, 즉 오른쪽 반쪽에만 붙었다. 왼쪽이 통째로
+          비어서 바람에 쏠린 야자수가 됐다. 위쪽 반원에 고루 펴서
+          우산꼴로 만든다. 바깥 잎은 수평보다 조금 아래까지 내려간다 —
+          나무고사리의 아래쪽 잎은 처진다.
+
+          다만 같은 잎을 돌려서만 붙이면, 아홉 장이 모두 같은 쪽으로
+          휘어서 크라운 전체가 한 방향으로 도는 바람개비가 된다.
+          왼쪽 절반은 각도를 접어 쓰고 scale(-1 1) 로 뒤집는다.
+          그러면 가운데 잎을 축으로 좌우가 마주 보고, 도는 대신 펼쳐진다.
+
+          날도 바꾼다. 매끈한 칼날은 야자의 것이다. 고사리 잎은 깃꼴이라
+          가장자리가 잘게 갈라진다. 바깥쪽 가장자리에만 톱니를 넣는다.
+          양쪽에 다 넣으면 이 크기(잎 하나가 22px)에서 형태가 뭉개져
+          무엇인지 알 수 없는 얼룩이 된다.
+
+          톱니는 얕게, 대신 여럿. 처음엔 날 너비의 대부분을 파냈더니
+          잎이 아니라 톱날이 됐다. 깃꼴로 보이는 것은 골의 깊이가 아니라
+          골의 개수다. 날 너비의 1/3 만 파고 아홉 번 반복한다.
+        -->
+        <g :transform="`translate(0 ${-t.h})`">
+          <path
+            v-for="k in t.fronds"
+            :key="`tfr${k}`"
+            :fill="stage.veg2"
+            :stroke="stage.ink"
+            stroke-width="0.7"
+            stroke-linejoin="round"
+            :transform="`${k < (t.fronds + 1) / 2 ? 'scale(-1 1) ' : ''}rotate(${-90 + (Math.abs(k - (t.fronds + 1) / 2) * 210) / (t.fronds - 1)})`"
+            d="M-0.4 -1.1 C4 -5.2 9.5 -6.1 13.4 -5.5 C18 -4.7 22.5 -2.6 26 2
+               L23.1 1.4 L22.6 -0.6 L20.6 0.9 L19.8 -1.1 L17.9 0.5 L17.1 -1.4
+               L15.2 0.3 L14.6 -1.6 L13.4 0.3 L12.1 -1.5 L10.7 0.4 L9.4 -1.4
+               L8.1 0.6 L6.9 -1.2 L6.3 0.8 L4.2 -0.9 L3.4 1 L1.1 -1.3 Z"
+          />
+        </g>
+      </g>
+    </g>
+
+    <!--
+      은행. 잎이 부채꼴이고 가지가 성기다.
+      소철·나무고사리가 다 방사형이라, 하나쯤은 가지가 갈라지는 것이
+      있어야 숲이 한 가지 문법으로만 되어 있지 않게 된다.
+    -->
+    <g v-if="stage.dinoland" class="ginkgos">
+      <g
+        v-for="g in scene.ginkgos"
+        :key="`gk${g.i}`"
+        class="plant"
+        :style="{
+          '--sway': `${g.sway}s`,
+          '--delay': `${g.delay}s`,
+          '--ox': `${g.x}px`,
+          '--oy': `${g.y}px`,
+        }"
+        :transform="`translate(${g.x} ${g.y}) scale(${g.sc})`"
+      >
+        <ellipse class="root" :fill="stage.near" cx="0" cy="0" rx="6" ry="1.8" opacity="0.35" />
+        <path
+          :stroke="stage.veg"
+          stroke-width="2.6"
+          fill="none"
+          stroke-linecap="round"
+          :d="`M0 0 v${-g.h} M0 ${-g.h * 0.55} l-8 -8 M0 ${-g.h * 0.75} l9 -7`"
+        />
+        <g :fill="stage.veg2" :stroke="stage.ink" stroke-width="0.6">
+          <path :transform="`translate(-9 ${-g.h * 0.55 - 8})`" d="M0 0 q-6 -5 0 -9 q6 4 0 9 z" />
+          <path :transform="`translate(10 ${-g.h * 0.75 - 7})`" d="M0 0 q-6 -5 0 -9 q6 4 0 9 z" />
+          <path :transform="`translate(0 ${-g.h})`" d="M0 0 q-7 -5 0 -10 q7 5 0 10 z" />
+        </g>
+      </g>
+    </g>
+
+    <g v-if="stage.dinoland" class="cycads">
+      <g
+        v-for="c in scene.cycads"
+        :key="`cy${c.i}`"
+        class="cycad"
+        :style="{
+          '--sway': `${c.sway}s`,
+          '--delay': `${c.delay}s`,
+          '--ox': `${c.x}px`,
+          '--oy': `${c.y}px`,
+        }"
+        :transform="`translate(${c.x} ${c.y}) scale(${c.sc})`"
+      >
+        <!--
+          줄기. 야자보다 짧고 굵다. 소철은 키가 크지 않다.
+
+          그런데 전에는 줄기가 아예 보이지 않았다. 잎이 46° 씩 돌면서
+          최대 ±161° 까지, 그러니까 바로 아래쪽까지 뻗어서 제 줄기를
+          덮었기 때문이다. 남는 것은 땅에 박힌 바람개비 하나다.
+          잎을 위로 올려 줄기를 드러낸다.
+        -->
+        <path
+          :stroke="stage.veg"
+          stroke-width="5.2"
+          fill="none"
+          stroke-linecap="round"
+          d="M0 0 v-10"
+        />
+        <!--
+          잎. 나무고사리와 같은 짜임 — 위쪽 반원에 펴고 왼쪽은 뒤집는다.
+          바깥 잎은 수평보다 25° 아래에서 멈춘다. 그보다 내리면 다시
+          줄기를 덮는다.
+
+          다만 날은 매끈하게 둔다. 소철 잎은 뻣뻣한 가죽질이라
+          고사리처럼 잘게 갈라지지 않는다. 배치는 같고 날이 다르다 —
+          두 종이 갈리는 자리가 여기다.
+        -->
+        <path
+          v-for="k in c.fronds"
+          :key="`fr${k}`"
+          :fill="stage.veg2"
+          :stroke="stage.ink"
+          stroke-width="0.6"
+          :transform="`translate(0 -11) ${k < (c.fronds + 1) / 2 ? 'scale(-1 1) ' : ''}rotate(${-90 + (Math.abs(k - (c.fronds + 1) / 2) * 230) / (c.fronds - 1)})`"
+          d="M0 0 C7 -5 14 -3 20 6 C13 1 6 0 0 3 Z"
+        />
+      </g>
+    </g>
+
     <!--
       다른 공룡들.
+
+      나무고사리 · 은행 · 소철 뒤가 아니라 앞에 세운다. 뒤에 두었더니
+      나무고사리 줄기가 진초록 공룡의 얼굴을 정확히 세로로 갈랐다.
+      멀리 있는 것이 가까운 것에 가리는 것은 깊이지만, 가는 줄기 하나가
+      얼굴 한가운데를 지나는 것은 깊이가 아니라 사고다.
+      대신 앞의 낮은 것들 — 속새 · 관목 · 바닥고사리 — 보다는 뒤에 남는다.
 
       식물을 아무리 여러 종 심어도 숲은 숲일 뿐이라, 이 판이 공룡 판이라는
       말은 공룡이 해야 한다. 실루엣이 서로 확실히 다른 셋을 세운다.
@@ -1446,102 +1663,6 @@ const ridges = computed(() => {
             </template>
           </g>
         </g>
-      </g>
-    </g>
-
-    <g v-if="stage.dinoland" class="treeferns">
-      <g
-        v-for="t in scene.treeferns"
-        :key="`tf${t.i}`"
-        class="plant"
-        :style="{
-          '--sway': `${t.sway}s`,
-          '--delay': `${t.delay}s`,
-          '--ox': `${t.x}px`,
-          '--oy': `${t.y}px`,
-        }"
-        :transform="`translate(${t.x} ${t.y}) scale(${t.sc})`"
-      >
-        <ellipse class="root" :fill="stage.near" cx="0" cy="0" rx="7" ry="2" opacity="0.35" />
-        <path
-          :stroke="stage.veg"
-          stroke-width="3.4"
-          fill="none"
-          stroke-linecap="round"
-          :d="`M0 0 q-2 ${-t.h * 0.5} 0 ${-t.h}`"
-        />
-        <g :transform="`translate(0 ${-t.h})`">
-          <path
-            v-for="k in t.fronds"
-            :key="`tfr${k}`"
-            :fill="stage.veg2"
-            :stroke="stage.ink"
-            stroke-width="0.7"
-            :transform="`rotate(${(k - (t.fronds + 1) / 2) * 30})`"
-            d="M0 0 C8 -4 17 -2 24 6 C15 0 7 -1 0 3 Z"
-          />
-        </g>
-      </g>
-    </g>
-
-    <!--
-      은행. 잎이 부채꼴이고 가지가 성기다.
-      소철·나무고사리가 다 방사형이라, 하나쯤은 가지가 갈라지는 것이
-      있어야 숲이 한 가지 문법으로만 되어 있지 않게 된다.
-    -->
-    <g v-if="stage.dinoland" class="ginkgos">
-      <g
-        v-for="g in scene.ginkgos"
-        :key="`gk${g.i}`"
-        class="plant"
-        :style="{
-          '--sway': `${g.sway}s`,
-          '--delay': `${g.delay}s`,
-          '--ox': `${g.x}px`,
-          '--oy': `${g.y}px`,
-        }"
-        :transform="`translate(${g.x} ${g.y}) scale(${g.sc})`"
-      >
-        <ellipse class="root" :fill="stage.near" cx="0" cy="0" rx="6" ry="1.8" opacity="0.35" />
-        <path
-          :stroke="stage.veg"
-          stroke-width="2.6"
-          fill="none"
-          stroke-linecap="round"
-          :d="`M0 0 v${-g.h} M0 ${-g.h * 0.55} l-8 -8 M0 ${-g.h * 0.75} l9 -7`"
-        />
-        <g :fill="stage.veg2" :stroke="stage.ink" stroke-width="0.6">
-          <path :transform="`translate(-9 ${-g.h * 0.55 - 8})`" d="M0 0 q-6 -5 0 -9 q6 4 0 9 z" />
-          <path :transform="`translate(10 ${-g.h * 0.75 - 7})`" d="M0 0 q-6 -5 0 -9 q6 4 0 9 z" />
-          <path :transform="`translate(0 ${-g.h})`" d="M0 0 q-7 -5 0 -10 q7 5 0 10 z" />
-        </g>
-      </g>
-    </g>
-
-    <g v-if="stage.dinoland" class="cycads">
-      <g
-        v-for="c in scene.cycads"
-        :key="`cy${c.i}`"
-        class="cycad"
-        :style="{
-          '--sway': `${c.sway}s`,
-          '--delay': `${c.delay}s`,
-          '--ox': `${c.x}px`,
-          '--oy': `${c.y}px`,
-        }"
-        :transform="`translate(${c.x} ${c.y}) scale(${c.sc})`"
-      >
-        <!-- 줄기. 야자보다 짧고 굵다. 소철은 키가 크지 않다 -->
-        <path :stroke="stage.veg" stroke-width="4.2" stroke-linecap="round" d="M0 0 v-11" />
-        <path
-          v-for="k in c.fronds"
-          :key="`fr${k}`"
-          :fill="stage.veg2"
-          :stroke="stage.ink"
-          stroke-width="0.6"
-          :transform="`rotate(${(k - (c.fronds + 1) / 2) * 46} 0 -12)`"
-          d="M0 -12 C7 -17 14 -15 20 -6 C13 -11 6 -12 0 -9 Z"
-        />
       </g>
     </g>
 
@@ -2223,11 +2344,50 @@ const ridges = computed(() => {
                     />
                   </g>
                 </g>
-                <!-- 등의 골판. 이 판의 보색이 여기서 한 번 더 나온다 -->
-                <g class="plates" :fill="stage.veg2" :stroke="stage.accent" stroke-width="2">
-                  <path d="M-18 -58 l6 -16 l9 14 z" />
-                  <path d="M2 -64 l6 -17 l9 15 z" />
-                  <path d="M22 -64 l5 -15 l9 13 z" />
+                <!--
+                  등의 골판. 이 판의 보색이 여기서 한 번 더 나온다.
+
+                  전에는 세 판이 등에서 떠 있었다. 밑변을 등선이 아니라
+                  서로 비슷한 높이에 나란히 두었기 때문이다. 등은 가운데가
+                  가장 높고(x 0 에서 y -63.5) 어깨로 가며 낮아지는데
+                  (x 16 에서 -61, x 24 에서 -58), 밑변은 셋 다 -58~-64 였다.
+                  그래서 뒤판은 몸에 파묻히고 앞의 두 판은 등 위로 네댓씩
+                  떠서, 등에서 자란 골판이 아니라 등 위 허공에 붙여 놓은
+                  뿔 세 개가 됐다. 마지막 판은 등의 오른쪽 끝(x 24)마저
+                  넘어가 목 위에 얹혀 있었다.
+
+                  밑변을 등의 곡선에 앉힌다. 직선으로 자르면 등이 굽은 만큼
+                  한쪽은 파묻히고 한쪽은 뜨므로, 밑변도 등과 같은 곡선으로
+                  긋고 그 선을 등선보다 0.8 아래, 즉 몸 안쪽에 둔다.
+                  겹친 만큼이 edge 겹에서 몸과 한 덩이로 뭉친다.
+
+                  오른쪽은 x 16 에서 멈춘다. 그보다 앞은 목이 지나가는
+                  자리라, 판을 세우면 목 위에 겹쳐 얹힌다.
+                  가운데가 가장 크다. 셋이 같은 크기면 톱니가 되고,
+                  가운데가 솟아야 등을 따라 자란 것으로 보인다.
+                -->
+                <g class="plates" :fill="stage.veg2">
+                  <path d="M-24 -55.1 L-17 -70 L-13 -60.2 Q-18.5 -58.5 -24 -55.1 Z" />
+                  <path d="M-9 -61.3 L-2 -79 L2 -62.7 Q-3.5 -62.7 -9 -61.3 Z" />
+                  <path d="M6 -62.6 L12 -73 L16 -60.7 Q11 -62.2 6 -62.6 Z" />
+                </g>
+                <!--
+                  시안선은 드러난 두 변에만 긋는다.
+                  삼각형을 통째로 두르면 밑변의 선이 등을 가로질러서,
+                  등에서 자란 판이 아니라 등에 얹어 붙인 조각으로 보인다.
+                  판이 등에 닿는 자리에는 선이 없어야 한다.
+                -->
+                <g
+                  class="plateline"
+                  fill="none"
+                  :stroke="stage.accent"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M-24 -55.1 L-17 -70 L-13 -60.2" />
+                  <path d="M-9 -61.3 L-2 -79 L2 -62.7" />
+                  <path d="M6 -62.6 L12 -73 L16 -60.7" />
                 </g>
               </g>
             </g>
@@ -2287,13 +2447,33 @@ const ridges = computed(() => {
                   화면에서는 2px 도 안 됐고, 코와 입은 아예 없었다.
                   머리가 있는데 얼굴이 없으니 초록 덩어리로 보였다.
 
-                  머리(x 16~30) 안에서 최대한 키운다. 어미보다 눈이 크고
-                  얼굴에서 차지하는 자리가 넓어야 아기로 보인다.
+                  키워도(흰자 3.6) 화면에서는 여전히 눈이 없었다. 재어 보니
+                  흰자 지름이 6px, 그 안의 동공이 3px, 남는 흰 테는 1px 였다.
+                  1px 짜리 흰 테는 안티에일리어싱에 먹혀서 초록 몸에 섞이고,
+                  남는 것은 초록 위의 흐린 점 하나다. 어미의 눈이 보이는 건
+                  같은 짜임이 12px 로 그려지기 때문이지 짜임이 좋아서가 아니다.
+
+                  흰자 · 동공 · 반짝임 세 겹을 5px 안에 넣는 것이 애초에
+                  무리였다. 그래서 겹을 버리고 점 하나로 찍는다.
+                  초록 몸 위의 잉크색 원 하나는 4px 에서도 확실히 읽힌다.
+                  작은 것에는 구조가 아니라 대비가 필요하다.
+
+                  어미는 12px 라 흰자와 동공을 그대로 둔다. 짜임이 달라도
+                  둘 다 '눈이 있는 얼굴' 로 읽히면 같은 종으로 보인다.
                 -->
                 <g class="face">
-                  <circle fill="#ffffff" cx="23.2" cy="-19.4" r="3.6" />
-                  <circle :fill="stage.ink" cx="24.2" cy="-19" r="1.9" />
-                  <circle fill="#ffffff" cx="25" cy="-20.2" r="0.7" />
+                  <circle :fill="stage.ink" cx="23.6" cy="-19.6" r="2.8" />
+                  <!--
+                    안광. 검은 점만 있으면 눈이 아니라 구멍이다.
+                    점 안쪽 위에 흰 점을 하나 얹으면 그제야 젖은 눈이 된다.
+
+                    크기는 눈의 절반 가까이 준다(2.8 대 1.25). 처음에 0.9 로
+                    넣었더니 화면에서 0.8px, 즉 한 픽셀도 안 되어 아예
+                    없는 것과 같았다. 작은 것에 얹는 점은 '비율로 작게' 가
+                    아니라 '화면에서 두 픽셀은 되게' 로 정해야 한다.
+                    눈이 4~5px 인 이상 안광이 눈의 절반이어도 크지 않다.
+                  -->
+                  <circle fill="#ffffff" cx="24.55" cy="-20.55" r="1.25" />
                   <!-- 코. 주둥이 끝 안쪽 -->
                   <circle :fill="stage.ink" cx="29.2" cy="-18.4" r="0.85" />
                   <!-- 입 -->
@@ -3211,11 +3391,18 @@ const ridges = computed(() => {
   animation: peg var(--step) ease-in-out calc(var(--step) / -2) infinite;
 }
 
-/* 토성은 아주 느리게 기운다. 아이콘이 살아 있다는 표시만 */
+/*
+ * 토성은 아주 느리게 기운다. 아이콘이 살아 있다는 표시만.
+ *
+ * 기울기와 자리는 따로 움직인다. rotate 와 translate 는 각각 독립된
+ * 속성이라 애니메이션 둘을 겹쳐도 서로를 덮어쓰지 않는다.
+ */
 .saturn {
   transform-box: view-box;
   transform-origin: 742px 52px;
-  animation: tilt 14s ease-in-out infinite;
+  animation:
+    tilt 14s ease-in-out infinite,
+    ufo 45s cubic-bezier(0.7, 0, 0.25, 1) infinite;
 }
 @keyframes tilt {
   0%,
@@ -3224,6 +3411,71 @@ const ridges = computed(() => {
   }
   50% {
     rotate: 3deg;
+  }
+}
+
+/*
+ * 가끔 자리를 옮긴다.
+ *
+ * 한 바퀴 45초를 셋으로 나눠, 13초쯤 가만히 있다가 한 번 움직인다.
+ * 처음에는 40초 중 28초를 통째로 세워 두고 마지막에 몰아서 세 번
+ * 움직이게 했는데, 첫 움직임까지 28초를 기다려야 해서 판을 보는
+ * 동안 한 번도 안 움직이는 일이 생겼다. 가끔이란 '보다 보면 나오는'
+ * 것이지 '기다려야 나오는' 것이 아니다.
+ *
+ * 옮기기 전에 먼저 희미해지고 옮긴 뒤에 다시 짙어진다. 짙은 채로
+ * 미끄러지면 날아가는 물체가 되지만, 사라졌다 저기서 나타나면
+ * 그건 다른 것이 된다. 한 번의 이동은 0.6초 — 그보다 느리면
+ * 이동이 보이고, 이 속도부터 슉 하고 건너뛴 것으로 보인다.
+ *
+ * 자리는 셋뿐이고 마지막에는 제자리로 돌아온다. 계속 떠돌면
+ * 하늘 한구석의 아이콘이 아니라 화면을 가로지르는 것이 된다.
+ * 왼쪽 위로만 다닌다 — 오른쪽 아래는 서명이 쓰는 자리다.
+ */
+@keyframes ufo {
+  0%,
+  29% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  30.5% {
+    translate: 0 0;
+    opacity: 0.12;
+  }
+  31.8% {
+    translate: -34px 7px;
+    opacity: 0.12;
+  }
+  33%,
+  62% {
+    translate: -34px 7px;
+    opacity: 1;
+  }
+  63.5% {
+    translate: -34px 7px;
+    opacity: 0.12;
+  }
+  64.8% {
+    translate: -14px -13px;
+    opacity: 0.12;
+  }
+  66%,
+  95% {
+    translate: -14px -13px;
+    opacity: 1;
+  }
+  96.5% {
+    translate: -14px -13px;
+    opacity: 0.12;
+  }
+  97.8% {
+    translate: 0 0;
+    opacity: 0.12;
+  }
+  99%,
+  100% {
+    translate: 0 0;
+    opacity: 1;
   }
 }
 
@@ -3484,7 +3736,9 @@ const ridges = computed(() => {
   .mist,
   .bloom,
   .grass path,
-  .motes circle {
+  .motes circle,
+  /* 튀는 움직임이라 여기서 가장 먼저 꺼야 하는 것 */
+  .saturn {
     animation: none;
   }
   .motes circle {
