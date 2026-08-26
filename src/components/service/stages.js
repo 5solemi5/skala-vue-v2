@@ -314,14 +314,20 @@ const EDITIONS = [
     trees: 0,
     grass: 0,
     flowers: 0,
-    rays: 1,
+    /*
+     * 빛줄기는 끈다. 구름 사이로 내리는 빛인데 이 판에는 화산 연기가
+     * 하늘을 맡고 있어서, 둘이 겹치면 무엇이 연기이고 무엇이 빛인지
+     * 알 수 없는 뿌연 판이 됐다.
+     */
+    rays: 0,
     motes: 'pollen',
     // 공룡 판에만 있는 겹
     volcanoes: 2,
     cycads: 5,
     ferns: 16,
     eggs: 1,
-    hatchlings: 3,
+    // 둘은 어미를 따라가고, 하나만 둥지 곁에 남는다
+    hatchlings: 1,
     pterosaurs: 3,
     saturn: 1,
     no: '002',

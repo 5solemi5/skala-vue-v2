@@ -314,6 +314,21 @@ const scene = computed(() => {
     h: pick(48, 78),
     dur: pick(16, 26),
     delay: pick(-20, 0),
+    /*
+     * 터지는 주기. 아주 길다.
+     * 한 바퀴의 96% 는 아무 일도 없고 연기만 오른다. 자주 터지면
+     * 놀랍지 않을뿐더러, 이 판이 조용히 지나가는 배경이 아니게 된다.
+     * 둘이 같이 터지지 않도록 주기와 시작을 어긋뜨린다.
+     */
+    blastDur: pick(34, 52),
+    blastDelay: pick(-48, 0),
+    // 튀어 오르는 용암 방울. 각도와 세기를 미리 정해 둔다
+    lava: Array.from({ length: 7 }, () => ({
+      dx: pick(-26, 26),
+      dy: pick(-34, -16),
+      r: pick(1.4, 3),
+      d: pick(0, 0.28),
+    })),
   }))
 
   // 소철. 굵은 줄기에 잎이 부챗살처럼 퍼진다
@@ -1084,8 +1099,8 @@ const ridges = computed(() => {
           :fill="stage.veg2"
           :stroke="stage.ink"
           stroke-width="0.6"
-          :transform="`rotate(${(k - (c.fronds + 1) / 2) * 30} 0 -12)`"
-          d="M0 -14 q-5 -6 -3.4 -15 q1.6 3 3.4 6 q1.8 -3 3.4 -6 q1.6 9 -3.4 15 z"
+          :transform="`rotate(${(k - (c.fronds + 1) / 2) * 46} 0 -12)`"
+          d="M0 -12 C7 -17 14 -15 20 -6 C13 -11 6 -12 0 -9 Z"
         />
       </g>
     </g>
@@ -1542,24 +1557,65 @@ const ridges = computed(() => {
           :d="`M${v.x - v.w / 2} ${v.base} L${v.x - v.w * 0.16} ${v.base - v.h}
                q${v.w * 0.16} ${-6} ${v.w * 0.32} 0 L${v.x + v.w / 2} ${v.base} Z`"
         />
-        <!-- 분화구 안쪽. 시안 한 줄이 이 판의 보색이다 -->
-        <path
-          :stroke="stage.accent"
-          stroke-width="1.6"
-          fill="none"
-          stroke-linecap="round"
-          opacity="0.75"
-          :d="`M${v.x - v.w * 0.16} ${v.base - v.h} q${v.w * 0.16} ${-6} ${v.w * 0.32} 0`"
+        <!--
+          분화구.
+
+          두 번 고쳤다. 산 위에 시안 호를 그었더니 산에 얹힌 띠였고,
+          정상 폭만큼 넓은 그릇을 그렸더니 산 위에 접시를 올려 둔 꼴이었다.
+
+          분화구는 정상에 난 구멍이라 정상보다 훨씬 좁다.
+          좁게 파고 그 안이 달아오르게 한다.
+        -->
+        <ellipse :fill="stage.near" :cx="v.x" :cy="v.base - v.h + 1" :rx="v.w * 0.115" ry="3.4" />
+        <ellipse
+          class="ember"
+          :fill="stage.accent"
+          :cx="v.x"
+          :cy="v.base - v.h + 1"
+          :rx="v.w * 0.075"
+          ry="2"
+          :style="{ '--dur': `${v.dur * 0.4}s`, '--delay': `${v.delay}s` }"
         />
-        <g
-          class="fume"
-          :style="{ '--dur': `${v.dur}s`, '--delay': `${v.delay}s` }"
-          :transform="`translate(${v.x} ${v.base - v.h - 4})`"
-        >
-          <circle :fill="stage.haze" cx="0" cy="0" r="7" opacity="0.55" />
-          <circle :fill="stage.haze" cx="5" cy="-11" r="9" opacity="0.42" />
-          <circle :fill="stage.haze" cx="-3" cy="-24" r="11" opacity="0.3" />
-          <circle :fill="stage.haze" cx="6" cy="-38" r="13" opacity="0.2" />
+
+        <!--
+          연기.
+
+          자리는 바깥 묶음이 잡고 움직임은 안쪽 묶음이 맡는다.
+          한 묶음에 둘 다 두었더니 CSS transform 이 SVG transform 속성을
+          덮어써서, 연기가 화산 꼭대기가 아니라 화폭 왼쪽 끝에 피어올랐다.
+        -->
+        <g :transform="`translate(${v.x} ${v.base - v.h - 4})`">
+          <g class="fume" :style="{ '--dur': `${v.dur}s`, '--delay': `${v.delay}s` }">
+            <circle :fill="stage.haze" cx="0" cy="0" r="7" opacity="0.75" />
+            <circle :fill="stage.haze" cx="5" cy="-11" r="9" opacity="0.6" />
+            <circle :fill="stage.haze" cx="-3" cy="-24" r="11" opacity="0.44" />
+            <circle :fill="stage.haze" cx="6" cy="-38" r="13" opacity="0.3" />
+          </g>
+
+          <!--
+            분출. 한 바퀴의 대부분은 아무 일도 없다.
+
+            터질 때는 세 가지가 한꺼번에 일어난다 —
+            분화구가 밝아지고, 용암이 튀어 오르고, 재가 크게 부푼다.
+            셋이 조금씩 어긋난 박자로 와야 터지는 것으로 보인다.
+            동시에 나타났다 사라지면 그건 깜빡임이다.
+          -->
+          <g class="blast" :style="{ '--dur': `${v.blastDur}s`, '--delay': `${v.blastDelay}s` }">
+            <g class="ash">
+              <circle :fill="stage.haze" cx="0" cy="-6" r="13" opacity="0.7" />
+              <circle :fill="stage.haze" cx="11" cy="-20" r="15" opacity="0.55" />
+              <circle :fill="stage.haze" cx="-9" cy="-34" r="17" opacity="0.4" />
+            </g>
+            <g class="lava" :fill="stage.accent">
+              <circle
+                v-for="(l, k) in v.lava"
+                :key="`lv${k}`"
+                :r="l.r"
+                :style="{ '--dx': `${l.dx}px`, '--dy': `${l.dy}px`, '--ld': l.d }"
+              />
+            </g>
+            <ellipse class="flare" :fill="stage.accent" cx="0" cy="2" :rx="v.w * 0.16" ry="4" />
+          </g>
         </g>
       </g>
     </g>
@@ -1606,69 +1662,117 @@ const ridges = computed(() => {
       </g>
 
       <!--
-        주인공 공룡.
+      ⑬'''''''''' 공룡 무리.
 
-        전에는 덩어리 하나에 점 하나였고, 모티프 자리(⑦)에 있었다.
-        그 자리는 하늘 다음이라 뒤에 오는 언덕과 지면이 몸통을 덮어서,
-        머리와 목만 하늘에 떠 있었다. 파라솔 때와 같은 실수다.
-        땅을 딛는 것은 땅을 다 그린 뒤에 세워야 한다.
+      큰 공룡 하나와 아기 둘이 함께 판을 가로질러 간다.
+      아주 느리다 — 판 하나 건너는 데 이 분 반이 걸린다.
+      빨리 가면 지나가는 것이 되고, 지나가는 것은 배경이 아니라 사건이다.
 
-        전에는 덩어리 하나에 점 하나였다. 참조한 표지의 공룡은 그런 게
-        아니라 만화체 캐릭터다 — 굵은 외곽선이 있고, 눈이 있고, 웃는다.
-        열세 장 중 유일하게 '귀여운' 표지라고 적힌 이유가 그것이다.
+      셋을 한 묶음으로 옮긴다. 따로 움직이면 앞서거니 뒤서거니 하다가
+      결국 흩어져서, 어미와 새끼가 아니라 우연히 같은 방향으로 가는
+      남남이 된다. 무리는 간격이 유지되어야 무리다.
 
-        그래서 여기서는 실루엣을 그리지 않고 얼굴을 그린다.
-        목이 길고 등에 골판이 서고 배가 밝은 초식 공룡 한 마리.
-        선은 stroke 로 두르지 않고 색을 채워 넣는다 — 굵은 선은
-        모티프 묶음이 물려주는 색과 싸우기 때문이다.
-      -->
-      <g
-        v-if="stage.dinoland"
-        class="bigdino"
-        transform="translate(0 18)"
-        :stroke="stage.ink"
-        stroke-width="2.6"
-      >
-        <!-- 꼬리. 몸에서 길게 빠져 바닥까지 닿는다 -->
-        <path :fill="stage.motifColor" d="M566 186 q-34 4 -52 -14 q26 -6 52 2 z" />
-        <!-- 뒷다리 -->
-        <path :fill="stage.veg" d="M590 176 q10 0 12 12 l-2 12 h-14 l2 -12 z" />
-        <!-- 몸 -->
-        <path
-          :fill="stage.motifColor"
-          d="M564 178 q-6 -28 20 -38 q22 -8 40 2 q14 8 14 22 q0 16 -18 20 q-30 6 -56 -6 z"
-        />
-        <!-- 앞다리 -->
-        <path :fill="stage.veg" d="M622 178 q9 0 11 11 l-2 11 h-13 l2 -11 z" />
-        <!-- 배. 등보다 밝다 -->
-        <path :fill="stage.veg2" d="M570 176 q26 10 54 4 q-24 10 -54 -4 z" />
-        <!-- 목과 머리 -->
-        <path
-          :fill="stage.motifColor"
-          d="M624 148 q6 -30 26 -44 q16 -11 30 -2 q12 8 8 22 q-4 13 -20 15 q-14 2 -20 14 z"
-        />
-        <path
-          :fill="stage.motifColor"
-          d="M654 104 q-4 -14 10 -20 q16 -6 26 4 q9 8 4 18 q-6 11 -20 11 q-16 0 -20 -13 z"
-        />
-        <!-- 등의 골판. 시안으로 두른다. 이 판의 보색이 여기서 한 번 더 나온다 -->
-        <g :fill="stage.veg2" :stroke="stage.accent" stroke-width="2">
-          <path d="M582 142 l6 -16 l9 14 z" />
-          <path d="M602 136 l6 -17 l9 15 z" />
-          <path d="M622 136 l5 -15 l9 13 z" />
+      땅을 다 그린 뒤에 세운다. 모티프 자리(⑦)에 두었더니 뒤에 오는
+      언덕과 지면이 몸통을 덮어 머리와 목만 하늘에 떠 있었다.
+    -->
+      <g v-if="stage.dinoland" class="herd">
+        <g class="pace">
+          <g transform="translate(0 216)">
+            <!--
+            어미. 목이 길고 등에 골판이 서고 배가 밝다.
+
+            참조한 표지의 공룡은 실루엣이 아니라 만화체 캐릭터다 —
+            굵은 외곽선이 있고, 눈이 있고, 웃는다.
+            열세 장 중 유일하게 '귀여운' 표지라고 적힌 이유가 그것이다.
+          -->
+            <g class="bigdino" :stroke="stage.ink" stroke-width="2.6">
+              <!-- 꼬리. 걸을 때 반대로 흔들려 균형을 잡는다 -->
+              <path
+                class="tail"
+                :fill="stage.motifColor"
+                d="M-30 -32 C-54 -32 -78 -22 -98 -6 C-74 -12 -50 -14 -30 -14 Z"
+              />
+              <path
+                class="leg back"
+                :fill="stage.veg"
+                d="M-16 -28 q12 0 14 14 l-1 16 h-16 l1 -16 z"
+              />
+              <path
+                :fill="stage.motifColor"
+                d="M-36 -22 q-6 -28 20 -38 q22 -8 40 2 q14 8 14 22 q0 16 -18 20 q-30 6 -56 -6 z"
+              />
+              <path
+                class="leg fore"
+                :fill="stage.veg2"
+                d="M18 -26 q12 0 13 13 l-1 15 h-15 l1 -15 z"
+              />
+              <path :fill="stage.veg2" d="M-30 -24 q26 10 54 4 q-24 10 -54 -4 z" />
+              <g class="neck">
+                <path
+                  :fill="stage.motifColor"
+                  d="M24 -52 q6 -30 26 -44 q16 -11 30 -2 q12 8 8 22 q-4 13 -20 15 q-14 2 -20 14 z"
+                />
+                <path
+                  :fill="stage.motifColor"
+                  d="M54 -96 q-4 -14 10 -20 q16 -6 26 4 q9 8 4 18 q-6 11 -20 11 q-16 0 -20 -13 z"
+                />
+                <circle :fill="stage.sky" :stroke="stage.ink" cx="72" cy="-92" r="7" />
+                <circle :fill="stage.ink" stroke="none" cx="74" cy="-92" r="3.4" />
+                <circle fill="#ffffff" stroke="none" cx="76" cy="-94" r="1.2" />
+                <path
+                  :stroke="stage.ink"
+                  stroke-width="2.2"
+                  fill="none"
+                  stroke-linecap="round"
+                  d="M86 -84 q-8 6 -16 2"
+                />
+                <circle :fill="stage.ink" stroke="none" cx="88" cy="-96" r="1.6" />
+              </g>
+              <!-- 등의 골판. 이 판의 보색이 여기서 한 번 더 나온다 -->
+              <g :fill="stage.veg2" :stroke="stage.accent" stroke-width="2">
+                <path d="M-18 -58 l6 -16 l9 14 z" />
+                <path d="M2 -64 l6 -17 l9 15 z" />
+                <path d="M22 -64 l5 -15 l9 13 z" />
+              </g>
+            </g>
+
+            <!-- 따라가는 아기 둘. 어미보다 반 박자 빠르게 종종거린다 -->
+            <g
+              v-for="t in [
+                { x: -104, y: 4, sc: 0.9, step: 0.5 },
+                { x: -150, y: 2, sc: 0.74, step: 0.42 },
+              ]"
+              :key="`tot${t.x}`"
+              class="tot"
+              :style="{ '--step': `${t.step}s` }"
+              :transform="`translate(${t.x} ${t.y}) scale(${t.sc})`"
+            >
+              <g class="legs" :stroke="stage.ink" stroke-width="1.6" stroke-linecap="round">
+                <path class="leg a" d="M-2 4 v4.4" />
+                <path class="leg b" d="M2.4 4 v4.4" />
+              </g>
+              <path
+                :fill="stage.motifColor"
+                :stroke="stage.ink"
+                stroke-width="1"
+                d="M-6 2 q-8 0 -12 -5 q7 -1 12 2 z"
+              />
+              <path
+                :fill="stage.motifColor"
+                :stroke="stage.ink"
+                stroke-width="1"
+                d="M-6.5 2 q-1.4 -8 5 -10.6 q2.6 -6.4 9 -5 q5 1.2 5 6.4 q4 1.4 4 5.2 q0 5 -8 5.2 q-10.4 1.2 -15 -1.2 z"
+              />
+              <path
+                :fill="stage.veg2"
+                :stroke="stage.ink"
+                stroke-width="0.7"
+                d="M-4.4 -5.4 l2 -3.8 l2 3.8 z M0.6 -8 l2 -3.8 l2 3.8 z"
+              />
+              <circle :fill="stage.ink" cx="9.6" cy="-6" r="1.1" />
+            </g>
+          </g>
         </g>
-        <!-- 얼굴 -->
-        <circle :fill="stage.sky" :stroke="stage.ink" cx="672" cy="108" r="7" />
-        <circle :fill="stage.ink" stroke="none" cx="674" cy="108" r="3.4" />
-        <circle fill="#ffffff" stroke="none" cx="676" cy="106" r="1.2" />
-        <path
-          :stroke="stage.ink"
-          stroke-width="2.2"
-          fill="none"
-          stroke-linecap="round"
-          d="M686 116 q-8 6 -16 2"
-        />
-        <circle :fill="stage.ink" stroke="none" cx="688" cy="104" r="1.6" />
       </g>
 
       <!--
@@ -2095,6 +2199,105 @@ const ridges = computed(() => {
 }
 
 /*
+ * 분화구가 달아오르는 것.
+ * 늘 조금씩 밝아졌다 사그라든다. 터지지 않는 동안에도 아래에서
+ * 무언가 끓고 있다는 표시라, 이게 있어야 산이 살아 있는 산이 된다.
+ */
+.ember {
+  animation: simmer var(--dur) ease-in-out var(--delay) infinite;
+}
+@keyframes simmer {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scaleY(0.7);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scaleY(1.15);
+  }
+}
+
+/*
+ * 분출.
+ *
+ * 한 바퀴의 90% 는 아무 일도 없다. 자주 터지면 놀랍지 않을뿐더러
+ * 이 판이 조용히 지나가는 배경이 아니게 된다.
+ *
+ * 터질 때는 세 가지가 조금씩 어긋난 박자로 온다 —
+ * 분화구가 번쩍하고, 용암이 튀어 오르고, 재가 크게 부푼다.
+ * 동시에 나타났다 사라지면 그건 터지는 게 아니라 깜빡임이다.
+ */
+.blast .flare {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: flare var(--dur) ease-out var(--delay) infinite;
+}
+.blast .lava circle {
+  opacity: 0;
+  animation: fling var(--dur) ease-out calc(var(--delay) + var(--ld) * 1s) infinite;
+}
+.blast .ash {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: ash var(--dur) ease-out var(--delay) infinite;
+}
+@keyframes flare {
+  0%,
+  90%,
+  100% {
+    opacity: 0;
+    transform: scaleY(0.4);
+  }
+  91.5% {
+    opacity: 0.95;
+    transform: scaleY(2.6);
+  }
+  94% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+@keyframes fling {
+  0%,
+  91%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  92% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.4), calc(var(--dy) * 0.7));
+  }
+  95% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy));
+  }
+  98% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 1.3), 10px);
+  }
+}
+@keyframes ash {
+  0%,
+  91%,
+  100% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.4);
+  }
+  93% {
+    opacity: 0.85;
+    transform: translateY(-4px) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-54px) scale(1.9);
+  }
+}
+
+/*
  * 익룡.
  * 갈매기보다 훨씬 느리게 난다. 날개가 길어서 한 번 젓는 데도 오래 걸린다.
  */
@@ -2172,6 +2375,124 @@ const ridges = computed(() => {
   }
   88% {
     rotate: 2deg;
+  }
+}
+
+/*
+ * 공룡 무리.
+ *
+ * 판 하나 건너는 데 이 분 반. 빨리 가면 지나가는 것이 되고,
+ * 지나가는 것은 배경이 아니라 사건이다.
+ * 끝까지 가면 반대쪽에서 다시 들어온다 — 한 무리가 계속 도는 셈인데,
+ * 이 분 반이면 같은 무리가 두 번 지나가는 걸 알아채기 어렵다.
+ */
+.herd .pace {
+  /*
+   * 음수 지연으로 중간부터 시작한다.
+   * 0 초부터 돌리면 무리가 화면 밖 왼쪽에서 출발해서, 판을 처음 열었을 때
+   * 이십 초 넘게 아무도 없는 벌판만 보인다.
+   */
+  animation: trek 150s linear -46s infinite;
+}
+@keyframes trek {
+  from {
+    transform: translateX(-190px);
+  }
+  to {
+    transform: translateX(990px);
+  }
+}
+
+/*
+ * 어미의 걸음.
+ *
+ * 다리 둘이 번갈아 앞뒤로 흔들리고, 그에 맞춰 몸이 아주 조금 오르내린다.
+ * 꼬리는 다리와 반대로 흔들린다 — 그래야 균형을 잡는 것으로 보인다.
+ * 목은 한 박자 늦게 따라온다. 큰 짐승은 목이 몸을 따라 흔들린다.
+ */
+.bigdino .leg {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.bigdino .leg.back {
+  animation: stride 2.4s ease-in-out infinite;
+}
+.bigdino .leg.fore {
+  animation: stride 2.4s ease-in-out -1.2s infinite;
+}
+.bigdino .tail {
+  transform-box: fill-box;
+  transform-origin: right center;
+  animation: tailsway 2.4s ease-in-out -1.2s infinite;
+}
+.bigdino .neck {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: neckbob 2.4s ease-in-out -0.6s infinite;
+}
+.bigdino {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: lumber 2.4s ease-in-out infinite;
+}
+@keyframes stride {
+  0%,
+  100% {
+    rotate: 13deg;
+  }
+  50% {
+    rotate: -13deg;
+  }
+}
+@keyframes tailsway {
+  0%,
+  100% {
+    rotate: -4deg;
+  }
+  50% {
+    rotate: 4deg;
+  }
+}
+@keyframes neckbob {
+  0%,
+  100% {
+    rotate: -1.6deg;
+  }
+  50% {
+    rotate: 1.6deg;
+  }
+}
+@keyframes lumber {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -2px;
+  }
+}
+
+/* 따라가는 아기. 어미보다 반 박자 빠르게 종종거린다 */
+.tot .leg {
+  transform-origin: top center;
+  transform-box: fill-box;
+}
+.tot .leg.a {
+  animation: peg var(--step) ease-in-out infinite;
+}
+.tot .leg.b {
+  animation: peg var(--step) ease-in-out calc(var(--step) / -2) infinite;
+}
+.tot {
+  animation: toddle calc(var(--step) * 2) ease-in-out infinite;
+}
+@keyframes toddle {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -1.2px;
   }
 }
 
