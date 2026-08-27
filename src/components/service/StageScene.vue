@@ -1,5 +1,5 @@
 <script setup>
-import { computed, useId } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 
 /*
  * 무대 한 장.
@@ -91,15 +91,26 @@ const scene = computed(() => {
     : []
 
   // 나무. 큰 것 하나에 작은 것들이 흩어진다
+  /*
+   * 나무가 서는 자리와 크기를 무대가 정할 수 있게 열어 둔다.
+   *
+   * 담장이 지나가는 판에서는 이 값이 그냥 두면 안 된다. 기본값은
+   * 담장 한가운데를 밑동으로 잡아서, 나무들이 담 위에 심긴 꼴이 된다.
+   */
+  const tb = s.treeBase ?? [178, 208]
+  // 나무를 판 전체에 고르게 흩지 않고 한쪽으로 모을 수 있게 열어 둔다
+  const tx = s.treeX ?? [40, 760]
   const trees = Array.from({ length: s.trees ?? 0 }, (_, i) => {
-    const big = i === 0
+    const big = s.treeBig || i === 0
     return {
       i,
-      x: pick(40, 760),
-      base: pick(178, 208),
+      x: pick(tx[0], tx[1]),
+      base: pick(tb[0], tb[1]),
       h: big ? pick(52, 66) : pick(22, 42),
       w: big ? pick(30, 40) : pick(14, 26),
       dark: r() > 0.55,
+      // 흰 벚나무. 벚꽃은 원래 분홍과 흰빛이 섞여 핀다
+      pale: r() > 0.52,
     }
   })
 
@@ -123,12 +134,43 @@ const scene = computed(() => {
           lean: pick(-9, 9),
           sway: pick(2.2, 4.4),
           delay: pick(0, 3),
+          /*
+           * 새순.
+           *
+           * 마른 풀 사이로 갓 올라온 연둣빛. 넷에 하나꼴로 섞었더니
+           * 초록 줄이 여기저기 서서 봄이 아니라 잔디밭이 됐다.
+           * 열에 하나면 눈에 띄지 않으면서 판에 생기가 돈다.
+           */
+          fresh: r() > 0.89,
         }
       })
     : []
 
+  /*
+   * 들꽃.
+   *
+   * 앞쪽 띠에만 둔다. 멀리까지 흩으면 색점이 판 전체에 박혀서
+   * 은은한 게 아니라 얼룩덜룩해진다. 사람들이 걷는 길가에만
+   * 몇 송이 있으면 그걸로 봄이 든다.
+   */
+  const wildMix = s.wildMix ?? []
+  const wild = wildMix.length
+    ? Array.from({ length: s.wild ?? 0 }, (_, i) => ({
+        i,
+        x: pick(-10, 810),
+        y: pick(206, 250),
+        r: pick(1.3, 2.3),
+        c: wildMix[Math.floor(r() * wildMix.length) % wildMix.length],
+        // 옅기도 제각각으로. 다 같은 진하기면 찍어 놓은 점이 된다
+        o: pick(0.45, 0.85),
+        sway: pick(3, 5.4),
+      }))
+    : []
+
   // 떠다니는 것 — 홀씨·눈·별·먼지·물보라
   const motes = Array.from({ length: s.motes === 'none' ? 0 : 16 }, () => ({
+    // 갓 진 꽃잎은 희고 시든 것이 분홍이다. 섞여 날려야 꽃잎으로 보인다
+    pale: r() > 0.55,
     x: pick(0, 800),
     y: pick(30, 230),
     r: pick(0.9, 2.4),
@@ -658,6 +700,7 @@ const scene = computed(() => {
     trees,
     flowers,
     grass,
+    wild,
     motes,
     fish,
     jellies,
@@ -678,6 +721,762 @@ const ridge = (base, amp, seed) => {
   }
   return `${d} L800 260 L0 260Z`
 }
+/*
+ * 나비.
+ *
+ * ── 왜 다시 짰나 ────────────────────────────────
+ * 한동안 좌표를 손으로 찍고 CSS 키프레임으로 움직였다. 옆모습으로도
+ * 그려 보고 비스듬한 각도로도 그려 봤지만 어느 쪽도 나비가 아니었다.
+ *
+ * 문제는 그림이 아니라 방식이었다. 나비의 생김은 각도에 따라 달라지는데,
+ * 한 각도로 그려 놓고 눌렀다 폈다 하면 그건 나비의 모습이 아니라
+ * 나비 그림을 눌렀다 편 것이다.
+ *
+ * 그래서 삼차원 자세를 매 프레임 계산해서 그린다. 날개가 몸통을 축으로
+ * 얼마나 들렸는지(θ), 우리가 그 몸통을 어느 각도에서 보고 있는지(φ),
+ * 이 둘로 두 날개의 보이는 폭이 정해진다.
+ *
+ *   먼 쪽 날개 폭  =  cos(θ − φ)
+ *   가까운 날개 폭 = −cos(θ + φ)
+ *
+ * 이 한 줄이 지금까지 따로 만들려던 것들을 한꺼번에 준다 —
+ * 위에서 본 모습, 옆에서 본 모습, 그 사이의 모든 각도, 날갯짓,
+ * 그리고 날개가 몸 위로 모이는 순간까지.
+ *
+ * 각도가 90도를 넘으면 가까운 날개가 먼 날개와 같은 쪽으로 넘어간다.
+ * 옆에서 본 나비가 날개를 세우면 두 장이 몸 위에 겹치는데, 그 모습이
+ * 계산에서 저절로 나온다. 따로 그릴 필요가 없다.
+ *
+ * ── 그리는 자세 ────────────────────────────────
+ * 머리를 위로 둔 위에서 본 모습으로 그린다. 앞날개는 오른쪽 위로 뻗고
+ * 뒷날개가 그 뒤를 받친다. 왼쪽 날개는 같은 그림을 x 로 뒤집어 쓴다.
+ *
+ * 판에 세울 때는 가는 방향으로 통째로 돌린다. 위에서 본 그림을 방향에
+ * 맞춰 돌리는 것이라, 왼쪽으로 날든 오른쪽으로 날든 따로 뒤집을 일이 없다.
+ */
+
+/*
+ * 앞날개.
+ * 앞가장자리는 활처럼 바깥으로 휘고, 끝(apex)은 모난다.
+ * 바깥가장자리는 안쪽으로 살짝 패어 들어온다 — 이 오목함이
+ * 앞날개를 잎사귀가 아닌 날개로 만든다.
+ */
+const BF_FORE =
+  'M1.5-6C7-10 14-14.5 19.5-17.2L21-15.2C19.8-10.5 16.8-4.5 13.2 .8 9 2 5 2.2 1.5 1.5Z'
+/*
+ * 뒷날개.
+ * 앞날개보다 짧고 둥글다. 바깥가장자리가 볼록해서 부채처럼 퍼진다.
+ * 안쪽 절반은 앞날개에 가려지는데, 그 겹침이 날개를 두 장으로 읽게 한다.
+ */
+const BF_HIND =
+  'M1.2-1C5 0 9.5 .8 12.2 2.8 14 4.4 13 8.4 9.6 11 7.6 12.6 5 12.4 3.6 10.4 2.2 8.4 1.4 4 1.2-1Z'
+/*
+ * 날개 끝 무늬.
+ * 흰나비의 앞날개 끝은 짙다. 무늬 하나가 흰 덩어리를 날개로 바꾼다 —
+ * 눈이 끝을 찾을 수 있게 되어서 방향이 생긴다.
+ */
+const BF_TIP = 'M19.5-17.2L21-15.2C20-12.4 18.5-9.4 16.8-6.4 15.2-9 15.4-13.2 17.4-15.8Z'
+/*
+ * 몸통.
+ *
+ * 날개에 비해 작아야 한다. 나비와 다른 곤충을 가르는 건 무늬도 색도
+ * 아니고 이 비율이다 — 날개 폭이 몸 길이의 세 배쯤 된다.
+ * 몸을 조금만 키워도 나방이 되고, 조금 더 키우면 파리가 된다.
+ */
+const BF_BODY =
+  'M-1.3-6C-1.7-3-1.6-1-1.3 1.4-1 4.2-.6 6 0 7.4 .6 6 1 4.2 1.3 1.4 1.6-1 1.7-3 1.3-6Z'
+
+/*
+ * 세 마리, 세 갈래.
+ *
+ * 자리를 시각마다 적어 두고 사이를 곡선으로 잇는다. 마디를 직선으로
+ * 이으면 매듭마다 꺾여서 종이비행기가 된다.
+ *
+ * 깊이는 적지 않는다. 판의 원근에서 끌어다 쓴다 — 아래 주석 참고.
+ *
+ * 같은 자리를 두 번 적어 두면 그동안 머문다. 그게 꽃에 앉아 있는 때다.
+ * 도는 시간을 서로 배수가 아니게 두고(38 · 45 · 33초) 시작도 어긋내
+ * 두었다. 셋이 같은 때에 멀어지면 판 가운데로 몰린다.
+ */
+const BF_DEFS = [
+  {
+    id: 'a',
+    sc: 0.72,
+    beat: 0.34,
+    seed: 0.7,
+    loop: 38,
+    offset: 0,
+    // 앉은 동안 가끔 날개를 천천히 여닫는 때
+    pulses: [2.4, 4.1, 35.2, 36.8],
+    // 왼쪽 벚꽃에 앉았다가 들판 쪽으로 나갔다 온다
+    keys: [
+      [0, 168, 58],
+      [5, 168, 58],
+      [6.2, 188, 68],
+      [8.5, 236, 88],
+      [11, 288, 108],
+      [13.5, 340, 126],
+      [16.5, 392, 144],
+      [19, 428, 156],
+      [21.5, 400, 148],
+      [24, 348, 132],
+      [26.5, 292, 114],
+      [29, 238, 92],
+      [31, 198, 72],
+      [32.6, 172, 62],
+      [33.6, 168, 58],
+      [38, 168, 58],
+    ],
+  },
+  {
+    id: 'b',
+    sc: 0.64,
+    beat: 0.3,
+    seed: 2.9,
+    loop: 45,
+    offset: 23,
+    pulses: [1.8, 3.4, 41.6, 43.4],
+    // 오른쪽 벚꽃에서 왼쪽 들판으로
+    keys: [
+      [0, 612, 34],
+      [4.5, 612, 34],
+      [5.8, 594, 44],
+      [8.5, 546, 66],
+      [11.5, 490, 90],
+      [14.5, 432, 112],
+      [18, 372, 134],
+      [21, 330, 150],
+      [24, 366, 138],
+      [27, 422, 118],
+      [30, 478, 98],
+      [33, 532, 76],
+      [36, 576, 56],
+      [38.5, 606, 40],
+      [39.6, 612, 34],
+      [45, 612, 34],
+    ],
+  },
+  {
+    id: 'c',
+    sc: 0.78,
+    beat: 0.38,
+    seed: 5.1,
+    loop: 33,
+    offset: 12,
+    pulses: [1.2, 2.6, 31.8],
+    // 길가 풀에 앉았다가 들판 위로 올라갔다 온다
+    keys: [
+      [0, 330, 214],
+      [3.5, 330, 214],
+      [4.6, 346, 200],
+      [6.6, 380, 176],
+      [8.8, 356, 156],
+      [11.2, 404, 140],
+      [13.8, 456, 128],
+      [16.5, 508, 122],
+      [18.5, 540, 126],
+      [21, 502, 140],
+      [23.5, 452, 158],
+      [26, 404, 178],
+      [28.4, 362, 198],
+      [30.4, 338, 210],
+      [31.4, 330, 214],
+      [33, 330, 214],
+    ],
+  },
+]
+
+/*
+ * 깊이는 판의 원근에서 가져온다.
+ *
+ * 나비만의 깊이 값을 따로 적어 뒀더니 배경과 어긋났다. 화면 아래로
+ * 내려가면서 오히려 작아지는 일이 생겼는데, 아래쪽은 앞쪽 풀밭이라
+ * 가까워야 하는 자리다.
+ *
+ * 이 판의 원근은 단순하다. 지평선 언저리(y 168, 담장이 지나가고 산이
+ * 맞닿는 자리)가 가장 멀고, 거기서 위로 올라갈수록 — 하늘 쪽으로,
+ * 늘어진 가지 쪽으로 — 가까워지고, 아래로 내려갈수록 — 앞쪽 풀밭으로 —
+ * 역시 가까워진다.
+ *
+ * 위아래로 벌어지는 폭이 다르다. 하늘은 넓게 열려 있고 앞쪽 땅은
+ * 좁은 띠라서, 아래쪽이 훨씬 가파르게 가까워진다.
+ */
+const HORIZON = 168
+const SKY_SPAN = 145
+const GROUND_SPAN = 62
+const depthAt = (y) => {
+  const away = y < HORIZON ? (HORIZON - y) / SKY_SPAN : (y - HORIZON) / GROUND_SPAN
+  return 1 - Math.min(away, 1)
+}
+
+// 네 점을 지나는 부드러운 곡선. 마디에서 꺾이지 않는다
+const spline = (a, b, c, d, t) => {
+  const t2 = t * t
+  const t3 = t2 * t
+  return (
+    0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3)
+  )
+}
+const trackAt = (keys, t) => {
+  let i = 0
+  while (i < keys.length - 2 && keys[i + 1][0] <= t) i++
+  const k1 = keys[i]
+  const k2 = keys[i + 1]
+  const k0 = keys[Math.max(i - 1, 0)]
+  const k3 = keys[Math.min(i + 2, keys.length - 1)]
+  const u = Math.min(Math.max((t - k1[0]) / Math.max(k2[0] - k1[0], 1e-4), 0), 1)
+  return [spline(k0[1], k1[1], k2[1], k3[1], u), spline(k0[2], k1[2], k2[2], k3[2], u)]
+}
+
+const smoothStep = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+
+/*
+ * 날갯짓 한 번.
+ *
+ * 내리치는 쪽이 올리는 쪽보다 빠르다. 힘을 주는 것이 내리치는 동작이라
+ * 그렇고, 좌우를 같은 속도로 두면 박자가 시계추처럼 들린다.
+ *
+ * 위로 74도까지 올라가 몸 위에서 거의 만나고, 아래로는 30도까지만
+ * 내려간다. 위아래를 대칭으로 두면 파닥이는 게 아니라 젓는 것이 된다.
+ */
+const beatAngle = (u) => {
+  const UP = 74
+  const DOWN = -30
+  if (u < 0.42) return UP + (DOWN - UP) * smoothStep(u / 0.42)
+  return DOWN + (UP - DOWN) * smoothStep((u - 0.42) / 0.58)
+}
+
+/*
+ * 얼마나 세게, 얼마나 자주 치는가.
+ *
+ * 나비는 쉬지 않고 파닥이지 않는다. 몇 번 치고 잠깐 활공하고 또 몇 번
+ * 친다. 일정한 박자로 계속 치면 그건 나비가 아니라 벌이다.
+ *
+ * 그래서 사인 하나 안에 사인을 넣어 주기를 흐트러뜨린다. 두 주기가
+ * 서로 나누어떨어지지 않아 같은 마디가 되풀이되지 않는다.
+ * 이 값이 날갯짓의 빠르기와 폭을 함께 정하므로, 잦아들 때는
+ * 느려지면서 얕아진다 — 실제로 그렇게 잦아든다.
+ */
+const beatDrive = (t, seed) => {
+  const a = Math.sin(t * 0.62 + seed)
+  const b = Math.sin(t * 1.43 + a * 2.2 + seed * 1.7)
+  return 0.5 + 0.5 * b
+}
+// 활공 자세. 날개를 조금 든 채로 흐른다
+const GLIDE = 34
+
+/*
+ * 앉아 있을 때의 날개.
+ *
+ * 반쯤 든 채로 가만히 있다가, 가끔 한 번씩 천천히 여닫는다.
+ * 앉은 나비가 쉬지 않고 날갯짓을 하면 앉은 것이 아니라 뜨려는 것이다.
+ */
+const perchAngle = (t, def) => {
+  let dip = 0
+  for (const p of def.pulses) {
+    const d = Math.abs(t - p)
+    if (d < 1.1) dip = Math.max(dip, Math.cos(((d / 1.1) * Math.PI) / 2))
+  }
+  return 54 - 34 * dip
+}
+
+/*
+ * 비행기와 비행운.
+ *
+ * ── 꼬리부터 사라진다 ──────────────────────────
+ * 비행운은 그어지는 선이 아니라 흩어지는 구름이다. 비행기가 지나간
+ * 자리에 생겨서, 오래된 쪽 — 그러니까 꼬리 끝 — 부터 옅어지며 풀린다.
+ * 선을 긋고 지우는 것으로는 이 결이 안 나온다.
+ *
+ * ── 두 줄을 겹친다 ─────────────────────────────
+ * 갓 생긴 자리는 가늘고 또렷하고, 시간이 지난 자리는 퍼지면서 흐려진다.
+ * 그래서 가는 선 하나와 굵고 옅은 선 하나를 겹친다.
+ *   가는 선  꼬리에서 0, 비행기 쪽으로 갈수록 진해진다
+ *   굵은 선  꼬리도 0, 비행기 쪽도 0, 가운데가 가장 진하다
+ * 굵은 선의 가운데가 '퍼지는 중' 인 자리다.
+ *
+ * 그라디언트의 두 끝을 매 프레임 꼬리와 머리에 맞춘다. 조각을 여럿
+ * 그려 각각 옅기를 주는 방법도 있지만, 그러면 매 프레임 수십 개를
+ * 고쳐야 한다. 이쪽은 좌표 넷이면 된다.
+ *
+ * 색은 구름색(bloom)이 아니라 순백이다. 이 판의 구름색은 봄볕에 맞춰
+ * 크림빛으로 옮겨 두었는데, 그 색으로 그었더니 옅은 하늘에 묻혀
+ * 있는지 없는지 알 수 없었다. 비행운은 높은 데서 언 얼음이라
+ * 구름보다 희고, 흴수록 하늘과 갈린다.
+ *
+ * 색은 구름색(bloom)이 아니라 순백이다. 이 판의 구름색은 봄볕에 맞춰
+ * 크림빛으로 옮겨 두었는데, 그 색으로 그었더니 옅은 하늘에 묻혀
+ * 있는지 없는지 알 수 없었다. 비행운은 높은 데서 언 얼음이라
+ * 구름보다 희고, 흴수록 하늘과 갈린다.
+ *
+ * ── 평화롭게 ───────────────────────────────────
+ * 판을 가로지르는 데 46초, 한 바퀴는 74초다. 비행기가 나간 뒤에도
+ * 꼬리는 한동안 남아 마저 풀리고, 그다음 잠깐 빈 하늘이 있다.
+ * 서둘러 지나가면 평화로운 게 아니라 바쁜 것이 된다.
+ */
+/*
+ * 항로.
+ *
+ * 곧은 선분으로 뒀더니 자로 그은 것처럼 보였다. 높이 나는 비행기가
+ * 곧게 가는 건 맞지만, 판을 가로지르는 동안 우리가 보는 건 고개를
+ * 돌려 가며 따라가는 호(弧)다. 양 끝이 낮고 가운데가 높다.
+ * 판 길이의 2% 도 안 되는 휨이지만 그 2% 가 도면과 하늘을 가른다.
+ */
+const PLANE_FROM = [-70, 58]
+const PLANE_TO = [870, 46]
+const PLANE_BOW = 20
+const PLANE_CROSS = 46
+const PLANE_CYCLE = 74
+// 비행운이 덮는 길이. 판 길이의 절반쯤이라야 하늘을 가로지른 것으로 보인다
+const PLANE_TRAIL = 0.48
+
+const PLANE_MID = (() => {
+  const mx = (PLANE_FROM[0] + PLANE_TO[0]) / 2
+  const my = (PLANE_FROM[1] + PLANE_TO[1]) / 2
+  const dx = PLANE_TO[0] - PLANE_FROM[0]
+  const dy = PLANE_TO[1] - PLANE_FROM[1]
+  const len = Math.hypot(dx, dy)
+  // 진행 방향의 왼쪽(위쪽)으로 띄운다
+  return [mx + (dy / len) * PLANE_BOW * 2, my - (dx / len) * PLANE_BOW * 2]
+})()
+// 이차 곡선 위의 한 점
+const planeAt = (u) => {
+  const v = 1 - u
+  return [
+    v * v * PLANE_FROM[0] + 2 * v * u * PLANE_MID[0] + u * u * PLANE_TO[0],
+    v * v * PLANE_FROM[1] + 2 * v * u * PLANE_MID[1] + u * u * PLANE_TO[1],
+  ]
+}
+// 그 점에서의 진행 방향
+const planeDir = (u) => {
+  const v = 1 - u
+  return [
+    2 * (v * (PLANE_MID[0] - PLANE_FROM[0]) + u * (PLANE_TO[0] - PLANE_MID[0])),
+    2 * (v * (PLANE_MID[1] - PLANE_FROM[1]) + u * (PLANE_TO[1] - PLANE_MID[1])),
+  ]
+}
+
+/*
+ * 꼬리의 처짐.
+ *
+ * 비행운은 생긴 자리에 가만히 있지 않는다. 바람에 밀리고 무거워져
+ * 천천히 가라앉는다. 갓 생긴 쪽은 아직 항로에 붙어 있고 꼬리로 갈수록
+ * 내려앉아서, 비행운은 늘 항로보다 조금 휘어 있다.
+ *
+ * 곧게 그은 비행운이 도면처럼 보이던 건 이 처짐이 없어서였다.
+ * 초당 0.55 씩 내려앉으므로 스물두 초 묵은 꼬리 끝은 열둘 남짓 처진다.
+ */
+const TRAIL_SAG = 0.55
+const sagAt = (age) => [age * TRAIL_SAG * 0.16, age * TRAIL_SAG]
+
+const planeState = ref({
+  on: false,
+  fly: false,
+  op: 0,
+  rot: 0,
+  d: '',
+  px: 0,
+  py: 0,
+  tx: 0,
+  ty: 0,
+  hx: 0,
+  hy: 0,
+})
+
+const stepPlane = (time) => {
+  const d = (time % PLANE_CYCLE) / PLANE_CROSS
+  const head = Math.min(d, 1)
+  const tail = Math.max(d - PLANE_TRAIL, 0)
+  if (tail >= head)
+    return { on: false, fly: false, op: 0, d: '', px: 0, py: 0, rot: 0, tx: 0, ty: 0, hx: 0, hy: 0 }
+  const [rawTx, rawTy] = planeAt(tail)
+  const [hx, hy] = planeAt(head)
+  // 꼬리와 가운데는 나이만큼 내려앉아 있다
+  const [tsx, tsy] = sagAt((d - tail) * PLANE_CROSS)
+  const tx = rawTx + tsx
+  const ty = rawTy + tsy
+  const midU = (tail + head) / 2
+  const [rawMx, rawMy] = planeAt(midU)
+  const [msx, msy] = sagAt((d - midU) * PLANE_CROSS)
+  const mx = rawMx + msx
+  const my = rawMy + msy
+  // 꼬리 · 가운데 · 머리 를 지나는 이차 곡선
+  const cx = 2 * mx - (tx + hx) / 2
+  const cy = 2 * my - (ty + hy) / 2
+  const [dirX, dirY] = planeDir(head)
+  return {
+    on: true,
+    // 비행기는 판을 다 건너면 나간다. 꼬리만 남아 마저 풀린다
+    fly: d <= 1,
+    // 나간 뒤에는 남은 꼬리가 통째로 옅어진다
+    op: Math.min(Math.max((1 + PLANE_TRAIL - d) / PLANE_TRAIL, 0), 1),
+    d: `M${tx.toFixed(1)} ${ty.toFixed(1)}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${hx.toFixed(1)} ${hy.toFixed(1)}`,
+    px: hx,
+    py: hy,
+    // 호를 그리므로 향한 각도가 지나가는 동안 조금씩 바뀐다
+    rot: (Math.atan2(dirY, dirX) * 180) / Math.PI,
+    tx,
+    ty,
+    hx,
+    hy,
+  }
+}
+
+/*
+ * 꽃잎비.
+ *
+ * ── 바람은 하나다 ──────────────────────────────
+ * 처음엔 꽃잎마다 제 사인파를 하나씩 줬다. 그랬더니 판 전체가 한
+ * 박자로 좌우로 왔다 갔다 했다 — 저마다 다르게 움직이라고 준 값인데
+ * 결과는 정확히 반대였다. 다 같은 꼴의 운동을 하고 있어서다.
+ *
+ * 실제로는 반대다. 바람은 하나고, 꽃잎은 저마다 제 자리에서 그 바람을
+ * 받는다. 그래서 가까이 있는 것끼리는 함께 쏠리고 멀리 있는 것은 따로
+ * 논다. 그 '함께 쏠림' 이 바람으로 읽히는 것이지, 제각각 흔들리는 건
+ * 바람이 아니라 그냥 소란이다.
+ *
+ * 그래서 자리와 시각의 함수인 바람 하나를 두고, 꽃잎은 그 자리의 값을
+ * 받아 간다. 공간 주기를 오백 남짓으로 잡았으므로 이백 쯤 떨어진
+ * 꽃잎끼리는 반대로 쏠린다.
+ *
+ * ── 흘러가는 게 아니라 밀린다 ──────────────────
+ * 바람 값을 자리에 바로 더하면 바람이 멎을 때 꽃잎도 즉시 멎는다.
+ * 꽃잎에는 무게가 있어서 밀리고 나서도 한동안 간다. 그래서 바람을
+ * 속도에 실어 주고 속도가 바람을 뒤따라가게 둔다(항력).
+ * 이 한 단계가 '떠다닌다' 와 '끌려간다' 를 가른다.
+ *
+ * ── 꽃잎은 가지에서 나온다 ─────────────────────
+ * 판 위쪽에 고르게 뿌렸더니 하늘 전체에서 비가 내렸다. 꽃잎이 나오는
+ * 데는 꽃이 달린 자리뿐이다. 그래서 좌우 가지의 송이에서만 떨어뜨리고,
+ * 퍼지는 건 바람에 맡긴다 — 뿌린 대로가 아니라 불린 대로 퍼진다.
+ *
+ * ── 가끔 ───────────────────────────────────────
+ * 돌풍을 두 사인의 합으로 만들되 주기를 서로 나누어떨어지지 않게 둔다.
+ * 문턱을 넘을 때만 몰아치므로, 같은 간격으로 반복되지 않는다.
+ */
+const PETAL_PATH = 'M0 3.6C-3 1.9-3.6-1.8-1.3-3.5L0-2.4 1.3-3.5C3.6-1.8 3 1.9 0 3.6Z'
+
+// 꽃이 달린 자리. 꽃잎은 여기서만 진다
+const PETAL_SOURCES = [
+  [786, 10],
+  [726, 20],
+  [672, 30],
+  [620, 36],
+  [566, 42],
+  [508, 52],
+  [456, 64],
+  [416, 74],
+  [700, 52],
+  [600, 58],
+  [496, 74],
+  [384, 92],
+  [10, 20],
+  [66, 30],
+  [116, 44],
+  [156, 60],
+  [128, 78],
+]
+
+/*
+ * 봄바람.
+ *
+ * 공간에서 세 겹, 시간에서 세 박자. 서로 나누어떨어지지 않아
+ * 같은 무늬가 되풀이되지 않는다.
+ */
+const windAt = (x, y, t) => [
+  0.92 * Math.sin(x * 0.0135 + t * 0.55) +
+    0.58 * Math.sin(y * 0.021 - t * 0.83 + 1.7) +
+    0.44 * Math.sin((x + y * 1.7) * 0.008 + t * 0.31 + 4.1),
+  0.48 * Math.sin(y * 0.017 + t * 0.62 + 2.3) + 0.32 * Math.cos(x * 0.011 - t * 0.44),
+]
+
+/*
+ * 돌풍.
+ *
+ * 문턱을 높게 잡는다. 낮게 뒀더니 열에 넷은 몰아치는 중이어서
+ * 잦아드는 때가 없었다 — 잦아드는 때가 있어야 몰아치는 때가 산다.
+ * 두 주기(약 60초 · 101초)가 나누어떨어지지 않아 같은 간격으로
+ * 되풀이되지 않는다. 주기를 두 배로 길게 뒀더니 한 번 보려면 이 분을
+ * 기다려야 해서, 마당을 잠깐 열어 본 사람은 평생 못 보는 비가 됐다.
+ */
+const gustAt = (t) => {
+  const v = 0.6 * Math.sin(t * 0.105) + 0.55 * Math.sin(t * 0.062 + 1.9)
+  return Math.min(Math.max((v - 0.54) / 0.5, 0), 1)
+}
+
+/*
+ * 한 번에 스물두 장까지.
+ *
+ * 마흔을 띄웠더니 꽃잎비가 아니라 눈보라였고, 스물여섯도 많았다.
+ * 열여섯은 성글어서 비로 읽히지 않았다. 그 사이가 스물둘이다.
+ *
+ * 몽환은 빽빽함에서 오지 않는다 — 성글어야 한 장 한 장이 보이고,
+ * 보여야 떠다니는 것으로 읽힌다. 빽빽하면 개별 꽃잎은 사라지고
+ * 흰 알갱이 무리만 남는다.
+ */
+const PETAL_MAX = 22
+const petalState = ref([])
+let petalPool = []
+let petalTint = []
+let petalSeq = 0
+let petalDebt = 0
+
+const hexRgb = (h) => [
+  parseInt(h.slice(1, 3), 16),
+  parseInt(h.slice(3, 5), 16),
+  parseInt(h.slice(5, 7), 16),
+]
+
+const spawnPetal = (rr) => {
+  const [sx, sy] = PETAL_SOURCES[Math.floor(rr() * PETAL_SOURCES.length) % PETAL_SOURCES.length]
+  const z = rr()
+  return {
+    id: `p${petalSeq++}`,
+    x: sx + (rr() - 0.5) * 26,
+    y: sy + (rr() - 0.5) * 16,
+    vx: (rr() - 0.5) * 6,
+    vy: 4 + rr() * 6,
+    z,
+    // 먼 꽃잎은 천천히 내려앉고 가까운 것은 빨리 지나간다
+    term: 16 + (1 - z) * 22,
+    drag: 1.4 + rr() * 1.8,
+    sc: 0.66 + 0.92 * (1 - z),
+    spin: rr() * 360,
+    spinRate: (rr() - 0.5) * 70,
+    tumble: rr() * 6.283,
+    tumbleRate: 1.2 + rr() * 2.6,
+    c: petalTint[Math.floor(rr() * petalTint.length) % petalTint.length],
+    age: 0,
+  }
+}
+
+/*
+ * 후광.
+ *
+ * 꽃잎이 정면으로 돌아서는 찰나에 햇빛을 되쏜다. 그 순간만 흰빛이
+ * 번지는데, 이 번짐 하나가 판을 또렷한 그림에서 몽환으로 옮긴다.
+ * 볕이 있는 쪽(오른쪽 위)에 가까울수록 세게 받는다.
+ */
+const SUN_AT = [592, 54]
+const petalHalo = (x, y, glint) => {
+  const d = Math.hypot(x - SUN_AT[0], y - SUN_AT[1])
+  /*
+   * 세게 뒀더니 꽃잎이 지나갈 때마다 판이 번쩍였다.
+   * 후광은 '있는 줄 모르게 있어야' 몽환이고, 눈에 띄면 반딧불이다.
+   */
+  return glint * (0.42 + 0.58 * Math.max(0, 1 - d / 520)) * 0.6
+}
+
+const stepPetals = (t, dt) => {
+  if (!petalTint.length) return []
+  const rr = petalRng
+  const gust = gustAt(t)
+
+  // 몰아칠 때 많이, 잠잠할 때 이따금 한 장
+  /*
+   * 잠잠할 때는 여덟 초에 한 장쯤. 몰아칠 때만 우수수.
+   * 바닥값을 높여 뒀더니 쉬는 사이가 사라져서 늘 내리는 비가 됐다.
+   */
+  petalDebt += dt * (0.16 + gust * 6.5)
+  while (petalDebt >= 1 && petalPool.length < PETAL_MAX) {
+    petalDebt -= 1
+    petalPool.push(spawnPetal(rr))
+  }
+  if (petalDebt > 4) petalDebt = 4
+
+  const out = []
+  const next = []
+  for (const p of petalPool) {
+    p.age += dt
+    const [wx, wy] = windAt(p.x, p.y, t)
+    /*
+     * 먼 꽃잎은 바람을 덜 받는 것처럼 보인다. 실제로 덜 받아서가 아니라
+     * 같은 거리를 움직여도 화면에서는 적게 움직여서다.
+     */
+    const reach = 1 - 0.42 * p.z
+    const airX = wx * (14 + 34 * gust) * reach - gust * 26 * reach
+    const airY = wy * (6 + 11 * gust)
+    p.vx += (airX - p.vx) * Math.min(dt * p.drag, 1)
+    p.vy += (airY + p.term - p.vy) * Math.min(dt * p.drag, 1)
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+
+    // 바람이 셀수록 빨리 뒤집힌다. 뒤집힘이 곧 바람의 세기다
+    const stir = Math.abs(wx) * 1.5 + gust * 1.2
+    p.tumble += (p.tumbleRate + stir) * dt
+    p.spin += (p.spinRate + (wx * 26 - 0) * (1 - p.z)) * dt
+
+    if (p.y > 278 || p.x < -90 || p.x > 890) continue
+    next.push(p)
+
+    const kx = Math.cos(p.tumble)
+    const face = Math.abs(kx)
+    const glint = Math.pow(Math.max(kx, 0), 9)
+    const [cr, cg, cb] = p.c
+    // 정면으로 돌아설 때 희어지는 정도. 끝까지 하얘지면 번쩍임이 튄다
+    const lift = glint * 0.58
+    const fadeIn = Math.min(p.age / 0.7, 1)
+    const fadeOut = Math.min(Math.max((278 - p.y) / 34, 0), 1)
+    out.push({
+      id: p.id,
+      x: p.x,
+      y: p.y,
+      rot: p.spin,
+      kx,
+      sc: p.sc,
+      c: `rgb(${Math.round(cr + (255 - cr) * lift)} ${Math.round(cg + (255 - cg) * lift)} ${Math.round(cb + (255 - cb) * lift)})`,
+      o: fadeIn * fadeOut * (0.95 - 0.3 * p.z) * (0.4 + 0.6 * face),
+      h: petalHalo(p.x, p.y, glint) * fadeIn * fadeOut * (1 - 0.4 * p.z),
+      hr: (5 + 7 * glint) * p.sc,
+    })
+  }
+  petalPool = next
+  return out
+}
+
+const petalRng = rng(7331)
+
+const RAD = Math.PI / 180
+const bfState = ref(
+  BF_DEFS.map((d) => ({ id: d.id, x: 0, y: 0, sc: 0, op: 0, rot: 0, kFar: 1, kNear: -1 })),
+)
+const bfHeading = BF_DEFS.map(() => 0)
+const bfPhase = BF_DEFS.map(() => 0)
+
+/*
+ * 한 프레임.
+ *
+ * 자리에서 속도를 얻고, 속도에서 세 가지를 얻는다 —
+ * 어느 쪽을 향하는지(돌림), 얼마나 나는 중인지(날갯짓의 세기),
+ * 그리고 우리가 어느 각도에서 보고 있는지(φ).
+ *
+ * φ 는 판을 가로지를수록 커진다. 옆으로 지나갈 때는 옆에서 보게 되고,
+ * 멀어지거나 오르내릴 때는 위에서 보게 된다 — 실제로 그렇다.
+ */
+const stepButterfly = (def, idx, time, frame) => {
+  const t = (time + def.offset) % def.loop
+  const [x, y] = trackAt(def.keys, t)
+  const dt = 0.05
+  const [x2, y2] = trackAt(def.keys, Math.min(t + dt, def.loop))
+  const vx = (x2 - x) / dt
+  const vy = (y2 - y) / dt
+  const z = depthAt(y)
+  const vz = ((depthAt(y2) - z) / dt) * 320
+
+  const speed = Math.hypot(vx, vy)
+  // 나는 정도. 멈추면 0 이 되어 날갯짓이 저절로 잦아든다
+  const w = Math.min(speed / 26, 1)
+
+  if (speed > 1.5) bfHeading[idx] = Math.atan2(vy, vx)
+
+  const across = Math.abs(vx)
+  const other = Math.hypot(vy, vz)
+  /*
+   * 완전히 옆으로 두지 않는다.
+   *
+   * 계산대로면 판을 가로지를 때 φ 가 80도까지 올라가 나비가 실 한 오라기가
+   * 된다. 옳긴 한데, 실제로 옆으로 나는 나비를 정확히 옆에서 보는 일은
+   * 없다 — 나비는 늘 조금 기울어 있고 우리 눈높이도 조금 위에 있다.
+   * 그래서 폭의 바닥을 4할로 둔다.
+   */
+  let span = 0.42 + 0.58 * (other / (across + other + 1e-3))
+  span = 0.86 + w * (span - 0.86)
+  const phi = Math.acos(Math.min(Math.max(span, 0), 1))
+
+  /*
+   * 날갯짓.
+   *
+   * 세기(drive)가 빠르기와 폭을 함께 정한다. 위상은 누적한다 —
+   * 빠르기가 매 프레임 달라지므로 시각을 나눠서는 이어지지 않고,
+   * 나눠 쓰면 빠르기가 바뀔 때마다 날개가 튄다.
+   */
+  /*
+   * 세기를 한 번 더 눌러 둔다(제곱).
+   * 그냥 쓰면 절반쯤은 세게 치고 있는 셈인데, 나비는 대부분의 시간을
+   * 활공으로 보내고 가끔 몇 번 친다. 눌러 두면 치는 때가 드물어진다.
+   */
+  const drive = Math.pow(beatDrive(time, def.seed), 1.5)
+  bfPhase[idx] = (bfPhase[idx] + (frame * (0.34 + 1.0 * drive)) / def.beat) % 1
+  const swing = 0.16 + 0.84 * drive
+  const flap = GLIDE + swing * (beatAngle(bfPhase[idx]) - GLIDE)
+  const rest = perchAngle(t, def)
+  const th = (rest + w * (flap - rest)) * RAD
+
+  /*
+   * 오르내림.
+   *
+   * 나비는 내리칠 때 떠오르고 사이에 가라앉는다. 그래서 앞으로 곧게
+   * 가지 않고 물결을 그리며 간다 — 나비를 나비로 보이게 하는 데
+   * 날개의 생김만큼이나 이 오르내림이 크다.
+   *
+   * 날갯짓 위상에서 바로 가져오므로 날개와 몸이 어긋나지 않는다.
+   */
+  const bob = Math.cos(bfPhase[idx] * 2 * Math.PI) * 2.6 * swing * w
+
+  return {
+    id: def.id,
+    x,
+    y: y + bob,
+    /*
+     * 멀어져도 너무 작아지지는 않게.
+     *
+     * 원근을 곧이곧대로 넣었더니 멀리 간 나비가 판에서 사라졌다.
+     * 800 폭 화폭에서 나비는 원래 작아서, 여기서 절반으로 더 줄면
+     * 있는지 없는지 알 수 없는 점이 된다.
+     * 깊이는 남기되 기울기를 눕힌다.
+     */
+    sc: def.sc / (1 + 0.85 * z),
+    op: 1 - 0.24 * z,
+    rot: bfHeading[idx] / RAD + 90,
+    kFar: Math.cos(th - phi),
+    kNear: -Math.cos(th + phi),
+  }
+}
+
+let bfRaf = 0
+let bfStart = 0
+let bfLast = 0
+const bfRun = (now) => {
+  if (!bfStart) {
+    bfStart = now
+    bfLast = now
+  }
+  const time = (now - bfStart) / 1000
+  const frame = Math.min(Math.max((now - bfLast) / 1000, 0), 0.06)
+  bfLast = now
+  if (props.stage.butterflies)
+    bfState.value = BF_DEFS.map((d, i) => stepButterfly(d, i, time, frame))
+  if (props.stage.plane) planeState.value = stepPlane(time)
+  if (props.stage.petalRain) petalState.value = stepPetals(time, frame)
+  bfRaf = requestAnimationFrame(bfRun)
+}
+const bfStop = () => {
+  if (bfRaf) cancelAnimationFrame(bfRaf)
+  bfRaf = 0
+}
+/*
+ * 접혀 있을 때는 재우고, 펼치면 깨운다.
+ * 접힌 띠에서는 나비가 보이지 않는데 계속 계산하고 있을 이유가 없다.
+ */
+const bfSync = () => {
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (props.stage.petalRain) petalTint = props.stage.petalRain.map(hexRgb)
+  const wants = props.stage.butterflies || props.stage.plane || props.stage.petalRain
+  if (props.open && wants && !still) {
+    if (!bfRaf) bfRaf = requestAnimationFrame(bfRun)
+  } else {
+    bfStop()
+    if (still) {
+      bfState.value = BF_DEFS.map((d, i) => stepButterfly(d, i, 1.2, 0))
+      planeState.value = stepPlane(26)
+      if (props.stage.petalRain) petalState.value = stepPetals(3, 0.016)
+    }
+  }
+}
+watch(() => [props.open, props.stage.butterflies, props.stage.plane, props.stage.petalRain], bfSync)
+onMounted(bfSync)
+onUnmounted(bfStop)
+
 const ridges = computed(() => {
   const s = props.stage
   const n = s.mountains ?? 0
@@ -741,7 +1540,7 @@ const ridges = computed(() => {
       </linearGradient>
       <radialGradient :id="`vig-${uid}`" cx="0.5" cy="0.45" r="0.78">
         <stop offset="55%" stop-color="#000" stop-opacity="0" />
-        <stop offset="100%" stop-color="#000" stop-opacity="0.34" />
+        <stop offset="100%" stop-color="#000" stop-opacity="0.42" />
       </radialGradient>
       <filter :id="`soft-${uid}`" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="7" />
@@ -750,6 +1549,50 @@ const ridges = computed(() => {
         <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" />
         <feColorMatrix type="saturate" values="0" />
       </filter>
+      <!--
+        비행운의 두 결.
+        두 끝을 매 프레임 꼬리와 머리에 맞추므로 좌표가 함께 움직인다.
+      -->
+      <linearGradient
+        :id="`trail-${uid}`"
+        gradientUnits="userSpaceOnUse"
+        :x1="planeState.tx"
+        :y1="planeState.ty"
+        :x2="planeState.hx"
+        :y2="planeState.hy"
+      >
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+        <stop offset="46%" stop-color="#ffffff" stop-opacity="0.5" />
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
+      </linearGradient>
+      <linearGradient
+        :id="`trailw-${uid}`"
+        gradientUnits="userSpaceOnUse"
+        :x1="planeState.tx"
+        :y1="planeState.ty"
+        :x2="planeState.hx"
+        :y2="planeState.hy"
+      >
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+        <stop offset="54%" stop-color="#ffffff" stop-opacity="0.42" />
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+      </linearGradient>
+      <!--
+        꽃잎의 후광.
+        가운데가 밝고 가장자리로 번져 사라진다.
+      -->
+      <radialGradient :id="`petalglow-${uid}`">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+        <stop offset="42%" stop-color="#ffffff" stop-opacity="0.34" />
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+      </radialGradient>
+
+      <!-- 봄 아지랑이. 지평선 언저리에만 걸리고 위아래로 사라진다 -->
+      <linearGradient :id="`veil-${uid}`" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+        <stop offset="52%" stop-color="#ffffff" stop-opacity="0.24" />
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+      </linearGradient>
       <clipPath :id="`box-${uid}`"><rect x="0" y="0" width="800" height="260" /></clipPath>
     </defs>
 
@@ -759,6 +1602,65 @@ const ridges = computed(() => {
 
       <!-- ② 빛무리 -->
       <rect x="0" y="0" width="800" height="260" :fill="`url(#glow-${uid})`" />
+
+      <!--
+        ②' 봄볕.
+
+        빛무리만으로는 '밝은 하늘' 이지 '볕' 이 아니다. 흐린 원 하나를
+        늘어진 가지 뒤에 두면 꽃 사이로 빛이 새어 드는 것이 되고,
+        그제야 판이 따뜻해진다. 윤곽을 살리면 해가 되어 버려서
+        흐린 채로 둔다 — 이건 해가 아니라 볕이다.
+      -->
+      <circle
+        v-if="stage.sun"
+        cx="592"
+        cy="54"
+        r="42"
+        :fill="stage.bloom"
+        opacity="0.6"
+        :filter="`url(#soft-${uid})`"
+      />
+
+      <!--
+        ②'' 비행기와 비행운.
+
+        구름보다 뒤에 둔다. 높이 나는 비행기는 구름 위에 있지만,
+        여기서 구름은 낮게 뜬 뭉게구름이라 비행기가 그 뒤로 지나가는 게 맞다.
+      -->
+      <g v-if="stage.plane && planeState.on" class="contrail" :opacity="planeState.op">
+        <path
+          :d="planeState.d"
+          :stroke="`url(#trailw-${uid})`"
+          stroke-width="7"
+          fill="none"
+          stroke-linecap="round"
+        />
+        <path
+          :d="planeState.d"
+          :stroke="`url(#trail-${uid})`"
+          stroke-width="2.2"
+          fill="none"
+          stroke-linecap="round"
+        />
+        <!--
+          비행기.
+
+          이 높이에서는 점 하나다. 그래도 날개와 꼬리를 뒀다 —
+          점만 있으면 비행운 끝에 먼지가 붙은 것으로 보인다.
+        -->
+        <g
+          v-if="planeState.fly"
+          :transform="`translate(${planeState.px} ${planeState.py}) rotate(${planeState.rot})`"
+          :fill="stage.accent"
+          opacity="0.6"
+        >
+          <path d="M-5.4 0 2.4-.85 6.2 0 2.4 .85Z" />
+          <path d="M.6 0-3.4-4.6-1.1-4.8 2.3-.5Z" />
+          <path d="M.6 0-3.4 4.6-1.1 4.8 2.3 .5Z" />
+          <path d="M-4.6 0-6.6-2.4-5.5-2.5-3.6-.3Z" />
+          <path d="M-4.6 0-6.6 2.4-5.5 2.5-3.6 .3Z" />
+        </g>
+      </g>
 
       <!-- ③ 빛줄기. 구름 사이로 내리는 빛 -->
       <g v-if="stage.rays" class="rays" :fill="stage.bloom">
@@ -1016,6 +1918,120 @@ const ridges = computed(() => {
         <path d="M596 118c-20-10-38-8-42 6c-4 12 14 20 42 6z" />
         <path d="M604 118c20-10 38-8 42 6c4 12-14 20-42 6z" />
       </g>
+
+      <!--
+        설날 — 하늘 높이 뜬 방패연.
+
+        가운데 방구멍이 이 연을 방패연으로 만든다. 처음엔 뚫지 않고
+        붉은 원만 얹었는데 그건 연이 아니라 과녁이었다 —
+        구멍은 무늬가 아니라 바람이 지나가라고 뚫은 자리다.
+
+        얼레줄은 왼쪽 아래로 길게 뺀다. 줄이 없으면 연이 아니라
+        하늘에 떠 있는 종이다.
+      -->
+      <g v-else-if="stage.motif === 'kite'">
+        <!-- 기울인 만큼 오른쪽 위로 밀려서 판 끝에 붙었다. 그만큼 되돌린다 -->
+        <g transform="translate(-30 10) rotate(-14 600 84)">
+          <path d="M558 44h84v78h-84z" :fill="stage.motifColor" />
+          <path d="M558 44h84v13h-84z" :fill="stage.accent" />
+          <g fill="none" :stroke="stage.accent" stroke-width="1.5" opacity="0.75">
+            <path d="M558 44l84 78M642 44l-84 78M600 44v78M558 83h84" />
+          </g>
+          <circle
+            cx="600"
+            cy="83"
+            r="16"
+            :fill="stage.sky"
+            :stroke="stage.accent"
+            stroke-width="2.4"
+          />
+          <path d="M558 44h84v78h-84z" fill="none" :stroke="stage.accent" stroke-width="2.4" />
+        </g>
+        <path
+          d="M538 141q-54 30 -122 42"
+          fill="none"
+          :stroke="stage.veg"
+          stroke-width="1.2"
+          opacity="0.7"
+        />
+      </g>
+
+      <!--
+        불꽃놀이 — 터지는 불 하나.
+
+        갈래 끝마다 점을 찍는다. 선만 그으면 바퀴살이 되는데
+        불꽃은 선이 아니라 흩어지는 불티라 끝이 맺혀 있어야 한다.
+
+        작은 것 둘을 뒤에 더 두되 흐리게 둔다. 같은 밝기로 두었더니
+        셋 다 주인공이 되어 어디를 볼지 알 수 없는 판이 됐다.
+      -->
+      <g v-else-if="stage.motif === 'firework'">
+        <g
+          v-for="(b, i) in [
+            { x: 0, y: 0, s: 1, o: 1 },
+            { x: -152, y: -20, s: 0.4, o: 0.5 },
+            { x: 118, y: 6, s: 0.3, o: 0.4 },
+          ]"
+          :key="`fw${i}`"
+          :opacity="b.o"
+          :transform="`translate(${b.x} ${b.y}) translate(600 88) scale(${b.s}) translate(-600 -88)`"
+        >
+          <path
+            d="M614 88L656 88M612 95L648 116M607 100L628 136M600 102L600 144M593 100L572 136M588 95L552 116M586 88L544 88M588 81L552 60M593 76L572 40M600 74L600 32M607 76L628 40M612 81L648 60"
+            fill="none"
+            :stroke="stage.motifColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+          />
+          <g :fill="stage.accent">
+            <circle
+              v-for="(t, k) in [
+                [656, 88],
+                [648, 116],
+                [628, 136],
+                [600, 144],
+                [572, 136],
+                [552, 116],
+                [544, 88],
+                [552, 60],
+                [572, 40],
+                [600, 32],
+                [628, 40],
+                [648, 60],
+              ]"
+              :key="`fd${k}`"
+              :cx="t[0]"
+              :cy="t[1]"
+              r="3.4"
+            />
+          </g>
+          <circle cx="600" cy="88" r="5" :fill="stage.bloom" />
+        </g>
+      </g>
+
+      <!--
+        추석 — 보름달.
+
+        밤하늘의 달은 초승달이라 둘이 겹치지 않는다.
+
+        달 안에 계수나무와 방아 찧는 토끼를 옅게 넣는다. 흰 원 하나만
+        띄웠더니 노을 진 하늘에 뜬 해로 보였다 — 달은 그 자리가
+        어른거려야 달이다.
+      -->
+      <g v-else-if="stage.motif === 'harvestmoon'">
+        <circle cx="606" cy="88" r="70" :fill="stage.bloom" opacity="0.22" />
+        <circle cx="606" cy="88" r="52" :fill="stage.motifColor" />
+        <g :fill="stage.near" opacity="0.3">
+          <ellipse cx="586" cy="68" rx="15" ry="11" />
+          <rect x="584.6" y="74" width="2.8" height="30" />
+          <ellipse cx="622" cy="108" rx="13" ry="8" />
+          <circle cx="633" cy="99" r="6" />
+          <ellipse cx="634" cy="89" rx="2.2" ry="7" transform="rotate(10 634 89)" />
+          <ellipse cx="640" cy="91" rx="2.2" ry="7" transform="rotate(26 640 91)" />
+          <rect x="611" y="86" width="2.6" height="18" transform="rotate(-30 611 86)" />
+          <ellipse cx="604" cy="114" rx="10" ry="4" />
+        </g>
+      </g>
     </g>
 
     <!--
@@ -1141,6 +2157,17 @@ const ridges = computed(() => {
     />
 
     <!-- ⑩ 나무. 중경에 흩어진다 -->
+    <!--
+      ⑨' 봄 아지랑이.
+
+      먼 산 밑동에 흰 기운이 한 겹 걸린다. 봄날 낮에 지평선 쪽이
+      뿌옇게 뜨는 그것이다. 산과 중경 사이를 갈라 놓아 깊이가 한 단 늘고,
+      판에 흰빛이 한 번 더 들어온다.
+
+      나무보다 뒤에 둔다. 앞에 두면 나무까지 뿌예져서 안개 낀 날이 된다.
+    -->
+    <rect v-if="stage.veil" x="0" y="116" width="800" height="66" :fill="`url(#veil-${uid})`" />
+
     <g v-if="!stage.under" class="trees">
       <g v-for="t in scene.trees" :key="`t${t.i}`" :transform="`translate(${t.x} ${t.base})`">
         <rect :x="-1.6" :y="-t.h * 0.42" width="3.2" :height="t.h * 0.42" :fill="stage.veg" />
@@ -1149,17 +2176,65 @@ const ridges = computed(() => {
           :cy="-t.h * 0.58"
           :rx="t.w * 0.5"
           :ry="t.h * 0.34"
-          :fill="t.dark ? stage.veg : stage.veg2"
+          :fill="t.pale && stage.treePale ? stage.treePale : t.dark ? stage.veg : stage.veg2"
         />
         <ellipse
           cx="-4"
           :cy="-t.h * 0.72"
           :rx="t.w * 0.32"
           :ry="t.h * 0.24"
-          :fill="stage.veg2"
+          :fill="t.pale && stage.treePale ? stage.treePale : stage.veg2"
           opacity="0.7"
         />
       </g>
+    </g>
+
+    <!--
+      ⑩' 기와 담장.
+
+      나무보다 뒤에 그린다. 앞에 두었더니 나무 밑동이 담벼락 한가운데서
+      끝나서, 벚나무 넷이 담 위에 심겨 있었다. 담장 뒤에 두면 밑동이
+      담에 가려지고 꽃만 담 위로 넘어온다 — 궁궐 담 옆 벚나무가 그렇다.
+
+      살짝 기울여 둔다. 자로 그은 듯 수평으로 지나가니 판이 위아래로
+      잘렸다 — 담 위는 하늘, 담 아래는 길인 두 장이었다.
+      실제 궁궐 담도 지형을 따라 오르내린다.
+
+      이 판이 어느 나라 봄인지 정하는 한 겹이다. 벚꽃만 흩어 두면
+      그냥 분홍 언덕인데, 담장 한 줄이 지나가면 그 길이 궁궐 담이 된다.
+
+      담장은 사람 키보다 낮게 둔다. 처음에 높이 세웠더니 판을 위아래로
+      끊어 놓아서, 담 위는 하늘이고 담 아래는 길인 두 장이 됐다.
+      낮게 지나가야 걸어가는 길 옆에 담이 있는 것으로 읽힌다.
+
+      좌우로 판 밖까지 뺀다. 끝이 보이면 담장이 아니라 담장 조각이다.
+    -->
+    <g v-if="stage.wall" class="wall" transform="rotate(-1.2 400 190)">
+      <!--
+        밑동은 근경에 묻는다. 담벼락을 근경 위에서 끝냈더니
+        벽이 허공에 뜬 채 아래가 잘려 있었다 — 담장은 땅에서 올라온다.
+      -->
+      <rect x="-20" y="170" width="840" height="46" :fill="stage.wallFace" />
+      <!-- 꽃담 전돌 무늬. 잘고 옅게 — 크게 두면 담장이 아니라 벽지가 된다 -->
+      <g fill="none" :stroke="stage.wallTile" stroke-width="0.9" opacity="0.16">
+        <path v-for="k in 25" :key="`wd${k}`" :d="`M${-20 + (k - 1) * 34} 186l17-8 17 8-17 8z`" />
+      </g>
+      <!-- 기와 지붕. 처마가 담벼락보다 좌우로 나온다 -->
+      <path d="M-26 170l14-9h824l14 9z" :fill="stage.wallTile" />
+      <!--
+        용마루에 닿는 빛.
+
+        기와는 둥글게 말려 있어서 맨 위 능선만 빛을 받는다. 이 가는 선
+        하나가 담장을 '회색 띠' 에서 '기와를 얹은 담' 으로 바꾼다.
+      -->
+      <path d="M-12 161h824" stroke="#ffffff" stroke-width="0.9" opacity="0.26" fill="none" />
+
+      <!-- 기왓골 -->
+      <g :stroke="stage.wallFace" stroke-width="1.1" opacity="0.28">
+        <path v-for="k in 41" :key="`wt${k}`" :d="`M${-26 + (k - 1) * 21} 170l6-9`" />
+      </g>
+      <!-- 처마 그늘. 이 한 줄이 지붕과 담벼락을 갈라 놓는다 -->
+      <rect x="-20" y="170" width="840" height="3" fill="#000" opacity="0.12" />
     </g>
 
     <!-- ⑪ 근경 -->
@@ -1168,6 +2243,43 @@ const ridges = computed(() => {
       :fill="stage.near"
       d="M0 196c140-20 214-12 320 10s186 12 316-14 132-10 164 6v62H0z"
     />
+
+    <!--
+      ⑪'' 길에 쌓인 꽃잎.
+
+      벚꽃놀이를 벚꽃놀이로 만드는 건 나무보다 이 바닥이다. 나무만
+      분홍이고 땅은 맨땅이면 벚나무가 서 있는 들판이지 꽃길이 아니다.
+
+      얕게 눕힌 타원을 흐려서 깐다. 윤곽을 살려 뒀더니 정확히
+      그 일이 일어났다 — 길에 분홍 웅덩이 아홉 개가 고여 있었다.
+      쌓인 꽃잎에는 가장자리가 없다.
+    -->
+    <g
+      v-if="stage.fallen"
+      class="fallen"
+      :fill="stage.motifColor"
+      opacity="0.5"
+      :filter="`url(#soft-${uid})`"
+    >
+      <ellipse
+        v-for="(d, k) in [
+          [70, 214, 64, 7],
+          [210, 226, 52, 6],
+          [360, 208, 72, 8],
+          [520, 232, 58, 6],
+          [640, 216, 66, 7],
+          [770, 228, 48, 6],
+          [140, 240, 44, 5],
+          [450, 244, 56, 6],
+          [700, 246, 40, 5],
+        ]"
+        :key="`fp${k}`"
+        :cx="d[0]"
+        :cy="d[1]"
+        :rx="d[2]"
+        :ry="d[3]"
+      />
+    </g>
 
     <!--
         ⑪' 젖은 모래.
@@ -2107,11 +3219,34 @@ const ridges = computed(() => {
       />
     </g>
 
+    <!--
+      ⑬''' 들꽃.
+
+      봄의 알록달록함을 여기 한 겹에만 담는다. 판 전체를 분홍 한 색의
+      명도 단계로 내려오게 짜 두었으므로, 다른 색을 들이려면 아주 적게
+      아주 낮은 채도로 들여야 한다. 많으면 색동이 되고 그러면 판이 깨진다.
+
+      풀보다 뒤에 둔다. 풀 사이로 언뜻 보여야 들꽃이고, 앞에 두면
+      길바닥에 흩어 놓은 구슬이 된다.
+    -->
+    <g v-if="scene.wild.length" class="wild">
+      <g
+        v-for="w in scene.wild"
+        :key="`wf${w.i}`"
+        class="bloom"
+        :style="{ '--sway': `${w.sway}s` }"
+      >
+        <path :d="`M${w.x} ${w.y + 7}v-7`" :stroke="stage.veg" stroke-width="0.9" opacity="0.6" />
+        <circle :cx="w.x" :cy="w.y" :r="w.r" :fill="w.c" :opacity="w.o" />
+      </g>
+    </g>
+
     <!-- ⑭ 전경 풀. 바람에 흔들린다 -->
     <g v-if="!stage.under" class="grass" :stroke="stage.veg">
       <path
         v-for="(g, i) in scene.grass"
         :key="`g${i}`"
+        :stroke="g.fresh && stage.grassFresh ? stage.grassFresh : undefined"
         :d="`M${g.x} 260 q${g.lean} ${-g.h * 0.6} ${g.lean * 1.6} ${-g.h}`"
         :style="{ '--sway': `${g.sway}s`, '--delay': `${g.delay}s` }"
       />
@@ -2125,6 +3260,7 @@ const ridges = computed(() => {
         :cx="m.x"
         :cy="m.y"
         :r="m.r"
+        :fill="m.pale && stage.motePale ? stage.motePale : undefined"
         :style="{ '--dur': `${m.dur}s`, '--delay': `${m.delay}s`, '--drift': `${m.drift}px` }"
       />
     </g>
@@ -2252,6 +3388,118 @@ const ridges = computed(() => {
         <path
           d="M520 96c22-30 44-34 62-12c18-22 40-18 62 12c-24-10-44-4-62 12c-18-16-38-22-62-12z"
         />
+      </g>
+
+      <!--
+        벚꽃놀이 — 만개한 벚나무 한 그루.
+
+        캐노피를 정확한 타원으로 두면 사탕이 된다. 활짝 핀 벚나무는
+        가지마다 부푼 덩어리가 붙어 윤곽이 울퉁불퉁하다.
+        그래서 호를 네 번 이어 붙여 닫는다.
+
+        땅에 뿌리내린 모티프라 이쪽 그룹에 둔다 —
+        접힌 띠에 나무 밑동만 남아 서 있으면 무슨 장면인지 알 수 없다.
+      -->
+      <!--
+        벚꽃놀이의 주인공 — 위에서 늘어진 가지.
+
+        한 그루를 통째로 세워 봤다. 그건 벚나무를 멀리서 보는 시점이라
+        다른 스물네 장과 똑같은 판이 됐다. 벚꽃놀이는 나무를 보러 가는
+        날이 아니라 나무 아래로 들어가는 날이다.
+
+        그래서 가지를 판 위쪽 좌우 모서리에서 안으로 늘어뜨렸다.
+        오른쪽이 굵고 길게, 왼쪽이 가늘고 짧게 — 같은 무게로 걸면
+        액자가 되지만, 한쪽이 무거우면 그건 나무 아래다.
+        줄기도 뿌리도 안 보인다. 올려다보는 사람에게는 원래 안 보인다.
+
+        송이는 잘게 나눈다. 큰 덩어리 몇 개로 달았더니 가지에 구름이
+        걸린 꼴이었고, 하필 판에 흰 구름이 떠 있어 둘이 같아 보였다.
+
+        송이 색은 한 가지로 둔다. 흰 송이를 섞고 순백 점을 찍어 봤는데,
+        가지가 알록달록해지면서 정작 주인공인 가지의 흐름이 흩어졌다.
+        흰빛은 흩날리는 꽃잎 쪽에서 맡는다.
+      -->
+      <g v-else-if="stage.motif === 'blossom'">
+        <g fill="none" :stroke="stage.accent" stroke-linecap="round">
+          <path d="M814 4C726 14 662 34 590 38 522 42 472 58 414 72" stroke-width="7" />
+          <path d="M-14 24C54 28 110 42 158 60" stroke-width="5" />
+          <path
+            d="M702 22q-8 26-26 38M602 36q-4 26-22 40M498 50q-12 22-32 32M414 72q-12 16-30 20M108 44q4 22 18 32"
+            stroke-width="3"
+          />
+        </g>
+        <g>
+          <ellipse cx="786" cy="10" rx="34" ry="19" />
+          <ellipse cx="726" cy="20" rx="27" ry="15" />
+          <ellipse cx="672" cy="30" rx="23" ry="13" />
+          <ellipse cx="620" cy="36" rx="26" ry="15" />
+          <ellipse cx="566" cy="42" rx="22" ry="13" />
+          <ellipse cx="508" cy="52" rx="24" ry="14" />
+          <ellipse cx="456" cy="64" rx="19" ry="11" />
+          <ellipse cx="416" cy="74" rx="16" ry="10" />
+          <ellipse cx="700" cy="52" rx="15" ry="9" />
+          <ellipse cx="600" cy="58" rx="13" ry="8" />
+          <ellipse cx="496" cy="74" rx="12" ry="7" />
+          <ellipse cx="384" cy="92" rx="10" ry="6" />
+          <ellipse cx="10" cy="20" rx="28" ry="16" />
+          <ellipse cx="66" cy="30" rx="22" ry="13" />
+          <ellipse cx="116" cy="44" rx="18" ry="11" />
+          <ellipse cx="156" cy="60" rx="14" ry="9" />
+          <ellipse cx="128" cy="78" rx="11" ry="7" />
+        </g>
+      </g>
+
+      <!--
+        단오 — 그네.
+
+        줄 길이를 다르게 둔다. 나란히 맞춰 두면 사다리로 보이는데,
+        그넷줄은 가지가 뻗은 자리에 매는 것이라 애초에 높이가 다르다.
+
+        발판만 면으로 그리고 나머지는 선이다. 다 면으로 그렸더니
+        줄이 굵어져서 그네가 아니라 사다리가 됐다.
+      -->
+      <g v-else-if="stage.motif === 'swing'">
+        <!--
+          기둥을 땅까지 내린다.
+
+          가로대와 줄과 발판만 그렸더니 그네가 허공에 걸린 문틀로 보였다.
+          그네는 매다는 물건이라 무엇에 매였는지가 함께 보여야 하고,
+          그 무엇이 판 밖에 있으면 매인 데 없이 떠 있는 것이 된다.
+
+          기둥은 살짝 바깥으로 벌린다. 수직으로 세우면 사다리가 되는데,
+          그네틀은 사람이 굴러도 넘어지지 않게 다리를 벌려 박는다.
+        -->
+        <g fill="none">
+          <path d="M492 46q68 22 156 12" stroke-width="5" />
+          <path d="M508 50l-18 156M634 56l24 150" stroke-width="5" />
+          <path d="M566 62v84M614 60v86" />
+          <path d="M560 152l-6 12M620 152l6 12" />
+        </g>
+        <rect x="552" y="142" width="76" height="9" rx="3" />
+      </g>
+
+      <!--
+        크리스마스 — 트리.
+
+        이 목록에서 유일한 각인형이라 면이 아니라 금박 선으로 그린다.
+        층은 셋이다. 넷으로 늘려 봤더니 층마다 좁아져서
+        전나무가 아니라 탑이 됐다.
+
+        장식은 다섯 알만, 그것도 흐리게. 금선 위에 금알을 또렷하게
+        얹으면 어느 것이 나무이고 어느 것이 장식인지 갈리지 않는다.
+      -->
+      <g v-else-if="stage.motif === 'firtree'">
+        <!-- 밑동. 나무 맨 아래 층(y 190)에 물리게 둔다. 띄우면 선 하나가 따로 떠 있다 -->
+        <path d="M600 214v-26" />
+        <path d="M600 52l-36 50h19l-31 42h25l-33 46h112l-33-46h25l-31-42h19z" />
+        <path d="M600 28l4.6 12 12 4.6-12 4.6-4.6 12-4.6-12-12-4.6 12-4.6z" />
+        <g class="dim">
+          <circle cx="582" cy="124" r="3" />
+          <circle cx="620" cy="142" r="3" />
+          <circle cx="592" cy="170" r="3" />
+          <circle cx="634" cy="178" r="3" />
+          <circle cx="566" cy="182" r="3" />
+        </g>
       </g>
 
       <!--
@@ -2547,6 +3795,107 @@ const ridges = computed(() => {
       <!-- ⑰ 결 -->
       <rect class="grain" x="0" y="0" width="800" height="260" :filter="`url(#grain-${uid})`" />
     </g>
+
+    <!--
+      ⑱ 나비.
+
+      모티프보다 앞에 둔다. 꽃에 앉는 게 이 나비가 하는 일인데
+      뒤에 두면 앉는 순간 꽃에 가려 사라진다.
+
+      겹을 넷으로 나눠 감쌌다. 자리 · 경로 · 향한 쪽 · 날갯짓.
+      한 요소에 다 걸면 transform 끼리 덮어써서 마지막 하나만 남는다.
+
+      나는 날개와 앉은 날개를 따로 그려 두고 서로 바꿔 켠다.
+      CSS 로는 도는 중에 박자를 바꿀 수 없어서, 한 벌로는 앉아서도
+      나는 속도로 파닥이게 된다. 앉은 나비는 천천히 여닫아야 한다.
+    -->
+    <!--
+      ⑱ 나비.
+
+      모티프보다 앞에 둔다. 꽃에 앉는 게 이 나비가 하는 일인데
+      뒤에 두면 앉는 순간 꽃에 가려 사라진다.
+
+      자리 · 방향 · 크기 · 두 날개의 폭을 매 프레임 계산해서 그대로 쓴다.
+      CSS 로 눌렀다 폈다 하던 것을 전부 걷어냈다 — 각도에 따라 달라지는
+      모습을 한 각도로 그려 놓고 변형해서는 만들 수 없기 때문이다.
+
+      먼 날개 · 몸통 · 가까운 날개 순으로 그린다. 우리가 보는 쪽이
+      한쪽으로 정해져 있어서 이 순서는 뒤바뀌지 않는다.
+    -->
+    <!--
+      ⑰' 꽃잎비.
+
+      가지보다 앞에 둔다. 가지에서 떨어지는 것인데 뒤에 두면
+      가지에 가려 나오다 말고 사라진다.
+
+      떠다니는 것(⑮)과 겹은 다르다. 그쪽은 늘 몇 장이 떠 있는
+      잔잔한 흩날림이고, 이쪽은 바람이 지나갈 때만 우수수 쏟아진다.
+    -->
+    <g v-if="stage.petalRain" class="petalrain">
+      <!-- 후광은 전부 꽃잎 뒤에 깔린다. 한 장씩 짝지어 두면 앞뒤가 엇갈린다 -->
+      <g :fill="`url(#petalglow-${uid})`">
+        <circle
+          v-for="p in petalState"
+          :key="`ph${p.id}`"
+          :cx="p.x"
+          :cy="p.y"
+          :r="p.hr"
+          :opacity="p.h"
+        />
+      </g>
+      <path
+        v-for="p in petalState"
+        :key="p.id"
+        :d="PETAL_PATH"
+        :fill="p.c"
+        :opacity="p.o"
+        :transform="`translate(${p.x} ${p.y}) rotate(${p.rot}) scale(${p.kx * p.sc} ${p.sc})`"
+      />
+    </g>
+
+    <g v-if="stage.butterflies" class="flutter">
+      <g
+        v-for="b in bfState"
+        :key="b.id"
+        :transform="`translate(${b.x} ${b.y}) rotate(${b.rot}) scale(${b.sc})`"
+        :opacity="b.op"
+      >
+        <g :transform="`scale(${b.kFar} 1)`">
+          <path :d="BF_HIND" :fill="stage.wingFar" />
+          <path :d="BF_FORE" :fill="stage.wingHind" />
+          <path :d="BF_TIP" :fill="stage.accent" opacity="0.32" />
+        </g>
+
+        <g :fill="stage.accent">
+          <path :d="BF_BODY" />
+          <ellipse cx="0" cy="-4.2" rx="1.9" ry="2.5" />
+          <circle cx="0" cy="-7.4" r="1.6" />
+          <circle cx="-5.3" cy="-14.4" r="0.8" />
+          <circle cx="5.3" cy="-14.4" r="0.8" />
+        </g>
+        <!--
+          더듬이.
+
+          길게 곧추세웠더니 안테나가 됐다. 나비의 더듬이는 짧고 바깥으로
+          휘며 끝이 방망이처럼 부푼다. 그 끝의 작은 알이 곤충 중에서도
+          나비를 가리키는 표시다.
+        -->
+        <path
+          d="M-.7-8.2C-2-10.4-3.4-12.2-4.9-13.6M.7-8.2C2-10.4 3.4-12.2 4.9-13.6"
+          fill="none"
+          :stroke="stage.accent"
+          stroke-width="0.62"
+          stroke-linecap="round"
+        />
+
+        <g :transform="`scale(${b.kNear} 1)`">
+          <path :d="BF_HIND" :fill="stage.motifColor" />
+          <path :d="BF_FORE" :fill="stage.wing" />
+          <path :d="BF_TIP" :fill="stage.accent" opacity="0.42" />
+          <circle cx="12.5" cy="-6.4" r="1.5" :fill="stage.accent" opacity="0.38" />
+        </g>
+      </g>
+    </g>
   </svg>
 </template>
 
@@ -2727,12 +4076,46 @@ const ridges = computed(() => {
 .motes.dust circle {
   opacity: 0.3;
 }
+/* ── 나비 ─────────────────────────────────────────
+ *
+ * 움직임은 전부 계산해서 그리므로 여기에는 없다.
+ * 남은 건 언제 보이느냐 하나다 — 모티프와 같은 규칙으로,
+ * 펼쳤을 때만 나온다. 접힌 띠는 지면 쪽만 보이는데 거기서
+ * 나비가 파닥이고 있으면 판정을 읽으러 온 사람에게는 방해다.
+ */
+/*
+ * 꽃잎비도 펼쳤을 때만.
+ *
+ * 접으면 셈을 멈추므로 그대로 두면 꽃잎이 허공에 얼어붙은 채로
+ * 띠에 남는다. 떨어지다 만 꽃잎만큼 어색한 것이 없다.
+ */
+.petalrain,
+.flutter {
+  opacity: 0;
+  transition: opacity var(--dur-enter) var(--ease-out);
+}
+.scene.open .petalrain,
+.scene.open .flutter {
+  opacity: 0.96;
+  transition-delay: 120ms;
+}
+
 /* 기포는 위로만 간다. 물속에서 아래로 떠다니는 것은 없다 */
 .motes.bubble circle {
   animation-name: rise;
   fill: none;
   stroke: currentColor;
   stroke-width: 0.8;
+}
+
+/* 꽃잎과 낙엽은 눈처럼 내려온다. 무거워서가 아니라 떨어져 나온 것이라서다 */
+.motes.petal circle,
+.motes.leaf circle {
+  animation-name: fall;
+}
+/* 불티는 올라간다. 터진 자리에서 흩어져 식으며 사라진다 */
+.motes.spark circle {
+  animation-name: rise;
 }
 
 /* ── 바닷가 ───────────────────────────────────────── */

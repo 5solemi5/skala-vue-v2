@@ -89,6 +89,7 @@ export default {
   'yard.plate': '마당',
   'yard.group.place': '장소',
   'yard.group.edition': '에디션',
+  'yard.group.day': '어떤 날',
   'yard.expand': '넓게 보기',
   'yard.collapse': '접기',
   'yard.sign': '오늘의 채비',

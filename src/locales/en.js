@@ -69,6 +69,7 @@ export default {
   'yard.plate': 'The Yard',
   'yard.group.place': 'Places',
   'yard.group.edition': 'Editions',
+  'yard.group.day': 'Some Days',
   'yard.expand': 'See it whole',
   'yard.collapse': 'Fold',
   'yard.sign': "Today's Kit",
