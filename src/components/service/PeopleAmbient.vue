@@ -514,6 +514,20 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/*
+ * 판의 높이를 화면이 아니라 판 자신의 폭에서 잰다.
+ *
+ * vw 로 재던 것이 어긋나 있었다. 화면 폭에는 좌우 여백이 붙어 있어서,
+ * 32.5vw 는 화폭의 비가 아니라 '여백까지 포함한 비'가 된다. 390px 화면에서
+ * 판은 358px 인데 32.5vw 는 127px 을 내놓으니, 비율대로면 116px 인 그림이
+ * 11px 더 큰 상자에 들어가고 그만큼 좌우가 잘렸다.
+ *
+ * cqw 는 이 상자의 폭을 잰다. 32.5cqw 는 어느 폭에서든 정확히 화폭의 비다.
+ */
+.ambient {
+  container-type: inline-size;
+}
+
 /* 도판 제목 줄. 도감의 도판 캡션에서 가져온 형식이다 */
 .plate-cap {
   display: flex;
@@ -682,7 +696,16 @@ onUnmounted(() => {
 .stage {
   position: relative;
   margin-top: 8px;
-  height: 132px;
+  /*
+   * 접힌 띠.
+   *
+   * 15.4cqw 는 펼친 높이의 47%다 — 넓은 화면에서 132/279 로 잡아 두었던
+   * 그 비를 그대로 폭에서 뽑는다. 어느 폭에서나 같은 만큼만 보여 준다.
+   *
+   * 다만 아래를 막는다. 좁은 화면에서 비율대로 가면 55px 이 되는데,
+   * 거기 서는 사람이 36px 이라 띠를 사람이 다 차지한다.
+   */
+  height: max(86px, min(15.4cqw, 132px));
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-gold) 30%, var(--color-line));
   border-radius: 4px;
@@ -691,14 +714,18 @@ onUnmounted(() => {
 }
 .stage.open {
   /*
-   * 32.5vw 는 화폭의 비(260/800)다. 넓은 화면에서는 이 높이가 곧 그림의
-   * 비율이라 딱 맞아떨어진다.
+   * 펼친 판은 화폭의 비 그대로다. 32.5cqw = 260/800.
    *
-   * 좁은 화면에서는 아래끝(200px)에 걸린다. 판이 그림보다 세로로 길어지는데,
-   * 이건 그대로 둔다 — 좁은 화면에서 116px 로 여는 건 여는 게 아니다.
-   * 넘치는 만큼은 그림을 채워 넣고 좌우를 자르는 쪽(slice)으로 받는다.
+   * 한동안 좁은 화면에서만 200px 로 열었다. 116px 로 여는 건 여는 게
+   * 아니라고 봤고, 넘치는 만큼은 좌우를 잘라 채웠다.
+   * 잘리는 양이 문제였다 — 358px 판에 200px 이면 그림이 615px 로 그려져서
+   * 화폭의 42%가 화면 밖으로 나갔다. 왼쪽 절반이 통째로 없는 그림이었다.
+   *
+   * 넓게 보려고 누르는 건 판을 키우려는 게 아니라 그림 전체를 보려는 것이다.
+   * 그래서 비율을 지키는 쪽으로 되돌렸다. 좁은 화면에서 펼친 판은
+   * 낮고 길어지지만, 넓은 화면에서 보는 것과 같은 그림이 다 보인다.
    */
-  height: clamp(200px, 32.5vw, 279px);
+  height: min(32.5cqw, 279px);
 }
 .stage:focus-visible {
   outline: 2px solid var(--color-ink);
@@ -787,9 +814,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 560px) {
-  .stage {
-    height: 116px;
-  }
+  /* 판 높이는 이제 폭에서 나오므로 여기서 따로 정하지 않는다 */
   .swatches {
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   }
