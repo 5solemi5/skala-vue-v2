@@ -171,7 +171,9 @@ const style = computed(() => ({
   '--dur': `${props.dur}s`,
   '--delay': `${props.delay}s`,
   '--scale': String(props.scale),
-  '--back': `${props.back}px`,
+  // 단위 없는 수로 넘긴다. 발밑을 px 이 아니라 그림 배율에서 받는 --rise 와
+  // 곱해야 해서, 여기에 px 이 붙어 있으면 길이끼리 곱하는 꼴이 되어 계산이 깨진다
+  '--back': String(props.back),
   '--from': `${props.from}%`,
   '--to': `${props.to}%`,
   zIndex: String(40 - props.back),
@@ -202,10 +204,20 @@ const style = computed(() => ({
 .walker {
   position: absolute;
   /*
-   * 지면은 접혀 있든 펼쳐져 있든 늘 판의 아래쪽이다.
-   * 다만 맨 아래 22px 은 좌하단 라벨과 우하단 서명이 쓰는 자리라 비켜 선다.
+   * 발밑.
+   *
+   * 24px 로 못 박아 두었었다. 넓은 화면에서는 맞았다 — 그림이 1.075배로
+   * 그려지니 지면 띠가 판 아래 34px 을 차지하고, 24px 은 그 띠 안이다.
+   *
+   * 좁은 화면에서 어긋났다. 그림이 절반 크기로 그려지면 지면 띠도 14px 로
+   * 줄어드는데 발밑은 24px 에 그대로 있어서, 사람들이 지면 위 허공에 섰다.
+   * 펼치면 더 나빠졌다 — 그림 아래로 빈칸이 생기고 거기 서 있었다.
+   *
+   * 그래서 픽셀을 버리고 마당이 재어 내려보내는 수를 쓴다.
+   * --floor 와 --rise 는 둘 다 그림이 실제로 몇 배로 그려지고 있는지에서
+   * 나오므로, 판이 어떤 크기가 되든 발은 같은 지면을 딛는다.
    */
-  bottom: calc(24px + var(--back) * 0.42);
+  bottom: calc(var(--floor, 23.65px) + var(--back, 0) * var(--rise, 0.416px));
   left: 0;
   transform: scale(var(--scale));
   transform-origin: bottom center;
@@ -287,18 +299,21 @@ const style = computed(() => ({
  * 30px 로 두었더니 사람마다 다르게 뽑아 둔 옷·모자 색이 보이지 않았다.
  * 공들여 나눠 놓은 것이 화면에서는 회색 점 몇 개였다.
  * 판이 132px 이고 발밑이 24~37px 이라, 54px 까지는 언덕을 가리지 않는다.
+ *
+ * ── 배경과 같이 커지되, 어느 밑으로는 안 내려간다 ──
+ * 41 x 배율이면 넓은 화면에서 44px 이 나온다. 그림이 커지고 작아지는 대로
+ * 사람도 따라가서, 나무 옆에 선 사람의 키가 어느 폭에서나 같은 비로 보인다.
+ *
+ * 다만 아래를 막는다. 좁은 화면에서 그림은 절반 크기로 그려지는데 그대로
+ * 따라가면 사람이 18px 이 되어, 색을 못 알아보던 30px 시절로 돌아간다.
+ * 작은 화면에서는 비율보다 알아보는 쪽이 먼저다 — 예전 반응형이 두던 36px 을
+ * 바닥으로 삼되, 이제는 560px 에서 끊기지 않고 이어진다.
  */
 .walker :deep(.figure) {
-  width: calc(44px * var(--size, 1));
-  height: calc(51px * var(--size, 1));
-}
-
-@media (max-width: 560px) {
-  /* 좁은 화면에서는 판도 116px 로 낮아진다 */
-  .walker :deep(.figure) {
-    width: calc(36px * var(--size, 1));
-    height: calc(42px * var(--size, 1));
-  }
+  --fig-w: max(36px, calc(41px * var(--k, 1.075)));
+  width: calc(var(--fig-w) * var(--size, 1));
+  /* 44 x 51 이던 비 그대로 */
+  height: calc(var(--fig-w) * 1.16 * var(--size, 1));
 }
 
 @media (prefers-reduced-motion: reduce) {

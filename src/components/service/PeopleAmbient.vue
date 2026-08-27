@@ -59,6 +59,98 @@ const groups = computed(() =>
 const open = ref(false)
 const pickerOpen = ref(false)
 
+/*
+ * 고르면 닫는다.
+ *
+ * 무대는 하나만 서 있을 수 있어서, 하나 고르면 그것으로 끝이다.
+ * 목록이 그대로 열려 있으면 아직 고르는 중인 것처럼 보이는데,
+ * 정작 바뀐 판은 그 목록에 가려 안 보인다 — 고른 결과를 보러
+ * 목록을 손으로 다시 닫아야 했다.
+ */
+const pickStage = (id) => {
+  configStore.setYardTheme(id)
+  pickerOpen.value = false
+}
+
+/*
+ * ── 판을 재서 그림과 사람을 같은 바닥에 세운다 ─────
+ *
+ * 화폭은 800x260 이다. 판이 그 비율이면 아무 문제가 없는데, 좁은 화면에서
+ * 펼치면 판은 358x200 이 된다. 훨씬 세로로 긴 상자다.
+ *
+ * 예전에는 이럴 때 그림을 통째로 줄여 넣었다(meet). 그러면 그림은 116px 만
+ * 그려지고 위아래로 84px 씩 빈칸이 남는다. 펼쳤는데 판의 4할이 빈칸이다.
+ * 사람들은 발밑을 판 바닥에서 24px 로 못 박아 두었으니, 그림 바닥이 42px
+ * 위로 올라간 만큼 열두 명이 그림 밖 빈칸에 서 있었다.
+ *
+ * 두 증상은 같은 뿌리다 — 그림은 판을 자기 비율로 읽고 사람은 픽셀로 읽었다.
+ * 그래서 판을 실제로 재고, 그 수 하나에서 둘 다 나오게 한다.
+ */
+const ART_W = 800
+const ART_H = 260
+
+/*
+ * 발이 닿을 자리(화폭 아래에서 몇 칸).
+ *
+ * 지면은 화폭 228~260 에 깔린 32칸짜리 띠다. 맨 앞 사람은 그 띠에 열 칸쯤
+ * 들어와 서고, 뒤로 갈수록 띠 위쪽으로 올라간다.
+ * 넓은 화면에서 그림이 1.075배로 그려질 때의 24px~37px 과 같은 자리다.
+ */
+const FOOT = 22
+const FOOT_BACK = 0.387
+
+const stageEl = ref(null)
+const box = ref({ w: 0, h: 0 })
+let ro = null
+
+/*
+ * 어느 쪽을 남기고 어느 쪽을 자를지.
+ *
+ * 늘 채운다(slice). 남는 자리를 만들지 않는 대신 넘치는 쪽을 자르는데,
+ * 무엇을 자르느냐는 판이 그림보다 세로로 긴지 가로로 긴지에 달렸다.
+ *
+ * 세로로 길면 — 좁은 화면에서 펼친 경우다 — 좌우를 자른다. 이때 오른쪽을
+ * 남긴다(xMax). 모티프가 화폭 548~644 에, 그러니까 오른쪽 4분면에 서 있어서
+ * 가운데를 기준으로 자르면(xMid) 모티프의 오른쪽 절반이 잘려 나간다.
+ * 넓게 보려고 누른 사람이 보려는 게 그 모티프다.
+ */
+const fit = computed(() => {
+  const { w, h } = box.value
+  if (!open.value || !w || !h) return 'xMidYMax slice'
+  return h * ART_W > w * ART_H ? 'xMaxYMid slice' : 'xMidYMax slice'
+})
+
+/*
+ * 그림이 몇 배로 그려지고 있는가.
+ *
+ * slice 라 화폭의 아래끝은 늘 판의 아래끝에 붙는다 — 세로로 긴 판에서는
+ * 높이가 딱 맞고, 가로로 긴 판에서는 위쪽만 잘린다. 어느 쪽이든 바닥은
+ * 바닥이라, 발밑은 이 배율에 칸수를 곱하기만 하면 된다.
+ */
+const k = computed(() => {
+  const { w, h } = box.value
+  if (!w || !h) return ART_W / 860
+  return Math.max(w / ART_W, h / ART_H)
+})
+
+/*
+ * 사람들에게 내려보내는 바닥.
+ *
+ * --floor  맨 앞줄의 발밑(px)
+ * --rise   한 겹 뒤로 갈 때마다 올라가는 만큼(px)
+ * --k      그림 배율. 사람 크기도 이걸 따라간다
+ */
+const ground = computed(() => ({
+  '--size': String(sizeK.value),
+  '--floor': `${(FOOT * k.value).toFixed(2)}px`,
+  '--rise': `${(FOOT_BACK * k.value).toFixed(3)}px`,
+  '--k': k.value.toFixed(4),
+}))
+
+const measure = (el) => {
+  if (el) box.value = { w: el.clientWidth, h: el.clientHeight }
+}
+
 /**
  * 챙기는 사람 수만큼, 마당을 걸어다니는 사람들.
  *
@@ -280,9 +372,23 @@ watch(
 )
 
 onMounted(() => {
+  /*
+   * 펼치는 동안에도 계속 잰다.
+   * 높이가 116 에서 200 으로 흐르는 사이 그림은 계속 커지는데, 처음과 끝만
+   * 재면 사람들은 두 자리 사이를 순간이동한다. 매 프레임 같이 따라가야
+   * 그림이 커지는 동안 발이 지면에 붙어 있다.
+   */
+  ro = new ResizeObserver(() => measure(stageEl.value))
+  if (stageEl.value) {
+    ro.observe(stageEl.value)
+    measure(stageEl.value)
+  }
   beat = setInterval(look, 520)
 })
-onUnmounted(() => clearInterval(beat))
+onUnmounted(() => {
+  clearInterval(beat)
+  ro?.disconnect()
+})
 </script>
 
 <template>
@@ -320,7 +426,7 @@ onUnmounted(() => clearInterval(beat))
                 class="swatch"
                 :class="{ on: s.id === configStore.yardTheme }"
                 :aria-pressed="s.id === configStore.yardTheme"
-                @click="configStore.setYardTheme(s.id)"
+                @click="pickStage(s.id)"
               >
                 <span
                   class="chip"
@@ -349,6 +455,7 @@ onUnmounted(() => clearInterval(beat))
       버튼 안에 버튼이 들어가는 짜임을 피하려는 것이다.
     -->
     <div
+      ref="stageEl"
       class="stage"
       :class="[stage.lang, { open }]"
       role="button"
@@ -359,16 +466,10 @@ onUnmounted(() => clearInterval(beat))
       @keydown.enter.prevent="open = !open"
       @keydown.space.prevent="open = !open"
     >
-      <StageScene :stage="stage" :open="open" />
+      <StageScene :stage="stage" :open="open" :fit="fit" />
 
       <!-- 걸어다니는 사람들 -->
-      <TransitionGroup
-        name="walker"
-        type="transition"
-        tag="div"
-        class="walkers"
-        :style="{ '--size': String(sizeK) }"
-      >
+      <TransitionGroup name="walker" type="transition" tag="div" class="walkers" :style="ground">
         <YardWalker
           v-for="w in walkers"
           :key="w.id"
@@ -589,7 +690,14 @@ onUnmounted(() => clearInterval(beat))
   transition: height var(--dur-move) var(--ease-out);
 }
 .stage.open {
-  /* 화폭이 800x260 이라 이 비로 열어야 그림이 비율 그대로 다 들어온다 */
+  /*
+   * 32.5vw 는 화폭의 비(260/800)다. 넓은 화면에서는 이 높이가 곧 그림의
+   * 비율이라 딱 맞아떨어진다.
+   *
+   * 좁은 화면에서는 아래끝(200px)에 걸린다. 판이 그림보다 세로로 길어지는데,
+   * 이건 그대로 둔다 — 좁은 화면에서 116px 로 여는 건 여는 게 아니다.
+   * 넘치는 만큼은 그림을 채워 넣고 좌우를 자르는 쪽(slice)으로 받는다.
+   */
   height: clamp(200px, 32.5vw, 279px);
 }
 .stage:focus-visible {
@@ -685,11 +793,23 @@ onUnmounted(() => clearInterval(beat))
   .swatches {
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .walker {
-    left: calc(6% + var(--back) * 2.4%);
+  /*
+   * 라벨과 서명을 판 끝으로 더 붙인다.
+   *
+   * 좁은 화면에서는 그림이 절반 크기로 그려지고, 지면 띠도 34px 이 아니라
+   * 14px 이다. 발밑이 그 띠를 따라 내려오면서 예전 라벨 자리와 겹친다.
+   * 겹치는 쪽을 비켜 주는 건 라벨이다 — 지면은 옮길 수 없다.
+   */
+  .frame-label,
+  .frame-sign {
+    bottom: 3px;
+  }
+  .frame-label {
+    font-size: 7.5px;
+    letter-spacing: 0.1em;
+  }
+  .frame-sign {
+    font-size: 9.5px;
   }
 }
 </style>
