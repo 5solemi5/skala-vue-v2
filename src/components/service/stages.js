@@ -962,6 +962,14 @@ const DAYS = [
      * 매 프레임 계산한다.
      */
     fireworks: true,
+    /*
+     * 어느 거리에서 보는 판인가.
+     *
+     * 'near' 는 둔치 바로 앞이다 — 강이 눈높이 아래로 납작하게 깔리고
+     * 터진 공 하나가 강 건너 건물 몇 채를 덮는다. 'far' 는 처음 세운
+     * 판이고 강가 무대가 그쪽을 쓴다. 같은 강가를 다른 거리에서 본다.
+     */
+    fwShow: 'near',
     cityDark: '#080C1A',
     bridgeDark: '#0A0F20',
     bridgeRail: '#141C36',
@@ -1003,6 +1011,64 @@ const DAYS = [
     rays: 0,
     en: 'FIREWORKS',
     ko: '불꽃놀이',
+    lang: 'illustrated',
+    sky: '#26325E',
+    mid: '#1C2648',
+    far: '#151D38',
+    near: '#0E1428',
+    ground: '#080B18',
+    accent: '#F2C15C',
+  },
+  {
+    /*
+     * 강가 불꽃놀이 — 같은 밤을 멀리서.
+     *
+     * 불꽃놀이 판을 처음 세웠을 때의 거리다. 뒤에 판을 가까이 끌어당기며
+     * (수면 y140 → y162) 지워진 것인데, 지워질 것이 아니었다 —
+     * 두 거리는 아예 다른 것을 보여 준다.
+     *
+     * 여기서는 강이 판의 사분의 일을 차지한다. 그래서 주인공이 하늘이
+     * 아니라 물이다. 한 발이 작게 터지고 그 작은 것이 넓은 수면에
+     * 통째로 어려서, 위보다 아래가 먼저 눈에 든다. 멀리서 보는 불꽃놀이가
+     * 실제로 그렇다 — 소리가 늦게 오고, 강이 먼저 밝아진다.
+     *
+     * 능선도 여기에만 있다. 가까이 보는 판에서는 물을 줄이자 잠겨 있던
+     * 능선이 드러나 강 건너에 야산이 생겨 버려 껐는데, 이 판은 수면이
+     * 높아서 능선이 통째로 물에 잠긴 채다. 덮여 있는 것과 없는 것은 다르다.
+     *
+     * 색과 겹은 불꽃놀이 판과 같다. 갈라 세우는 것은 거리 하나뿐이라
+     * 다른 것까지 바꾸면 두 판이 아니라 두 무대가 된다.
+     */
+    id: 'riverside',
+    river: true,
+    fireworks: true,
+    fwShow: 'far',
+    cityDark: '#080C1A',
+    bridgeDark: '#0A0F20',
+    bridgeRail: '#141C36',
+    waterFar: '#1B2748',
+    waterMid: '#121A34',
+    waterNear: '#0A0F20',
+    waterLine: '#3C4E80',
+    lampWarm: '#F2C15C',
+    lampCool: '#BFD2F2',
+    lampNeon: '#D98297',
+    motifColor: '#F26D7D',
+    haze: '#2C3A66',
+    veg: '#0C1122',
+    veg2: '#16203C',
+    bloom: '#F0D9A0',
+    mountains: 0,
+    clouds: 0,
+    birds: 0,
+    trees: 2,
+    treeBase: [214, 228],
+    grass: 1,
+    flowers: 0,
+    motes: 'star',
+    rays: 0,
+    en: 'RIVERSIDE',
+    ko: '강가 불꽃놀이',
     lang: 'illustrated',
     sky: '#26325E',
     mid: '#1C2648',
